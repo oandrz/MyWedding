@@ -5,6 +5,7 @@ import CoupleSection from "@/components/CoupleSection";
 import DetailsSection from "@/components/DetailsSection";
 import GallerySection from "@/components/GallerySection";
 import RsvpSection from "@/components/RsvpSection";
+import MessageWallSection from "@/components/MessageWallSection";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -21,6 +22,9 @@ export default function Home() {
       <div className="floral-divider w-full"></div>
       <GallerySection />
       <RsvpSection />
+      {/* Floral Divider */}
+      <div className="floral-divider w-full"></div>
+      <MessageWallSection />
       <Footer />
     </div>
   );

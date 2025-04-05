@@ -55,6 +55,7 @@ const NavBar = () => {
           <a href="#details" className="nav-link hover:text-primary transition duration-300">Wedding Details</a>
           <a href="#gallery" className="nav-link hover:text-primary transition duration-300">Gallery</a>
           <a href="#rsvp" className="nav-link hover:text-primary transition duration-300">RSVP</a>
+          <a href="#messages" className="nav-link hover:text-primary transition duration-300">Messages</a>
         </div>
       </div>
       
@@ -92,10 +93,17 @@ const NavBar = () => {
               </a>
               <a 
                 href="#rsvp" 
-                className="py-2 hover:text-primary transition duration-300"
+                className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
                 onClick={closeMenu}
               >
                 RSVP
+              </a>
+              <a 
+                href="#messages" 
+                className="py-2 hover:text-primary transition duration-300"
+                onClick={closeMenu}
+              >
+                Messages
               </a>
             </div>
           </motion.div>
