@@ -74,7 +74,7 @@ const Gallery = () => {
     onSuccess: () => {
       toast({
         title: "Success!",
-        description: "Your memory has been shared and is awaiting approval.",
+        description: "Your memory has been shared and added to the gallery.",
       });
       form.reset();
       // Invalidate the query cache to refresh the gallery data
@@ -114,7 +114,7 @@ const Gallery = () => {
       setUploading(false);
       toast({
         title: "Upload Successful!",
-        description: "Your memory has been shared and is awaiting approval.",
+        description: "Your memory has been shared and added to the gallery.",
       });
       // Invalidate the query cache to refresh the gallery data
       queryClient.invalidateQueries({ queryKey: ["/api/media"] });
@@ -272,7 +272,7 @@ const Gallery = () => {
                   <h2 className="text-xl font-semibold mb-2">Share Your Memory</h2>
                   <p className="text-gray-600">
                     Please share photos or videos from our wedding or related events.
-                    All submissions will be reviewed before appearing in the gallery.
+                    All shared memories will appear immediately in the gallery.
                   </p>
                 </div>
                 

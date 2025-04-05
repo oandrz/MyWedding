@@ -217,8 +217,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the request body using zod
       const validatedData = insertMediaSchema.parse(req.body);
       
+      // Auto-approve all submissions
+      const mediaWithApproval = {
+        ...validatedData,
+        approved: true
+      };
+      
       // Store the media
-      const media = await storage.createMedia(validatedData);
+      const media = await storage.createMedia(mediaWithApproval);
       
       res.status(201).json({ 
         message: "Thank you for sharing your memory!",
@@ -252,13 +258,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Missing required fields' });
       }
       
-      // Create media entry with the file URL
+      // Create media entry with the file URL (auto-approved)
       const mediaData = {
         name,
         email,
         mediaType,
         mediaUrl: fileUrl,
-        caption: caption || undefined
+        caption: caption || undefined,
+        approved: true // Auto-approve uploads
       };
       
       // Store the media entry
