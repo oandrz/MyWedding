@@ -2,8 +2,8 @@
 export const WEDDING_DATE = new Date('August 24, 2024 14:00:00');
 
 // Couple Info
-export const BRIDE_NAME = "Emily";
-export const GROOM_NAME = "Michael";
+export const BRIDE_NAME = "Christine Natasya Serena";
+export const GROOM_NAME = "Andreas";
 
 // Wedding Details
 export const WEDDING_SCHEDULE = [
@@ -53,7 +53,7 @@ export const VENUES = [
     time: null,
     location: "Sunrise Hotel & Spa",
     address: "789 River Road, Anytown",
-    bookingCode: "EM2024",
+    bookingCode: "AC2024",
     bookingUrl: "#",
     icon: "fas fa-hotel"
   }
@@ -62,35 +62,35 @@ export const VENUES = [
 // Gallery Photos
 export const GALLERY_PHOTOS = [
   {
-    src: "https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
-    alt: "Emily and Michael laughing together"
+    src: "https://images.unsplash.com/photo-1522673607200-164d1b3ce475?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+    alt: "Andreas and Christine laughing together"
   },
   {
-    src: "https://images.unsplash.com/photo-1523450001312-4d379cca827e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1494774157365-9e04c6720e47?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "Holding hands at the beach"
   },
   {
-    src: "https://images.unsplash.com/photo-1535321142297-b2bbc465149e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "Engagement photo"
   },
   {
-    src: "https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "First date"
   },
   {
-    src: "https://images.unsplash.com/photo-1530021232320-687d8e3dba54?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1537633552985-df8429e8048b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "Vacation together"
   },
   {
-    src: "https://images.unsplash.com/photo-1467632499275-7a693a761056?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "Hiking adventure"
   },
   {
-    src: "https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1545232979-8bf68ee9b1af?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "Christmas together"
   },
   {
-    src: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80",
+    src: "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     alt: "Proposal moment"
   }
 ];
