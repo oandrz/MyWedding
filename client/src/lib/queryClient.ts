@@ -12,9 +12,26 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Add admin key to requests if it's an admin route and admin key exists
+  const isAdminRoute = url.startsWith('/api/admin');
+  const adminKey = localStorage.getItem('adminKey');
+  
+  let headers: Record<string, string> = {};
+  
+  if (data) {
+    headers['Content-Type'] = 'application/json';
+  }
+  
+  // For admin routes, add the admin key as a query parameter
+  let requestUrl = url;
+  if (isAdminRoute && adminKey) {
+    const separator = url.includes('?') ? '&' : '?';
+    requestUrl = `${url}${separator}adminKey=${adminKey}`;
+  }
+  
+  const res = await fetch(requestUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,7 +46,19 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const url = queryKey[0] as string;
+    // Add admin key to requests if it's an admin route and admin key exists
+    const isAdminRoute = url.startsWith('/api/admin');
+    const adminKey = localStorage.getItem('adminKey');
+    
+    // For admin routes, add the admin key as a query parameter
+    let requestUrl = url;
+    if (isAdminRoute && adminKey) {
+      const separator = url.includes('?') ? '&' : '?';
+      requestUrl = `${url}${separator}adminKey=${adminKey}`;
+    }
+    
+    const res = await fetch(requestUrl, {
       credentials: "include",
     });
 

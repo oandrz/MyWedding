@@ -10,6 +10,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import { adminAuthMiddleware } from "./middleware/auth";
 
 const FLASK_API_URL = "http://localhost:5001";
 
@@ -296,9 +297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Admin route to get all media (approved and unapproved)
-  app.get("/api/admin/media", async (req: Request, res: Response) => {
+  app.get("/api/admin/media", adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
-      // TODO: Add authentication
       const mediaItems = await storage.getAllMedia();
       res.status(200).json({ media: mediaItems });
     } catch (error) {
@@ -308,9 +308,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Admin route to approve/reject media
-  app.patch("/api/admin/media/:id", async (req: Request, res: Response) => {
+  app.patch("/api/admin/media/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
-      // TODO: Add authentication
       const id = parseInt(req.params.id);
       const { approved } = req.body;
       
