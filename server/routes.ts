@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -160,6 +160,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ 
         message: "Failed to fetch RSVP."
       });
+    }
+  });
+  
+  // Media endpoints
+  app.post("/api/media", async (req: Request, res: Response) => {
+    try {
+      // Validate the request body using zod
+      const validatedData = insertMediaSchema.parse(req.body);
+      
+      // Store the media
+      const media = await storage.createMedia(validatedData);
+      
+      res.status(201).json({ 
+        message: "Thank you for sharing your memory!",
+        media 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ message: validationError.message });
+      } else {
+        console.error("Media submission error:", error);
+        res.status(500).json({ message: "Failed to upload media" });
+      }
+    }
+  });
+  
+  // Get approved media only
+  app.get("/api/media", async (req: Request, res: Response) => {
+    try {
+      const mediaItems = await storage.getApprovedMedia();
+      res.status(200).json({ media: mediaItems });
+    } catch (error) {
+      console.error("Error fetching media:", error);
+      res.status(500).json({ message: "Failed to fetch media" });
+    }
+  });
+  
+  // Admin route to get all media (approved and unapproved)
+  app.get("/api/admin/media", async (req: Request, res: Response) => {
+    try {
+      // TODO: Add authentication
+      const mediaItems = await storage.getAllMedia();
+      res.status(200).json({ media: mediaItems });
+    } catch (error) {
+      console.error("Error fetching all media:", error);
+      res.status(500).json({ message: "Failed to fetch media" });
+    }
+  });
+  
+  // Admin route to approve/reject media
+  app.patch("/api/admin/media/:id", async (req: Request, res: Response) => {
+    try {
+      // TODO: Add authentication
+      const id = parseInt(req.params.id);
+      const { approved } = req.body;
+      
+      if (typeof approved !== 'boolean') {
+        return res.status(400).json({ message: "Approved status must be a boolean" });
+      }
+      
+      const updatedMedia = await storage.updateMediaApproval(id, approved);
+      
+      if (!updatedMedia) {
+        return res.status(404).json({ message: "Media not found" });
+      }
+      
+      res.status(200).json({ 
+        message: approved ? "Media approved successfully" : "Media rejected",
+        media: updatedMedia 
+      });
+    } catch (error) {
+      console.error("Error updating media:", error);
+      res.status(500).json({ message: "Failed to update media" });
     }
   });
 

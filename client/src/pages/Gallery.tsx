@@ -1,0 +1,298 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { insertMediaSchema } from "../../../shared/schema";
+import NavBar from "@/components/NavBar";
+
+// Extend the schema for form validation
+const formSchema = insertMediaSchema.extend({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  mediaUrl: z.string().url({ message: "Please enter a valid URL." }),
+  mediaType: z.enum(["image", "video"], {
+    required_error: "Please select a media type.",
+  }),
+  caption: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface Media {
+  id: number;
+  name: string;
+  email: string;
+  mediaUrl: string;
+  mediaType: "image" | "video";
+  caption: string | null;
+  approved: boolean;
+  createdAt: string;
+}
+
+const Gallery = () => {
+  const [activeTab, setActiveTab] = useState("view");
+  const { toast } = useToast();
+
+  // Form for submitting new media
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      mediaUrl: "",
+      mediaType: "image",
+      caption: "",
+    },
+  });
+
+  // Query for fetching approved media
+  const { data, isLoading, error } = useQuery<{ media: Media[] }>({
+    queryKey: ["/api/media"],
+    enabled: activeTab === "view",
+  });
+
+  // Mutation for submitting new media
+  const { mutate, isPending } = useMutation({
+    mutationFn: (values: FormValues) => 
+      apiRequest("POST", "/api/media", values),
+    onSuccess: () => {
+      toast({
+        title: "Success!",
+        description: "Your memory has been shared and is awaiting approval.",
+      });
+      form.reset();
+      // Invalidate the query cache to refresh the gallery data
+      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
+      // Switch to the view tab to show the updated gallery
+      setActiveTab("view");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to share your memory. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (values: FormValues) => {
+    mutate(values);
+  };
+
+  // Render media item
+  const renderMedia = (item: Media) => {
+    if (item.mediaType === "image") {
+      return (
+        <div className="relative aspect-video overflow-hidden rounded-md mb-2">
+          <img
+            src={item.mediaUrl}
+            alt={item.caption || `Image shared by ${item.name}`}
+            className="object-cover w-full h-full"
+          />
+        </div>
+      );
+    } else if (item.mediaType === "video") {
+      return (
+        <div className="relative aspect-video overflow-hidden rounded-md mb-2">
+          <iframe
+            src={item.mediaUrl}
+            title={item.caption || `Video shared by ${item.name}`}
+            allowFullScreen
+            className="w-full h-full"
+          ></iframe>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <NavBar />
+      <div className="container py-24 max-w-5xl mx-auto px-4">
+        <h1 className="text-4xl font-bold text-center mb-2">Memories Gallery</h1>
+        <p className="text-center text-gray-600 mb-8">
+          Share and view cherished moments from our wedding journey
+        </p>
+
+        <Tabs defaultValue="view" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="view">View Gallery</TabsTrigger>
+            <TabsTrigger value="share">Share Your Memory</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="view" className="mt-6">
+            {isLoading ? (
+              <div className="text-center py-12">Loading memories...</div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-500">
+                Failed to load memories. Please try again later.
+              </div>
+            ) : data && data.media && data.media.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {data && data.media && data.media.map((item: Media) => (
+                  <Card key={item.id} className="overflow-hidden h-full">
+                    <CardContent className="p-4">
+                      {renderMedia(item)}
+                      <h3 className="font-semibold text-lg">{item.name}</h3>
+                      {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
+                      <p className="text-xs text-gray-400 mt-2">
+                        Shared on {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No memories have been shared yet.</p>
+                <p className="mt-2">
+                  Be the first to share your special memory by clicking on "Share Your Memory"!
+                </p>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="share" className="mt-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold mb-2">Share Your Memory</h2>
+                  <p className="text-gray-600">
+                    Please share photos or videos from our wedding or related events.
+                    All submissions will be reviewed before appearing in the gallery.
+                  </p>
+                </div>
+                
+                <Separator className="my-6" />
+                
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Your Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <Input placeholder="your@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="mediaType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Media Type</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select media type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="image">Image</SelectItem>
+                              <SelectItem value="video">Video</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="mediaUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {form.watch("mediaType") === "image" ? "Image URL" : "Video URL"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder={
+                                form.watch("mediaType") === "image" 
+                                  ? "https://example.com/your-image.jpg" 
+                                  : "https://youtube.com/embed/your-video-id"
+                              } 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          <p className="text-xs text-gray-500 mt-1">
+                            {form.watch("mediaType") === "image" 
+                              ? "Please provide a direct link to your image (e.g., from Imgur, Google Photos)" 
+                              : "For YouTube videos, use the embed link format: https://youtube.com/embed/YOUR_VIDEO_ID"
+                            }
+                          </p>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="caption"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Caption (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Add a caption to your memory..." 
+                              className="resize-none" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button type="submit" className="w-full" disabled={isPending}>
+                      {isPending ? "Submitting..." : "Share Memory"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default Gallery;

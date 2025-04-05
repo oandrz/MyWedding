@@ -111,6 +111,7 @@ const NavBar = () => {
             </>
           )}
           <Link href="/messages" className={`nav-link hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}>Messages</Link>
+          <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
         </div>
       </div>
       
@@ -181,10 +182,17 @@ const NavBar = () => {
               )}
               <Link 
                 href="/messages" 
-                className={`py-2 ${location !== '/messages' ? 'border-b border-gray-200' : ''} hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}
+                className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}
                 onClick={closeMenu}
               >
                 Messages
+              </Link>
+              <Link 
+                href="/gallery" 
+                className={`py-2 ${location !== '/gallery' ? 'border-b border-gray-200' : ''} hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}
+                onClick={closeMenu}
+              >
+                Memories
               </Link>
             </div>
           </motion.div>

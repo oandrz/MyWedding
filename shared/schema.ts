@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -34,7 +34,28 @@ export const insertRsvpSchema = createInsertSchema(rsvp).pick({
   message: true,
 });
 
+export const media = pgTable("media", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  mediaUrl: text("media_url").notNull(),
+  mediaType: text("media_type").notNull(), // "image" or "video"
+  caption: text("caption"),
+  approved: boolean("approved").default(false),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull()
+});
+
+export const insertMediaSchema = createInsertSchema(media).pick({
+  name: true,
+  email: true,
+  mediaUrl: true,
+  mediaType: true,
+  caption: true
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
 export type Rsvp = typeof rsvp.$inferSelect;
+export type InsertMedia = z.infer<typeof insertMediaSchema>;
+export type Media = typeof media.$inferSelect;
