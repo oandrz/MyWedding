@@ -6,8 +6,56 @@ import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
 import { createProxyMiddleware } from "http-proxy-middleware";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 
 const FLASK_API_URL = "http://localhost:5001";
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Set up multer storage for file uploads
+const storage_config = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    // Generate a unique filename with original extension
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+// Create multer upload middleware
+const upload = multer({
+  storage: storage_config,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+  fileFilter: (_req, file, cb) => {
+    // Allow only images and videos
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo'
+    ];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images and videos are allowed.') as any);
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Start Flask server
@@ -184,6 +232,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Media submission error:", error);
         res.status(500).json({ message: "Failed to upload media" });
       }
+    }
+  });
+  
+  // File upload endpoint for media
+  app.post('/api/upload', upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      
+      // Create a URL for the uploaded file
+      const fileUrl = `/uploads/${req.file.filename}`;
+      
+      // Parse form data
+      const { name, email, mediaType, caption } = req.body;
+      
+      if (!name || !email || !mediaType) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Create media entry with the file URL
+      const mediaData = {
+        name,
+        email,
+        mediaType,
+        mediaUrl: fileUrl,
+        caption: caption || undefined
+      };
+      
+      // Store the media entry
+      const media = await storage.createMedia(mediaData);
+      
+      res.status(201).json({
+        message: 'File uploaded successfully!',
+        media
+      });
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({
+        message: 'Failed to upload file',
+        error: (error as Error).message
+      });
     }
   });
   
