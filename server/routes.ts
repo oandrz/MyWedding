@@ -4,14 +4,86 @@ import { storage } from "./storage";
 import { insertRsvpSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { log } from './vite';
 import { createProxyMiddleware } from "http-proxy-middleware";
 
+const FLASK_API_URL = "http://localhost:5001";
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Start Flask server
+  try {
+    const { exec } = await import('child_process');
+    exec('./start_flask.sh', (error, stdout, stderr) => {
+      if (error) {
+        log(`Failed to start Flask server: ${error.message}`, 'flask');
+        return;
+      }
+      if (stderr) {
+        log(`Flask server stderr: ${stderr}`, 'flask');
+      }
+      log(`Flask server started: ${stdout}`, 'flask');
+    });
+  } catch (err) {
+    log(`Failed to start Flask server: ${err}`, 'flask');
+  }
+
   // Try using the Flask API first, if available
   app.post("/api/rsvp", async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Try forwarding to Flask server
-      const flaskUrl = "http://localhost:5001/api/rsvp";
+      const flaskUrl = `${FLASK_API_URL}/api/rsvp`;
+      const flaskOptions = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(req.body),
+      };
+
+      const flaskResponse = await fetch(flaskUrl, flaskOptions).catch((err) => {
+        log(`Failed to connect to Flask server: ${err.message}`, 'flask-proxy');
+        return null;
+      });
+      
+      if (flaskResponse && flaskResponse.ok) {
+        const data = await flaskResponse.json();
+        return res.status(flaskResponse.status).json(data);
+      }
+      
+      // If Flask is not available, use the Node.js implementation
+      log("Flask server not available, using Node.js implementation", 'flask-proxy');
+      return handleRsvpSubmission(req, res);
+    } catch (error) {
+      log(`Error proxying to Flask: ${error}`, 'flask-proxy');
+      return handleRsvpSubmission(req, res);
+    }
+  });
+
+  app.get("/api/rsvp", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Try forwarding to Flask server
+      const flaskUrl = `${FLASK_API_URL}/api/rsvp`;
+      const flaskResponse = await fetch(flaskUrl).catch(() => null);
+      
+      if (flaskResponse && flaskResponse.ok) {
+        const data = await flaskResponse.json();
+        return res.status(flaskResponse.status).json(data);
+      }
+      
+      // If Flask is not available, use the Node.js implementation
+      log("Flask server not available for GET /api/rsvp, using Node.js implementation", 'flask-proxy');
+      return handleGetRsvps(req, res);
+    } catch (error) {
+      log(`Error proxying to Flask: ${error}`, 'flask-proxy');
+      return handleGetRsvps(req, res);
+    }
+  });
+
+  // Add message board routes that proxy to Flask
+  app.post("/api/messages", async (req: Request, res: Response) => {
+    try {
+      // Try forwarding to Flask server
+      const flaskUrl = `${FLASK_API_URL}/api/messages`;
       const flaskOptions = {
         method: "POST",
         headers: {
@@ -27,17 +99,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(flaskResponse.status).json(data);
       }
       
-      // If Flask is not available, use the Node.js implementation
-      return handleRsvpSubmission(req, res);
+      // If Flask is not available, return an error
+      return res.status(503).json({ 
+        message: "Message board service is temporarily unavailable."
+      });
     } catch (error) {
-      return handleRsvpSubmission(req, res);
+      log(`Error proxying to Flask message board: ${error}`, 'flask-proxy');
+      return res.status(500).json({ 
+        message: "Failed to submit message."
+      });
     }
   });
 
-  app.get("/api/rsvp", async (req: Request, res: Response, next: NextFunction) => {
+  app.get("/api/messages", async (req: Request, res: Response) => {
     try {
       // Try forwarding to Flask server
-      const flaskUrl = "http://localhost:5001/api/rsvp";
+      const flaskUrl = `${FLASK_API_URL}/api/messages`;
       const flaskResponse = await fetch(flaskUrl).catch(() => null);
       
       if (flaskResponse && flaskResponse.ok) {
@@ -45,10 +122,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(flaskResponse.status).json(data);
       }
       
-      // If Flask is not available, use the Node.js implementation
-      return handleGetRsvps(req, res);
+      // If Flask is not available, return an empty array
+      return res.status(200).json({ 
+        messages: []
+      });
     } catch (error) {
-      return handleGetRsvps(req, res);
+      log(`Error proxying to Flask message board: ${error}`, 'flask-proxy');
+      return res.status(500).json({ 
+        message: "Failed to fetch messages."
+      });
+    }
+  });
+
+  // Add individual RSVP lookup by email
+  app.get("/api/rsvp/:email", async (req: Request, res: Response) => {
+    const email = req.params.email;
+    try {
+      // Try forwarding to Flask server
+      const flaskUrl = `${FLASK_API_URL}/api/rsvp/${email}`;
+      const flaskResponse = await fetch(flaskUrl).catch(() => null);
+      
+      if (flaskResponse) {
+        const data = await flaskResponse.json();
+        return res.status(flaskResponse.status).json(data);
+      }
+      
+      // If Flask is not available, use the Node.js implementation
+      const rsvp = await storage.getRsvpByEmail(email);
+      
+      if (rsvp) {
+        return res.status(200).json({ rsvp });
+      } else {
+        return res.status(404).json({ message: "RSVP not found" });
+      }
+    } catch (error) {
+      log(`Error getting RSVP by email: ${error}`, 'flask-proxy');
+      return res.status(500).json({ 
+        message: "Failed to fetch RSVP."
+      });
     }
   });
 

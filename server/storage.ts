@@ -8,6 +8,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   createRsvp(rsvpData: InsertRsvp): Promise<Rsvp>;
+  updateRsvp(id: number, rsvpData: InsertRsvp): Promise<Rsvp>;
   getRsvps(): Promise<Rsvp[]>;
   getRsvpByEmail(email: string): Promise<Rsvp | undefined>;
 }
@@ -44,7 +45,14 @@ export class MemStorage implements IStorage {
   
   async createRsvp(insertRsvp: InsertRsvp): Promise<Rsvp> {
     const id = this.currentRsvpId++;
-    const rsvpEntry: Rsvp = { ...insertRsvp, id };
+    // Handle optional fields to match the Rsvp type
+    const rsvpEntry: Rsvp = { 
+      ...insertRsvp, 
+      id,
+      message: insertRsvp.message ?? null,
+      guestCount: insertRsvp.guestCount ?? null,
+      dietaryRestrictions: insertRsvp.dietaryRestrictions ?? null
+    };
     this.rsvps.set(id, rsvpEntry);
     return rsvpEntry;
   }
@@ -53,9 +61,22 @@ export class MemStorage implements IStorage {
     return Array.from(this.rsvps.values());
   }
   
+  async updateRsvp(id: number, insertRsvp: InsertRsvp): Promise<Rsvp> {
+    // Handle optional fields to match the Rsvp type
+    const rsvpEntry: Rsvp = { 
+      ...insertRsvp, 
+      id,
+      message: insertRsvp.message ?? null,
+      guestCount: insertRsvp.guestCount ?? null,
+      dietaryRestrictions: insertRsvp.dietaryRestrictions ?? null
+    };
+    this.rsvps.set(id, rsvpEntry);
+    return rsvpEntry;
+  }
+  
   async getRsvpByEmail(email: string): Promise<Rsvp | undefined> {
     return Array.from(this.rsvps.values()).find(
-      (rsvp) => rsvp.email === email,
+      (rsvp) => rsvp.email.toLowerCase() === email.toLowerCase(),
     );
   }
 }
