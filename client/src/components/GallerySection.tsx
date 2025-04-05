@@ -1,0 +1,74 @@
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
+import { GALLERY_PHOTOS } from "@/lib/constants";
+import { fadeIn, staggerContainer, scaleOnHover } from "@/lib/animations";
+
+const GallerySection = () => {
+  const sectionRef = useRef(null);
+  const titleRef = useRef(null);
+  const galleryRef = useRef(null);
+  
+  const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
+  const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
+  const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.2 });
+  
+  return (
+    <section id="gallery" className="py-20 bg-background" ref={sectionRef}>
+      <div className="container mx-auto px-4">
+        <motion.div 
+          className="text-center mb-16"
+          ref={titleRef}
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isTitleInView ? "visible" : "hidden"}
+        >
+          <motion.h2 
+            className="text-4xl font-cormorant text-foreground mb-4"
+            variants={fadeIn}
+          >
+            Our Gallery
+          </motion.h2>
+          <motion.div 
+            className="w-20 h-0.5 bg-accent mx-auto mb-6"
+            variants={fadeIn}
+          ></motion.div>
+          <motion.p 
+            className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
+            variants={fadeIn}
+          >
+            A glimpse into our journey together and the moments that led us here
+          </motion.p>
+        </motion.div>
+        
+        <motion.div 
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          ref={galleryRef}
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isGalleryInView ? "visible" : "hidden"}
+        >
+          {GALLERY_PHOTOS.map((photo, index) => (
+            <motion.div 
+              key={index}
+              className="overflow-hidden rounded-lg shadow-md"
+              variants={fadeIn}
+              custom={index}
+              transition={{ delay: index * 0.1 }}
+              whileHover="hover"
+              initial="initial"
+            >
+              <motion.img 
+                src={photo.src} 
+                alt={photo.alt} 
+                className="w-full h-64 object-cover transition duration-300"
+                variants={scaleOnHover}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+export default GallerySection;

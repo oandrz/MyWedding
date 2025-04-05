@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 33% 97%;
+    --foreground: 20 10% 29%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 20 10% 29%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 10% 29%;
+
+    --primary: 0 41% 76%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 142 13% 75%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 30 4% 90%;
+    --muted-foreground: 20 10% 40%;
+
+    --accent: 45 70% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 10% 85%;
+    --input: 30 10% 85%;
+    --ring: 35 91% 65%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .font-cormorant {
+    font-family: 'Cormorant Garamond', serif;
+  }
+  
+  .font-montserrat {
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  .nav-link {
+    position: relative;
+  }
+  
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: hsl(var(--accent));
+    transition: width 0.3s ease;
+  }
+  
+  .nav-link:hover::after {
+    width: 100%;
+  }
+
+  .countdown-item {
+    position: relative;
+  }
+  
+  .countdown-item::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -16px;
+    height: 100%;
+    width: 1px;
+    background-color: rgba(212, 175, 55, 0.3);
+  }
+  
+  .countdown-item:last-child::after {
+    display: none;
+  }
+
+  .floral-divider {
+    height: 30px;
+    background-image: url('https://images.unsplash.com/photo-1550482768-58a6b40c11c2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8fHx8fHx8MTY4MzY0OTM4Mw&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080');
+    background-repeat: repeat-x;
+    background-size: contain;
+    opacity: 0.3;
+  }
+
+  .custom-button {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .custom-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0)
+    );
+    transition: all 0.6s ease;
+  }
+  
+  .custom-button:hover::before {
+    left: 100%;
+  }
+}
