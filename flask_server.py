@@ -1,4 +1,4 @@
-from app import app
+from app_flask import app
 import os
 
 # Get the port from environment variable or use 5001

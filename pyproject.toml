@@ -1,11 +1,34 @@
-[project]
-name = "repl-nix-workspace"
+[tool.poetry]
+name = "wedding-e-invitation"
 version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.11"
-dependencies = [
-    "asyncio>=3.4.3",
-    "flask>=3.1.0",
-    "flask-cors>=5.0.1",
-    "pydantic>=2.11.2",
-]
+description = "An interactive wedding e-invitation platform"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^2.3.3"
+pydantic = "^2.5.2"
+flask-cors = "^4.0.0"
+asyncio = "^3.4.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"

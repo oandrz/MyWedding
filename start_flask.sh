@@ -1,3 +1,3 @@
 #!/bin/bash
-python3 flask_server.py &
+python3 app_flask.py &
 echo "Flask server started on port 5001"
