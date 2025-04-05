@@ -265,7 +265,7 @@ const RsvpSection = () => {
             </motion.form>
           ) : (
             <motion.div 
-              className="mt-8 p-6 bg-secondary bg-opacity-20 text-center rounded-md"
+              className="p-8 bg-secondary bg-opacity-20 text-center rounded-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -274,10 +274,11 @@ const RsvpSection = () => {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
+                className="mb-4"
               >
-                <i className="fas fa-check-circle text-secondary text-4xl mb-4"></i>
+                <i className="fas fa-heart text-primary text-4xl"></i>
               </motion.div>
-              <h3 className="text-2xl font-cormorant text-foreground mb-4">Thank You!</h3>
+              <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You!</h3>
               <p className="text-foreground font-montserrat">
                 We've received your RSVP and look forward to celebrating with you.
               </p>
