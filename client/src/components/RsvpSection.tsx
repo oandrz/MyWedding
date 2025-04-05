@@ -24,6 +24,7 @@ type RsvpFormValues = z.infer<typeof rsvpSchema>;
 
 const RsvpSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showGuestOptions, setShowGuestOptions] = useState(true);
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const formRef = useRef(null);
@@ -34,7 +35,7 @@ const RsvpSection = () => {
   
   const { toast } = useToast();
   
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<RsvpFormValues>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RsvpFormValues>({
     resolver: zodResolver(rsvpSchema),
     defaultValues: {
       firstName: "",
@@ -46,10 +47,22 @@ const RsvpSection = () => {
       message: ""
     }
   });
+
+  // Handle radio button changes
+  const handleAttendanceChange = (isAttending: boolean) => {
+    setValue("attending", isAttending);
+    setShowGuestOptions(isAttending);
+    
+    // If not attending, clear guest-specific fields
+    if (!isAttending) {
+      setValue("guestCount", undefined);
+      setValue("dietaryRestrictions", "");
+    } else {
+      setValue("guestCount", 1);
+    }
+  };
   
-  const attending = watch("attending");
-  
-  const { mutate, isPending, isSuccess, isError, error } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: async (data: RsvpFormValues) => {
       console.log("Submitting RSVP:", data);
       const response = await apiRequest("POST", "/api/rsvp", data);
@@ -77,6 +90,7 @@ const RsvpSection = () => {
   });
   
   const onSubmit = (data: RsvpFormValues) => {
+    console.log("Form data to submit:", data);
     mutate(data);
   };
   
@@ -171,11 +185,10 @@ const RsvpSection = () => {
                     <input 
                       type="radio" 
                       className="text-primary focus:ring-primary focus:ring-opacity-20" 
+                      name="attending"
                       value="true"
                       defaultChecked
-                      {...register("attending", { 
-                        setValueAs: (value) => value === "true" 
-                      })}
+                      onChange={() => handleAttendanceChange(true)}
                     />
                     <span className="ml-2 font-montserrat text-foreground">Joyfully Accept</span>
                   </label>
@@ -183,11 +196,9 @@ const RsvpSection = () => {
                     <input 
                       type="radio" 
                       className="text-primary focus:ring-primary focus:ring-opacity-20" 
+                      name="attending"
                       value="false"
-                      {...register("attending", { 
-                        setValueAs: (value) => value === "true" 
-                      })}
-                      onChange={() => setValue("attending", false)}
+                      onChange={() => handleAttendanceChange(false)}
                     />
                     <span className="ml-2 font-montserrat text-foreground">Regretfully Decline</span>
                   </label>
@@ -195,7 +206,7 @@ const RsvpSection = () => {
               </div>
               
               {/* Number of Guests - Only show if attending */}
-              {attending && (
+              {showGuestOptions && (
                 <div>
                   <label htmlFor="guestCount" className="block text-foreground font-montserrat text-sm mb-2">Number of Guests (Including Yourself)</label>
                   <select 
@@ -214,7 +225,7 @@ const RsvpSection = () => {
               )}
               
               {/* Dietary Restrictions - Only show if attending */}
-              {attending && (
+              {showGuestOptions && (
                 <div>
                   <label htmlFor="dietaryRestrictions" className="block text-foreground font-montserrat text-sm mb-2">Dietary Restrictions</label>
                   <textarea 
