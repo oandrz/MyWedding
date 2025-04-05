@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [location] = useLocation();
 
   // Toggle mobile menu
   const toggleMenu = () => {
@@ -36,9 +37,9 @@ const NavBar = () => {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 bg-background bg-opacity-95 transition-all duration-300 ${isScrolled ? 'shadow-md' : ''}`}>
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <a href="#hero" className="text-2xl font-cormorant font-semibold text-primary">
+        <Link href="/" className="text-2xl font-cormorant font-semibold text-primary">
           {BRIDE_NAME.charAt(0)} & {GROOM_NAME.charAt(0)}
-        </a>
+        </Link>
         
         {/* Mobile menu button */}
         <button 
@@ -51,11 +52,16 @@ const NavBar = () => {
         
         {/* Desktop menu */}
         <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
-          <a href="#couple" className="nav-link hover:text-primary transition duration-300">Our Story</a>
-          <a href="#details" className="nav-link hover:text-primary transition duration-300">Wedding Details</a>
-          <a href="#gallery" className="nav-link hover:text-primary transition duration-300">Gallery</a>
-          <a href="#rsvp" className="nav-link hover:text-primary transition duration-300">RSVP</a>
-          <Link href="/messages" className="nav-link hover:text-primary transition duration-300">Messages</Link>
+          <Link href="/" className={`nav-link hover:text-primary transition duration-300 ${location === '/' ? 'text-primary' : ''}`}>Home</Link>
+          {location === '/' && (
+            <>
+              <a href="#couple" className="nav-link hover:text-primary transition duration-300">Our Story</a>
+              <a href="#details" className="nav-link hover:text-primary transition duration-300">Wedding Details</a>
+              <a href="#gallery" className="nav-link hover:text-primary transition duration-300">Gallery</a>
+              <a href="#rsvp" className="nav-link hover:text-primary transition duration-300">RSVP</a>
+            </>
+          )}
+          <Link href="/messages" className={`nav-link hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}>Messages</Link>
         </div>
       </div>
       
@@ -70,37 +76,48 @@ const NavBar = () => {
             transition={{ duration: 0.3 }}
           >
             <div className="flex flex-col space-y-3 font-montserrat text-sm pb-3">
-              <a 
-                href="#couple" 
-                className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
+              <Link 
+                href="/" 
+                className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/' ? 'text-primary' : ''}`}
                 onClick={closeMenu}
               >
-                Our Story
-              </a>
-              <a 
-                href="#details" 
-                className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                onClick={closeMenu}
-              >
-                Wedding Details
-              </a>
-              <a 
-                href="#gallery" 
-                className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                onClick={closeMenu}
-              >
-                Gallery
-              </a>
-              <a 
-                href="#rsvp" 
-                className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                onClick={closeMenu}
-              >
-                RSVP
-              </a>
+                Home
+              </Link>
+              {location === '/' && (
+                <>
+                  <a 
+                    href="#couple" 
+                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
+                    onClick={closeMenu}
+                  >
+                    Our Story
+                  </a>
+                  <a 
+                    href="#details" 
+                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
+                    onClick={closeMenu}
+                  >
+                    Wedding Details
+                  </a>
+                  <a 
+                    href="#gallery" 
+                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
+                    onClick={closeMenu}
+                  >
+                    Gallery
+                  </a>
+                  <a 
+                    href="#rsvp" 
+                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
+                    onClick={closeMenu}
+                  >
+                    RSVP
+                  </a>
+                </>
+              )}
               <Link 
                 href="/messages" 
-                className="py-2 hover:text-primary transition duration-300"
+                className={`py-2 ${location !== '/messages' ? 'border-b border-gray-200' : ''} hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}
                 onClick={closeMenu}
               >
                 Messages
