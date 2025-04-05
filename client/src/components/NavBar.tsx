@@ -7,6 +7,7 @@ const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [location] = useLocation();
+  const [activeSection, setActiveSection] = useState<string>('');
 
   // Toggle mobile menu
   const toggleMenu = () => {
@@ -18,13 +19,37 @@ const NavBar = () => {
     setIsOpen(false);
   };
 
-  // Add shadow to navbar on scroll
+  // Add shadow to navbar on scroll and track active section
   useEffect(() => {
     const handleScroll = () => {
+      // Handle navbar shadow
       if (window.scrollY > 10) {
         setIsScrolled(true);
       } else {
         setIsScrolled(false);
+      }
+      
+      // Handle active section highlighting
+      if (location === '/') {
+        const sections = ['couple', 'details', 'gallery', 'rsvp'];
+        
+        // Find the section that is currently in view
+        for (const section of sections) {
+          const element = document.getElementById(section);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            // Check if the section is in the viewport (with some offset to trigger earlier)
+            if (rect.top <= 100 && rect.bottom >= 100) {
+              setActiveSection(section);
+              break;
+            }
+          }
+        }
+        
+        // If we're at the top of the page, clear the active section
+        if (window.scrollY < 100) {
+          setActiveSection('');
+        }
       }
     };
 
@@ -32,7 +57,7 @@ const NavBar = () => {
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []);
+  }, [location]);
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 bg-background bg-opacity-95 transition-all duration-300 ${isScrolled ? 'shadow-md' : ''}`}>
@@ -52,13 +77,37 @@ const NavBar = () => {
         
         {/* Desktop menu */}
         <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
-          <Link href="/" className={`nav-link hover:text-primary transition duration-300 ${location === '/' ? 'text-primary' : ''}`}>Home</Link>
+          <Link href="/" className={`nav-link hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}>Home</Link>
           {location === '/' && (
             <>
-              <a href="#couple" className="nav-link hover:text-primary transition duration-300">Our Story</a>
-              <a href="#details" className="nav-link hover:text-primary transition duration-300">Wedding Details</a>
-              <a href="#gallery" className="nav-link hover:text-primary transition duration-300">Gallery</a>
-              <a href="#rsvp" className="nav-link hover:text-primary transition duration-300">RSVP</a>
+              <a 
+                href="#couple" 
+                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
+                onClick={() => setActiveSection('couple')}
+              >
+                Our Story
+              </a>
+              <a 
+                href="#details" 
+                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
+                onClick={() => setActiveSection('details')}
+              >
+                Wedding Details
+              </a>
+              <a 
+                href="#gallery" 
+                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
+                onClick={() => setActiveSection('gallery')}
+              >
+                Gallery
+              </a>
+              <a 
+                href="#rsvp" 
+                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
+                onClick={() => setActiveSection('rsvp')}
+              >
+                RSVP
+              </a>
             </>
           )}
           <Link href="/messages" className={`nav-link hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}>Messages</Link>
@@ -78,8 +127,11 @@ const NavBar = () => {
             <div className="flex flex-col space-y-3 font-montserrat text-sm pb-3">
               <Link 
                 href="/" 
-                className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/' ? 'text-primary' : ''}`}
-                onClick={closeMenu}
+                className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
+                onClick={() => {
+                  closeMenu();
+                  setActiveSection('');
+                }}
               >
                 Home
               </Link>
@@ -87,29 +139,41 @@ const NavBar = () => {
                 <>
                   <a 
                     href="#couple" 
-                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                    onClick={closeMenu}
+                    className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
+                    onClick={() => {
+                      closeMenu();
+                      setActiveSection('couple');
+                    }}
                   >
                     Our Story
                   </a>
                   <a 
                     href="#details" 
-                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                    onClick={closeMenu}
+                    className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
+                    onClick={() => {
+                      closeMenu();
+                      setActiveSection('details');
+                    }}
                   >
                     Wedding Details
                   </a>
                   <a 
                     href="#gallery" 
-                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                    onClick={closeMenu}
+                    className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
+                    onClick={() => {
+                      closeMenu();
+                      setActiveSection('gallery');
+                    }}
                   >
                     Gallery
                   </a>
                   <a 
                     href="#rsvp" 
-                    className="py-2 border-b border-gray-200 hover:text-primary transition duration-300"
-                    onClick={closeMenu}
+                    className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
+                    onClick={() => {
+                      closeMenu();
+                      setActiveSection('rsvp');
+                    }}
                   >
                     RSVP
                   </a>

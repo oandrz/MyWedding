@@ -354,7 +354,7 @@ const Messages = () => {
             className="max-w-2xl mx-auto"
             ref={formRef}
             initial="hidden"
-            animate={isFormInView ? "visible" : "hidden"}
+            animate="visible"
             variants={staggerContainer}
           >
             <motion.div 
