@@ -34,7 +34,7 @@ const RsvpSection = () => {
   
   const { toast } = useToast();
   
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<RsvpFormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<RsvpFormValues>({
     resolver: zodResolver(rsvpSchema),
     defaultValues: {
       firstName: "",
@@ -49,20 +49,25 @@ const RsvpSection = () => {
   
   const attending = watch("attending");
   
-  const { mutate, isPending } = useMutation({
+  const { mutate, isPending, isSuccess, isError, error } = useMutation({
     mutationFn: async (data: RsvpFormValues) => {
+      console.log("Submitting RSVP:", data);
       const response = await apiRequest("POST", "/api/rsvp", data);
-      return response.json();
+      const responseData = await response.json();
+      console.log("RSVP response:", responseData);
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("RSVP submitted successfully:", data);
       setIsSubmitted(true);
       toast({
         title: "RSVP Submitted",
         description: "Thank you for your response!",
-        variant: "success"
+        variant: "default"
       });
     },
     onError: (error) => {
+      console.error("RSVP submission error:", error);
       toast({
         title: "Error",
         description: `Failed to submit RSVP: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -167,6 +172,7 @@ const RsvpSection = () => {
                       type="radio" 
                       className="text-primary focus:ring-primary focus:ring-opacity-20" 
                       value="true"
+                      defaultChecked
                       {...register("attending", { 
                         setValueAs: (value) => value === "true" 
                       })}
@@ -181,6 +187,7 @@ const RsvpSection = () => {
                       {...register("attending", { 
                         setValueAs: (value) => value === "true" 
                       })}
+                      onChange={() => setValue("attending", false)}
                     />
                     <span className="ml-2 font-montserrat text-foreground">Regretfully Decline</span>
                   </label>
