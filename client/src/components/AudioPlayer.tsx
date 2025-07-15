@@ -1,10 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 const AudioPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioEl = useRef<HTMLAudioElement>(null);
+  const [location] = useLocation();
+  
+  // Hide audio player on admin pages
+  const isAdminPage = location.includes('/admin');
+  
+  if (isAdminPage) {
+    return null;
+  }
 
   useEffect(() => {
     // Preload the audio when the component mounts
