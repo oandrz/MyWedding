@@ -108,8 +108,8 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
       {/* Header */}
       <div className="bg-white border-b shadow-sm">
-        <div className="container flex justify-between items-center py-4">
-          <div>
+        <div className="max-w-6xl mx-auto px-4 flex justify-between items-center py-4">
+          <div className="pl-4">
             <h1 className="text-2xl font-bold text-gray-900">Wedding Admin</h1>
             <p className="text-sm text-gray-600">Andreas & Christine's Wedding Dashboard</p>
           </div>
@@ -120,41 +120,41 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="container py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Quick Stats Overview */}
         <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <Card className="bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-lg">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl font-bold text-white">{stats.attending}</CardTitle>
-                  <CardDescription className="text-blue-100">Attending</CardDescription>
+                  <CardDescription className="text-rose-100">Attending</CardDescription>
                 </div>
-                <Users className="h-8 w-8 text-blue-200" />
+                <Users className="h-8 w-8 text-rose-200" />
               </div>
             </CardHeader>
           </Card>
           
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <Card className="bg-gradient-to-r from-pink-400 to-rose-500 text-white shadow-lg">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl font-bold text-white">{stats.totalGuests}</CardTitle>
-                  <CardDescription className="text-green-100">Total Guests</CardDescription>
+                  <CardDescription className="text-pink-100">Total Guests</CardDescription>
                 </div>
-                <Calendar className="h-8 w-8 text-green-200" />
+                <Calendar className="h-8 w-8 text-pink-200" />
               </div>
             </CardHeader>
           </Card>
           
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <Card className="bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl font-bold text-white">{allMedia?.media?.length || 0}</CardTitle>
-                  <CardDescription className="text-purple-100">Media Submissions</CardDescription>
+                  <CardDescription className="text-rose-100">Media Submissions</CardDescription>
                 </div>
-                <Image className="h-8 w-8 text-purple-200" />
+                <Image className="h-8 w-8 text-rose-200" />
               </div>
             </CardHeader>
           </Card>
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <Image className="h-6 w-6 text-purple-600" />
+                <Image className="h-6 w-6 text-rose-600" />
                 <div>
                   <CardTitle className="text-xl">Media Management</CardTitle>
                   <CardDescription>Review and approve guest photo submissions</CardDescription>
@@ -298,7 +298,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <Users className="h-6 w-6 text-blue-600" />
+                <Users className="h-6 w-6 text-pink-600" />
                 <div>
                   <CardTitle className="text-xl">RSVP Responses</CardTitle>
                   <CardDescription>Guest responses and attendance information</CardDescription>
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
               ) : (
                 <div className="space-y-4">
                   {rsvps?.rsvps?.map((rsvp: Rsvp) => (
-                    <Card key={rsvp.id} className="shadow-sm border-l-4 border-l-blue-500">
+                    <Card key={rsvp.id} className="shadow-sm border-l-4 border-l-rose-500">
                       <CardContent className="p-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                           <div>
@@ -386,7 +386,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <BarChart3 className="h-6 w-6 text-green-600" />
+                <BarChart3 className="h-6 w-6 text-rose-600" />
                 <div>
                   <CardTitle className="text-xl">Detailed Statistics</CardTitle>
                   <CardDescription>Comprehensive wedding attendance analytics</CardDescription>
