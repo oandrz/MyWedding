@@ -31,10 +31,11 @@ export default function AdminDashboard() {
   // Fetch all media regardless of approval status
   const { 
     data: allMedia,
-    isLoading: mediaLoading
+    isLoading: mediaLoading,
+    error: mediaError
   } = useQuery({
     queryKey: ["/api/admin/media"],
-    queryFn: () => fetch("/api/admin/media").then(res => res.json()),
+    enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
   });
 
   // Fetch all RSVPs
@@ -117,9 +118,9 @@ export default function AdminDashboard() {
               <div className="flex justify-center my-10">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
-            ) : (
+            ) : allMedia?.media ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {allMedia?.media.map((media: Media) => (
+                {allMedia.media.map((media: Media) => (
                   <Card key={media.id} className="overflow-hidden">
                     <div className="aspect-video relative overflow-hidden">
                       {media.mediaType === "video" ? (
@@ -170,11 +171,17 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
                 
-                {allMedia?.media.length === 0 && (
+                {allMedia.media.length === 0 && (
                   <div className="col-span-full text-center py-10">
                     <p className="text-muted-foreground">No media submissions yet.</p>
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground">
+                  {mediaError ? "Error loading media. Please check your authentication." : "No media data available."}
+                </p>
               </div>
             )}
           </div>
@@ -191,7 +198,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="space-y-6">
-                {rsvps?.rsvps.map((rsvp: Rsvp) => (
+                {rsvps?.rsvps?.map((rsvp: Rsvp) => (
                   <Card key={rsvp.id}>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-center">
@@ -227,7 +234,7 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
                 
-                {rsvps?.rsvps.length === 0 && (
+                {rsvps?.rsvps?.length === 0 && (
                   <div className="text-center py-10">
                     <p className="text-muted-foreground">No RSVPs submitted yet.</p>
                   </div>
