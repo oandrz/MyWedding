@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock } from "lucide-react";
 import { Media, Rsvp } from "@shared/schema";
 import { useLocation } from "wouter";
 
@@ -72,6 +72,15 @@ export default function AdminDashboard() {
     approvalMutation.mutate({ id, approved });
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("adminKey");
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
+    navigate("/admin-login");
+  };
+
   // Helper function to count attending guests from RSVPs
   const calculateAttendance = () => {
     if (!rsvps?.rsvps) return { attending: 0, notAttending: 0, totalGuests: 0 };
@@ -96,186 +105,374 @@ export default function AdminDashboard() {
   const stats = calculateAttendance();
 
   return (
-    <div className="container py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Manage RSVPs, media submissions, and messages.</p>
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
+      {/* Header */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="container flex justify-between items-center py-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Wedding Admin</h1>
+            <p className="text-sm text-gray-600">Andreas & Christine's Wedding Dashboard</p>
+          </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
-      
-      <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="media">Media Submissions</TabsTrigger>
-          <TabsTrigger value="rsvps">RSVPs</TabsTrigger>
-          <TabsTrigger value="stats">Stats</TabsTrigger>
-        </TabsList>
+
+      <div className="container py-8">
+        {/* Quick Stats Overview */}
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold text-white">{stats.attending}</CardTitle>
+                  <CardDescription className="text-blue-100">Attending</CardDescription>
+                </div>
+                <Users className="h-8 w-8 text-blue-200" />
+              </div>
+            </CardHeader>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold text-white">{stats.totalGuests}</CardTitle>
+                  <CardDescription className="text-green-100">Total Guests</CardDescription>
+                </div>
+                <Calendar className="h-8 w-8 text-green-200" />
+              </div>
+            </CardHeader>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold text-white">{allMedia?.media?.length || 0}</CardTitle>
+                  <CardDescription className="text-purple-100">Media Submissions</CardDescription>
+                </div>
+                <Image className="h-8 w-8 text-purple-200" />
+              </div>
+            </CardHeader>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="media" className="gap-2">
+              <Image className="h-4 w-4" />
+              Media Management
+            </TabsTrigger>
+            <TabsTrigger value="rsvps" className="gap-2">
+              <Users className="h-4 w-4" />
+              RSVP Responses
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Detailed Stats
+            </TabsTrigger>
+          </TabsList>
         
         {/* Media Management Tab */}
         <TabsContent value="media">
-          <div className="grid gap-6">
-            <h2 className="text-xl font-semibold">Media Management</h2>
-            
-            {mediaLoading ? (
-              <div className="flex justify-center my-10">
-                <Loader2 className="h-8 w-8 animate-spin" />
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Image className="h-6 w-6 text-purple-600" />
+                <div>
+                  <CardTitle className="text-xl">Media Management</CardTitle>
+                  <CardDescription>Review and approve guest photo submissions</CardDescription>
+                </div>
               </div>
-            ) : allMedia?.media ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {allMedia.media.map((media: Media) => (
-                  <Card key={media.id} className="overflow-hidden">
-                    <div className="aspect-video relative overflow-hidden">
-                      {media.mediaType === "video" ? (
-                        <iframe 
-                          src={media.mediaUrl} 
-                          className="absolute inset-0 w-full h-full object-cover"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <img 
-                          src={media.mediaUrl} 
-                          alt={media.caption || "User uploaded media"} 
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      )}
-                      <Badge className="absolute top-2 right-2" variant={media.approved ? "default" : "outline"}>
-                        {media.approved ? "Approved" : "Pending"}
-                      </Badge>
-                    </div>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{media.name}</p>
-                          <p className="text-sm text-muted-foreground">{media.email}</p>
-                          {media.caption && <p className="mt-2">{media.caption}</p>}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant={media.approved ? "ghost" : "default"} 
-                            size="icon" 
-                            onClick={() => handleApproval(media.id, true)}
-                            disabled={media.approved}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant={!media.approved ? "ghost" : "destructive"} 
-                            size="icon" 
-                            onClick={() => handleApproval(media.id, false)}
-                            disabled={!media.approved}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
+            </CardHeader>
+            <CardContent>
+              {mediaLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
+                  <p className="text-gray-500">Loading media submissions...</p>
+                </div>
+              ) : allMedia?.media ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {allMedia.media.map((media: Media) => (
+                    <Card key={media.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      <div className="aspect-video relative overflow-hidden bg-gray-100">
+                        {media.mediaType === "video" ? (
+                          <iframe 
+                            src={media.mediaUrl} 
+                            className="absolute inset-0 w-full h-full object-cover"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <img 
+                            src={media.mediaUrl} 
+                            alt={media.caption || "User uploaded media"} 
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        )}
+                        <Badge 
+                          className={`absolute top-3 right-3 ${
+                            media.approved 
+                              ? "bg-green-100 text-green-800 border-green-200" 
+                              : "bg-yellow-100 text-yellow-800 border-yellow-200"
+                          }`}
+                          variant="outline"
+                        >
+                          {media.approved ? (
+                            <div className="flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Approved
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Pending
+                            </div>
+                          )}
+                        </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {allMedia.media.length === 0 && (
-                  <div className="col-span-full text-center py-10">
-                    <p className="text-muted-foreground">No media submissions yet.</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-10">
-                <p className="text-muted-foreground">
-                  {mediaError ? "Error loading media. Please check your authentication." : "No media data available."}
-                </p>
-              </div>
-            )}
-          </div>
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div>
+                            <p className="font-semibold text-gray-900">{media.name}</p>
+                            <p className="text-sm text-gray-600">{media.email}</p>
+                          </div>
+                          {media.caption && (
+                            <p className="text-sm text-gray-700 italic bg-gray-50 p-2 rounded">
+                              "{media.caption}"
+                            </p>
+                          )}
+                          <div className="flex gap-2 pt-2">
+                            {!media.approved ? (
+                              <Button 
+                                onClick={() => handleApproval(media.id, true)}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
+                                disabled={approvalMutation.isPending}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                Approve
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="outline" 
+                                onClick={() => handleApproval(media.id, false)}
+                                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 gap-2"
+                                disabled={approvalMutation.isPending}
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Reject
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  {allMedia.media.length === 0 && (
+                    <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                      <Image className="h-12 w-12 text-gray-300 mb-3" />
+                      <p className="text-gray-500 text-lg">No media submissions yet</p>
+                      <p className="text-sm text-gray-400">Photos will appear here when guests upload them</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <XCircle className="h-12 w-12 text-red-300 mb-3" />
+                  <p className="text-red-600 text-lg">
+                    {mediaError ? "Error loading media" : "No media data available"}
+                  </p>
+                  <p className="text-sm text-red-400">Please check your authentication</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
         
         {/* RSVPs Tab */}
         <TabsContent value="rsvps">
-          <div className="grid gap-6">
-            <h2 className="text-xl font-semibold">RSVP Responses</h2>
-            
-            {rsvpLoading ? (
-              <div className="flex justify-center my-10">
-                <Loader2 className="h-8 w-8 animate-spin" />
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Users className="h-6 w-6 text-blue-600" />
+                <div>
+                  <CardTitle className="text-xl">RSVP Responses</CardTitle>
+                  <CardDescription>Guest responses and attendance information</CardDescription>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {rsvps?.rsvps?.map((rsvp: Rsvp) => (
-                  <Card key={rsvp.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-center">
-                        <CardTitle>{rsvp.firstName} {rsvp.lastName}</CardTitle>
-                        <Badge variant={rsvp.attending ? "default" : "secondary"}>
-                          {rsvp.attending ? "Attending" : "Not Attending"}
-                        </Badge>
-                      </div>
-                      <CardDescription>{rsvp.email}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            </CardHeader>
+            <CardContent>
+              {rsvpLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
+                  <p className="text-gray-500">Loading RSVP responses...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {rsvps?.rsvps?.map((rsvp: Rsvp) => (
+                    <Card key={rsvp.id} className="shadow-sm border-l-4 border-l-blue-500">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                          <div>
+                            <h3 className="font-semibold text-lg text-gray-900">
+                              {rsvp.firstName} {rsvp.lastName}
+                            </h3>
+                            <p className="text-sm text-gray-600">{rsvp.email}</p>
+                          </div>
+                          <Badge 
+                            className={`w-fit ${
+                              rsvp.attending 
+                                ? "bg-green-100 text-green-800 border-green-200" 
+                                : "bg-red-100 text-red-800 border-red-200"
+                            }`}
+                            variant="outline"
+                          >
+                            {rsvp.attending ? (
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                Attending
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <XCircle className="h-3 w-3" />
+                                Not Attending
+                              </div>
+                            )}
+                          </Badge>
+                        </div>
+                        
                         {rsvp.attending && (
-                          <>
-                            <div>
-                              <p className="text-sm font-medium">Additional Guests</p>
-                              <p>{rsvp.guestCount || 0}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <p className="text-sm font-medium text-blue-900">Additional Guests</p>
+                              <p className="text-lg font-semibold text-blue-700">{rsvp.guestCount || 0}</p>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">Dietary Restrictions</p>
-                              <p>{rsvp.dietaryRestrictions || "None"}</p>
+                            <div className="bg-orange-50 p-3 rounded-lg">
+                              <p className="text-sm font-medium text-orange-900">Dietary Restrictions</p>
+                              <p className="text-sm text-orange-700">{rsvp.dietaryRestrictions || "None specified"}</p>
                             </div>
-                          </>
-                        )}
-                        {rsvp.message && (
-                          <div className="md:col-span-2">
-                            <p className="text-sm font-medium">Message</p>
-                            <p className="italic">{rsvp.message}</p>
                           </div>
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {rsvps?.rsvps?.length === 0 && (
-                  <div className="text-center py-10">
-                    <p className="text-muted-foreground">No RSVPs submitted yet.</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                        
+                        {rsvp.message && (
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <p className="text-sm font-medium text-gray-900 mb-2">Personal Message</p>
+                            <p className="text-gray-700 italic">"{rsvp.message}"</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  {rsvps?.rsvps?.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Users className="h-12 w-12 text-gray-300 mb-3" />
+                      <p className="text-gray-500 text-lg">No RSVP responses yet</p>
+                      <p className="text-sm text-gray-400">Responses will appear here when guests submit their RSVPs</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
         
         {/* Stats Tab */}
         <TabsContent value="stats">
-          <div className="grid gap-6">
-            <h2 className="text-xl font-semibold">Attendance Statistics</h2>
-            
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-2xl">{stats.attending}</CardTitle>
-                  <CardDescription>Attending Responses</CardDescription>
-                </CardHeader>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-2xl">{stats.notAttending}</CardTitle>
-                  <CardDescription>Not Attending</CardDescription>
-                </CardHeader>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-2xl">{stats.totalGuests}</CardTitle>
-                  <CardDescription>Total Guests Expected</CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-            
-            {/* Here you could add charts or more detailed statistics */}
-          </div>
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-6 w-6 text-green-600" />
+                <div>
+                  <CardTitle className="text-xl">Detailed Statistics</CardTitle>
+                  <CardDescription>Comprehensive wedding attendance analytics</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-3xl font-bold text-white">{stats.attending}</CardTitle>
+                        <CardDescription className="text-emerald-100">Confirmed Attending</CardDescription>
+                      </div>
+                      <CheckCircle className="h-8 w-8 text-emerald-200" />
+                    </div>
+                  </CardHeader>
+                </Card>
+                
+                <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-3xl font-bold text-white">{stats.notAttending}</CardTitle>
+                        <CardDescription className="text-red-100">Not Attending</CardDescription>
+                      </div>
+                      <XCircle className="h-8 w-8 text-red-200" />
+                    </div>
+                  </CardHeader>
+                </Card>
+                
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-3xl font-bold text-white">{stats.totalGuests}</CardTitle>
+                        <CardDescription className="text-blue-100">Total Expected Guests</CardDescription>
+                      </div>
+                      <Users className="h-8 w-8 text-blue-200" />
+                    </div>
+                  </CardHeader>
+                </Card>
+                
+                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-3xl font-bold text-white">{allMedia?.media?.length || 0}</CardTitle>
+                        <CardDescription className="text-purple-100">Media Uploads</CardDescription>
+                      </div>
+                      <Image className="h-8 w-8 text-purple-200" />
+                    </div>
+                  </CardHeader>
+                </Card>
+              </div>
+
+              {/* Response Rate Summary */}
+              <div className="mt-8 p-6 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Response Summary</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.attending + stats.notAttending > 0 
+                        ? Math.round((stats.attending / (stats.attending + stats.notAttending)) * 100)
+                        : 0}%
+                    </p>
+                    <p className="text-sm text-gray-600">Attendance Rate</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900">{stats.attending + stats.notAttending}</p>
+                    <p className="text-sm text-gray-600">Total Responses</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {allMedia?.media?.filter((m: Media) => m.approved).length || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Approved Media</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }
