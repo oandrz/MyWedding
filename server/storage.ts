@@ -229,7 +229,7 @@ export class DatabaseStorage implements IStorage {
 }
 
 // Use database storage since schema is pushed
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
 
 // Uncomment to use MemStorage for development/testing
 // export const storage = new MemStorage();
