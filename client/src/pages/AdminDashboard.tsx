@@ -105,128 +105,99 @@ export default function AdminDashboard() {
   const stats = calculateAttendance();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Material Design Header */}
-      <div className="bg-white shadow-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-3 rounded-xl shadow-lg">
-                <Settings className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Wedding Admin</h1>
-                <p className="text-base text-gray-600 mt-1">Andreas & Christine's Wedding Dashboard</p>
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout} 
-              className="gap-2 px-6 py-3 rounded-xl border-2 hover:bg-gray-50 transition-all duration-200 shadow-sm"
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
+      {/* Header */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="container flex justify-between items-center py-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Wedding Admin</h1>
+            <p className="text-sm text-gray-600">Andreas & Christine's Wedding Dashboard</p>
           </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
         </div>
       </div>
 
-      {/* Main Content Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Material Design Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-3 mb-10">
-          <Card className="bg-white shadow-lg rounded-2xl border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <CardHeader className="pb-6 pt-8">
+      <div className="container py-8">
+        {/* Quick Stats Overview */}
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-4xl font-bold text-indigo-600 mb-2">{stats.attending}</CardTitle>
-                  <CardDescription className="text-gray-600 text-lg font-medium">Attending</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-white">{stats.attending}</CardTitle>
+                  <CardDescription className="text-blue-100">Attending</CardDescription>
                 </div>
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl shadow-lg">
-                  <Users className="h-10 w-10 text-white" />
-                </div>
+                <Users className="h-8 w-8 text-blue-200" />
               </div>
             </CardHeader>
           </Card>
           
-          <Card className="bg-white shadow-lg rounded-2xl border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <CardHeader className="pb-6 pt-8">
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-4xl font-bold text-emerald-600 mb-2">{stats.totalGuests}</CardTitle>
-                  <CardDescription className="text-gray-600 text-lg font-medium">Total Guests</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-white">{stats.totalGuests}</CardTitle>
+                  <CardDescription className="text-green-100">Total Guests</CardDescription>
                 </div>
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl shadow-lg">
-                  <Calendar className="h-10 w-10 text-white" />
-                </div>
+                <Calendar className="h-8 w-8 text-green-200" />
               </div>
             </CardHeader>
           </Card>
           
-          <Card className="bg-white shadow-lg rounded-2xl border-0 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-            <CardHeader className="pb-6 pt-8">
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-4xl font-bold text-pink-600 mb-2">{allMedia?.media?.length || 0}</CardTitle>
-                  <CardDescription className="text-gray-600 text-lg font-medium">Media Submissions</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-white">{allMedia?.media?.length || 0}</CardTitle>
+                  <CardDescription className="text-purple-100">Media Submissions</CardDescription>
                 </div>
-                <div className="bg-gradient-to-br from-pink-500 to-rose-600 p-4 rounded-2xl shadow-lg">
-                  <Image className="h-10 w-10 text-white" />
-                </div>
+                <Image className="h-8 w-8 text-purple-200" />
               </div>
             </CardHeader>
           </Card>
         </div>
 
         <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-8 bg-white shadow-md rounded-2xl p-2 border-0">
-            <TabsTrigger 
-              value="media" 
-              className="gap-3 py-4 px-6 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium"
-            >
-              <Image className="h-5 w-5" />
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="media" className="gap-2">
+              <Image className="h-4 w-4" />
               Media Management
             </TabsTrigger>
-            <TabsTrigger 
-              value="rsvps" 
-              className="gap-3 py-4 px-6 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium"
-            >
-              <Users className="h-5 w-5" />
+            <TabsTrigger value="rsvps" className="gap-2">
+              <Users className="h-4 w-4" />
               RSVP Responses
             </TabsTrigger>
-            <TabsTrigger 
-              value="stats" 
-              className="gap-3 py-4 px-6 rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium"
-            >
-              <BarChart3 className="h-5 w-5" />
+            <TabsTrigger value="stats" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
               Detailed Stats
             </TabsTrigger>
           </TabsList>
         
         {/* Media Management Tab */}
         <TabsContent value="media">
-          <Card className="bg-white shadow-xl rounded-3xl border-0 overflow-hidden">
-            <CardHeader className="pb-6 pt-8 bg-gradient-to-r from-pink-500 to-rose-500">
-              <div className="flex items-center gap-4">
-                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
-                  <Image className="h-8 w-8 text-white" />
-                </div>
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Image className="h-6 w-6 text-purple-600" />
                 <div>
-                  <CardTitle className="text-2xl font-bold text-white">Media Management</CardTitle>
-                  <CardDescription className="text-pink-100 text-lg">Review and approve guest photo submissions</CardDescription>
+                  <CardTitle className="text-xl">Media Management</CardTitle>
+                  <CardDescription>Review and approve guest photo submissions</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent>
               {mediaLoading ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-12 w-12 animate-spin text-pink-400 mb-4" />
-                  <p className="text-gray-600 text-lg">Loading media submissions...</p>
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
+                  <p className="text-gray-500">Loading media submissions...</p>
                 </div>
               ) : allMedia?.media ? (
-                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {allMedia.media.map((media: Media) => (
-                    <Card key={media.id} className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 rounded-2xl border-0 transform hover:-translate-y-2">
+                    <Card key={media.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       <div className="aspect-video relative overflow-hidden bg-gray-100">
                         {media.mediaType === "video" ? (
                           <iframe 
@@ -324,28 +295,26 @@ export default function AdminDashboard() {
         
         {/* RSVPs Tab */}
         <TabsContent value="rsvps">
-          <Card className="bg-white shadow-xl rounded-3xl border-0 overflow-hidden">
-            <CardHeader className="pb-6 pt-8 bg-gradient-to-r from-indigo-500 to-purple-500">
-              <div className="flex items-center gap-4">
-                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Users className="h-6 w-6 text-blue-600" />
                 <div>
-                  <CardTitle className="text-2xl font-bold text-white">RSVP Responses</CardTitle>
-                  <CardDescription className="text-indigo-100 text-lg">Guest responses and attendance information</CardDescription>
+                  <CardTitle className="text-xl">RSVP Responses</CardTitle>
+                  <CardDescription>Guest responses and attendance information</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent>
               {rsvpLoading ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
                   <p className="text-gray-500">Loading RSVP responses...</p>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {rsvps?.rsvps?.map((rsvp: Rsvp) => (
-                    <Card key={rsvp.id} className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl border-0 overflow-hidden border-l-4 border-l-indigo-400">
+                    <Card key={rsvp.id} className="shadow-sm border-l-4 border-l-blue-500">
                       <CardContent className="p-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                           <div>
@@ -414,19 +383,17 @@ export default function AdminDashboard() {
         
         {/* Stats Tab */}
         <TabsContent value="stats">
-          <Card className="bg-white shadow-xl rounded-3xl border-0 overflow-hidden">
-            <CardHeader className="pb-6 pt-8 bg-gradient-to-r from-emerald-500 to-teal-500">
-              <div className="flex items-center gap-4">
-                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
-                  <BarChart3 className="h-8 w-8 text-white" />
-                </div>
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-6 w-6 text-green-600" />
                 <div>
-                  <CardTitle className="text-2xl font-bold text-white">Detailed Statistics</CardTitle>
-                  <CardDescription className="text-emerald-100 text-lg">Comprehensive wedding attendance analytics</CardDescription>
+                  <CardTitle className="text-xl">Detailed Statistics</CardTitle>
+                  <CardDescription>Comprehensive wedding attendance analytics</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
                   <CardHeader className="pb-3">
