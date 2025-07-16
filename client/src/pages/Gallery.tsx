@@ -18,13 +18,10 @@ import NavBar from "@/components/NavBar";
 import { Upload } from "lucide-react";
 
 // Extend the schema for form validation
-const formSchema = insertMediaSchema.extend({
+const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
   mediaUrl: z.string().url({ message: "Please enter a valid URL." }),
-  mediaType: z.enum(["image", "video"], {
-    required_error: "Please select a media type.",
-  }),
   caption: z.string().optional(),
 });
 
@@ -56,7 +53,6 @@ const Gallery = () => {
       name: "",
       email: "",
       mediaUrl: "",
-      mediaType: "image",
       caption: "",
     },
   });
@@ -160,16 +156,7 @@ const Gallery = () => {
       return;
     }
     
-    // Check file type
-    const fileType = formData.get('mediaType') as string;
-    if (!fileType) {
-      toast({
-        title: "Error",
-        description: "Please select a media type.",
-        variant: "destructive",
-      });
-      return;
-    }
+
     
     // Set uploading state and submit the file
     setUploading(true);
@@ -319,53 +306,19 @@ const Gallery = () => {
                         
                         <FormField
                           control={form.control}
-                          name="mediaType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Media Type</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select media type" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="image">Image</SelectItem>
-                                  <SelectItem value="video">Video</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
                           name="mediaUrl"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>
-                                {form.watch("mediaType") === "image" ? "Image URL" : "Video URL"}
-                              </FormLabel>
+                              <FormLabel>Media URL</FormLabel>
                               <FormControl>
                                 <Input 
-                                  placeholder={
-                                    form.watch("mediaType") === "image" 
-                                      ? "https://example.com/your-image.jpg" 
-                                      : "https://youtube.com/embed/your-video-id"
-                                  } 
+                                  placeholder="https://example.com/your-image.jpg or https://youtube.com/embed/your-video-id" 
                                   {...field} 
                                 />
                               </FormControl>
                               <FormMessage />
                               <p className="text-xs text-gray-500 mt-1">
-                                {form.watch("mediaType") === "image" 
-                                  ? "Please provide a direct link to your image (e.g., from Imgur, Google Photos)" 
-                                  : "For YouTube videos, use the embed link format: https://youtube.com/embed/YOUR_VIDEO_ID"
-                                }
+                                Share an image link or YouTube video URL. The system will automatically detect the media type.
                               </p>
                             </FormItem>
                           )}
@@ -423,25 +376,6 @@ const Gallery = () => {
                             placeholder="your@email.com" 
                           />
                         </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label htmlFor="mediaType" className="text-sm font-medium">
-                          Media Type
-                        </label>
-                        <select 
-                          id="mediaType" 
-                          name="mediaType" 
-                          required 
-                          className="w-full rounded-md border border-input bg-background px-3 py-2"
-                        >
-                          <option value="">Select media type</option>
-                          <option value="image">Image</option>
-                          <option value="video">Video</option>
-                        </select>
-                        <p className="text-xs text-gray-500">
-                          Select the type of media you are uploading
-                        </p>
                       </div>
                       
                       <div className="space-y-2">

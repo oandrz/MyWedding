@@ -51,6 +51,8 @@ export const insertMediaSchema = createInsertSchema(media).pick({
   mediaUrl: true,
   mediaType: true,
   caption: true
+}).extend({
+  mediaType: z.string().optional() // Make mediaType optional since we auto-detect it
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

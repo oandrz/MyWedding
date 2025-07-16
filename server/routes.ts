@@ -212,11 +212,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Helper function to detect media type from URL
+  function detectMediaTypeFromUrl(url: string): string {
+    // YouTube detection
+    if (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com')) {
+      return 'video';
+    }
+    
+    // File extension detection
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i;
+    const videoExtensions = /\.(mp4|avi|mov|wmv|flv|webm|mkv)$/i;
+    
+    if (imageExtensions.test(url)) {
+      return 'image';
+    } else if (videoExtensions.test(url)) {
+      return 'video';
+    }
+    
+    // Default to image for unknown URLs
+    return 'image';
+  }
+
   // Media endpoints
   app.post("/api/media", async (req: Request, res: Response) => {
     try {
-      // Validate the request body using zod
-      const validatedData = insertMediaSchema.parse(req.body);
+      // Auto-detect media type from URL if not provided
+      let { mediaType, mediaUrl, ...otherData } = req.body;
+      
+      if (!mediaType && mediaUrl) {
+        mediaType = detectMediaTypeFromUrl(mediaUrl);
+      }
+      
+      // Validate the request body using zod with auto-detected media type
+      const validatedData = insertMediaSchema.parse({
+        ...otherData,
+        mediaType,
+        mediaUrl
+      });
       
       // Auto-approve all submissions
       const mediaWithApproval = {
@@ -252,10 +284,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a URL for the uploaded file
       const fileUrl = `/uploads/${req.file.filename}`;
       
-      // Parse form data
-      const { name, email, mediaType, caption } = req.body;
+      // Auto-detect media type from file MIME type
+      let mediaType: string;
+      if (req.file.mimetype.startsWith('image/')) {
+        mediaType = 'image';
+      } else if (req.file.mimetype.startsWith('video/')) {
+        mediaType = 'video';
+      } else {
+        return res.status(400).json({ message: 'Unsupported file type' });
+      }
       
-      if (!name || !email || !mediaType) {
+      // Parse form data
+      const { name, email, caption } = req.body;
+      
+      if (!name || !email) {
         return res.status(400).json({ message: 'Missing required fields' });
       }
       
