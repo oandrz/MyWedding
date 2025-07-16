@@ -6,11 +6,17 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 ## Recent Changes
 
-**Security Update (January 16, 2025):**
+**Security Updates:**
+
+**January 16, 2025:**
 - ✓ Fixed critical security vulnerability CVE-2025-48997 in Multer
 - ✓ Upgraded Multer from 1.4.5-lts.2 to 2.0.1 (patched DoS vulnerability)
 - ✓ Updated @types/multer to 2.0.0 for compatibility
 - ✓ Verified file upload functionality remains working after upgrade
+
+- ✓ Fixed critical security vulnerability CVE-2025-30208 in Vite
+- ✓ Upgraded Vite from 5.4.14 to 5.4.15 (patched file access bypass vulnerability)
+- ✓ Vulnerability was exploitable due to network-exposed dev server (host: 0.0.0.0)
 
 ## User Preferences
 
