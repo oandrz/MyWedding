@@ -119,6 +119,18 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
       }
       
       const uploadResult = await uploadResponse.json();
+      console.log("Upload result:", uploadResult);
+      
+      // The upload API returns a media object with mediaUrl field
+      const imageUrl = uploadResult.media?.mediaUrl;
+      
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        console.error("Invalid URL from upload:", imageUrl);
+        throw new Error("No valid image URL returned from upload");
+      }
+      
+      // Ensure the URL is absolute for display
+      const fullImageUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
       
       // Then create the config image record
       const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
@@ -126,7 +138,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
         method: "POST",
         body: {
           imageKey,
-          imageUrl: uploadResult.url,
+          imageUrl: fullImageUrl,
           imageType,
           title: data.title,
           description: data.description,
