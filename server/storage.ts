@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 
@@ -23,23 +23,78 @@ export interface IStorage {
   getAllMedia(): Promise<Media[]>;
   getApprovedMedia(): Promise<Media[]>;
   updateMediaApproval(id: number, approved: boolean): Promise<Media | undefined>;
+  
+  // Configurable images methods
+  createConfigImage(imageData: InsertConfigImage): Promise<ConfigImage>;
+  updateConfigImage(imageKey: string, imageData: InsertConfigImage): Promise<ConfigImage>;
+  getConfigImage(imageKey: string): Promise<ConfigImage | undefined>;
+  getConfigImagesByType(imageType: string): Promise<ConfigImage[]>;
+  getAllConfigImages(): Promise<ConfigImage[]>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private rsvps: Map<number, Rsvp>;
   private medias: Map<number, Media>;
+  private configImages: Map<string, ConfigImage>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
+  currentConfigImageId: number;
 
   constructor() {
     this.users = new Map();
     this.rsvps = new Map();
     this.medias = new Map();
+    this.configImages = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
+    this.currentConfigImageId = 1;
+
+    // Initialize default images
+    this.initializeDefaultImages();
+  }
+
+  private initializeDefaultImages() {
+    // Default banner image
+    const bannerImage: ConfigImage = {
+      id: this.currentConfigImageId++,
+      imageKey: 'banner',
+      imageUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+      imageType: 'banner',
+      title: 'Main Banner',
+      description: 'Hero section background image',
+      isActive: true,
+      updatedAt: new Date().toISOString()
+    };
+    this.configImages.set('banner', bannerImage);
+
+    // Default gallery images
+    const defaultGalleryImages = [
+      "https://images.unsplash.com/photo-1522673607200-164d1b3ce475?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1494774157365-9e04c6720e47?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1583939003579-730e3918a45a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1537633552985-df8429e8048b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1545232979-8bf68ee9b1af?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80"
+    ];
+
+    defaultGalleryImages.forEach((url, index) => {
+      const galleryImage: ConfigImage = {
+        id: this.currentConfigImageId++,
+        imageKey: `gallery_default_${index + 1}`,
+        imageUrl: url,
+        imageType: 'gallery',
+        title: `Gallery Image ${index + 1}`,
+        description: `Default gallery image ${index + 1}`,
+        isActive: true,
+        updatedAt: new Date().toISOString()
+      };
+      this.configImages.set(`gallery_default_${index + 1}`, galleryImage);
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -136,6 +191,54 @@ export class MemStorage implements IStorage {
     this.medias.set(id, updatedMedia);
     return updatedMedia;
   }
+
+  // Configurable images methods
+  async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const id = this.currentConfigImageId++;
+    const now = new Date();
+    const configImage: ConfigImage = {
+      ...insertConfigImage,
+      id,
+      title: insertConfigImage.title ?? null,
+      description: insertConfigImage.description ?? null,
+      isActive: insertConfigImage.isActive ?? true,
+      updatedAt: now.toISOString()
+    };
+    this.configImages.set(configImage.imageKey, configImage);
+    return configImage;
+  }
+
+  async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const existing = this.configImages.get(imageKey);
+    const id = existing?.id ?? this.currentConfigImageId++;
+    const now = new Date();
+    const configImage: ConfigImage = {
+      ...insertConfigImage,
+      id,
+      imageKey,
+      title: insertConfigImage.title ?? null,
+      description: insertConfigImage.description ?? null,
+      isActive: insertConfigImage.isActive ?? true,
+      updatedAt: now.toISOString()
+    };
+    this.configImages.set(imageKey, configImage);
+    return configImage;
+  }
+
+  async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
+    return this.configImages.get(imageKey);
+  }
+
+  async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
+    return Array.from(this.configImages.values())
+      .filter(image => image.imageType === imageType && image.isActive)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
+  async getAllConfigImages(): Promise<ConfigImage[]> {
+    return Array.from(this.configImages.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +328,57 @@ export class DatabaseStorage implements IStorage {
       .where(eq(media.id, id))
       .returning();
     return mediaEntry || undefined;
+  }
+
+  // Configurable images methods
+  async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const [configImage] = await db
+      .insert(configImages)
+      .values(insertConfigImage)
+      .returning();
+    return configImage;
+  }
+
+  async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const [configImage] = await db
+      .insert(configImages)
+      .values({ ...insertConfigImage, imageKey })
+      .onConflictDoUpdate({
+        target: configImages.imageKey,
+        set: {
+          imageUrl: insertConfigImage.imageUrl,
+          imageType: insertConfigImage.imageType,
+          title: insertConfigImage.title,
+          description: insertConfigImage.description,
+          isActive: insertConfigImage.isActive,
+          updatedAt: sql`now()`
+        }
+      })
+      .returning();
+    return configImage;
+  }
+
+  async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
+    const [configImage] = await db
+      .select()
+      .from(configImages)
+      .where(eq(configImages.imageKey, imageKey));
+    return configImage || undefined;
+  }
+
+  async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
+    return db
+      .select()
+      .from(configImages)
+      .where(sql`${configImages.imageType} = ${imageType} AND ${configImages.isActive} = true`)
+      .orderBy(desc(configImages.updatedAt));
+  }
+
+  async getAllConfigImages(): Promise<ConfigImage[]> {
+    return db
+      .select()
+      .from(configImages)
+      .orderBy(desc(configImages.updatedAt));
   }
 }
 

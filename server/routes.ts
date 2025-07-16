@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -372,6 +372,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating media:", error);
       res.status(500).json({ message: "Failed to update media" });
+    }
+  });
+
+  // Configurable Images API Routes
+  
+  // Get all configurable images (public endpoint)
+  app.get("/api/config-images", async (req: Request, res: Response) => {
+    try {
+      const images = await storage.getAllConfigImages();
+      res.status(200).json({ images });
+    } catch (error) {
+      console.error("Error fetching config images:", error);
+      res.status(500).json({ message: "Failed to fetch images" });
+    }
+  });
+
+  // Get configurable images by type (public endpoint)
+  app.get("/api/config-images/:type", async (req: Request, res: Response) => {
+    try {
+      const imageType = req.params.type;
+      const images = await storage.getConfigImagesByType(imageType);
+      res.status(200).json({ images });
+    } catch (error) {
+      console.error("Error fetching config images by type:", error);
+      res.status(500).json({ message: "Failed to fetch images" });
+    }
+  });
+
+  // Update or create configurable image (admin only)
+  app.post("/api/admin/config-images", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertConfigImageSchema.parse(req.body);
+      
+      // Check if image key already exists
+      const existingImage = await storage.getConfigImage(validatedData.imageKey);
+      
+      let image;
+      if (existingImage) {
+        // Update existing image
+        image = await storage.updateConfigImage(validatedData.imageKey, validatedData);
+      } else {
+        // Create new image
+        image = await storage.createConfigImage(validatedData);
+      }
+      
+      res.status(201).json({ 
+        message: "Image configuration updated successfully",
+        image 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ message: validationError.message });
+      } else {
+        console.error("Config image update error:", error);
+        res.status(500).json({ message: "Failed to update image configuration" });
+      }
+    }
+  });
+
+  // Update existing configurable image (admin only)
+  app.put("/api/admin/config-images/:imageKey", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const imageKey = req.params.imageKey;
+      const validatedData = insertConfigImageSchema.parse(req.body);
+      
+      const image = await storage.updateConfigImage(imageKey, validatedData);
+      
+      res.status(200).json({ 
+        message: "Image configuration updated successfully",
+        image 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ message: validationError.message });
+      } else {
+        console.error("Config image update error:", error);
+        res.status(500).json({ message: "Failed to update image configuration" });
+      }
     }
   });
 

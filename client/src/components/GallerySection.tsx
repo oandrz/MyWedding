@@ -2,6 +2,8 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, scaleOnHover } from "@/lib/animations";
+import { useQuery } from "@tanstack/react-query";
+import type { ConfigImage } from "@shared/schema";
 
 const GallerySection = () => {
   const sectionRef = useRef(null);
@@ -11,6 +13,20 @@ const GallerySection = () => {
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
   const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.2 });
+
+  // Fetch gallery images from API
+  const { data: galleryData, isLoading } = useQuery<{ images: ConfigImage[] }>({
+    queryKey: ["/api/config-images/gallery"],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Use configurable images if available, otherwise fallback to constants
+  const galleryImages = galleryData?.images?.length 
+    ? galleryData.images.map(img => ({
+        src: img.imageUrl,
+        alt: img.title || img.description || "Gallery image"
+      }))
+    : GALLERY_PHOTOS;
   
   return (
     <section id="gallery" className="py-20 bg-background" ref={sectionRef}>
@@ -47,24 +63,34 @@ const GallerySection = () => {
           initial="hidden"
           animate={isGalleryInView ? "visible" : "hidden"}
         >
-          {GALLERY_PHOTOS.map((photo, index) => (
-            <motion.div 
-              key={index}
-              className="overflow-hidden rounded-lg shadow-md"
-              variants={fadeIn}
-              custom={index}
-              transition={{ delay: index * 0.1 }}
-              whileHover="hover"
-              initial="initial"
-            >
-              <motion.img 
-                src={photo.src} 
-                alt={photo.alt} 
-                className="w-full h-64 object-cover transition duration-300"
-                variants={scaleOnHover}
+          {isLoading ? (
+            // Loading skeleton
+            Array.from({ length: 8 }).map((_, index) => (
+              <div 
+                key={index}
+                className="h-64 bg-gray-200 animate-pulse rounded-lg"
               />
-            </motion.div>
-          ))}
+            ))
+          ) : (
+            galleryImages.map((photo, index) => (
+              <motion.div 
+                key={index}
+                className="overflow-hidden rounded-lg shadow-md"
+                variants={fadeIn}
+                custom={index}
+                transition={{ delay: index * 0.1 }}
+                whileHover="hover"
+                initial="initial"
+              >
+                <motion.img 
+                  src={photo.src} 
+                  alt={photo.alt} 
+                  className="w-full h-64 object-cover transition duration-300"
+                  variants={scaleOnHover}
+                />
+              </motion.div>
+            ))
+          )}
         </motion.div>
       </div>
     </section>

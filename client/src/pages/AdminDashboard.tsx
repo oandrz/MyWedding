@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock } from "lucide-react";
 import { Media, Rsvp } from "@shared/schema";
 import { useLocation } from "wouter";
+import ImageManager from "@/components/ImageManager";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -161,10 +162,14 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="media" className="gap-2">
               <Image className="h-4 w-4" />
               Media Management
+            </TabsTrigger>
+            <TabsTrigger value="images" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Image Config
             </TabsTrigger>
             <TabsTrigger value="rsvps" className="gap-2">
               <Users className="h-4 w-4" />
@@ -289,6 +294,24 @@ export default function AdminDashboard() {
                   <p className="text-sm text-red-400">Please check your authentication</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Image Configuration Tab */}
+        <TabsContent value="images">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Settings className="h-6 w-6 text-purple-600" />
+                <div>
+                  <CardTitle className="text-xl">Image Configuration</CardTitle>
+                  <CardDescription>Configure banner and gallery images</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ImageManager />
             </CardContent>
           </Card>
         </TabsContent>
