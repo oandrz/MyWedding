@@ -4,6 +4,14 @@
 
 This is a comprehensive wedding e-invitation platform that creates an interactive digital experience for wedding guests. The application combines a React frontend with multiple backend options (Flask and Express.js) to provide features like RSVP management, message boards, photo galleries, and admin functionality.
 
+## Recent Changes
+
+**Security Update (January 16, 2025):**
+- ✓ Fixed critical security vulnerability CVE-2025-48997 in Multer
+- ✓ Upgraded Multer from 1.4.5-lts.2 to 2.0.1 (patched DoS vulnerability)
+- ✓ Updated @types/multer to 2.0.0 for compatibility
+- ✓ Verified file upload functionality remains working after upgrade
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
