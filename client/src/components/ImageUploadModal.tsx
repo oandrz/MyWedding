@@ -68,14 +68,11 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   const urlMutation = useMutation({
     mutationFn: async (data: UrlImageForm) => {
       const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
-      return apiRequest("/api/admin/config-images", {
-        method: "POST",
-        body: {
-          ...data,
-          imageKey,
-          imageType,
-          isActive: true
-        }
+      return apiRequest("POST", "/api/admin/config-images", {
+        ...data,
+        imageKey,
+        imageType,
+        isActive: true
       });
     },
     onSuccess: () => {
@@ -134,16 +131,13 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
       
       // Then create the config image record
       const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
-      return apiRequest("/api/admin/config-images", {
-        method: "POST",
-        body: {
-          imageKey,
-          imageUrl: fullImageUrl,
-          imageType,
-          title: data.title,
-          description: data.description,
-          isActive: true
-        }
+      return apiRequest("POST", "/api/admin/config-images", {
+        imageKey,
+        imageUrl: fullImageUrl,
+        imageType,
+        title: data.title,
+        description: data.description,
+        isActive: true
       });
     },
     onSuccess: () => {
