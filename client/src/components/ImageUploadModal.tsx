@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,14 +15,12 @@ import { Upload, Link, X, FileImage, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const urlImageSchema = z.object({
-  imageKey: z.string().min(1, "Image key is required"),
   imageUrl: z.string().url("Must be a valid URL"),
   title: z.string().optional(),
   description: z.string().optional(),
 });
 
 const fileUploadSchema = z.object({
-  imageKey: z.string().min(1, "Image key is required"),
   title: z.string().optional(),
   description: z.string().optional(),
   file: z.any().refine((file) => file instanceof File, "Please select a file"),
@@ -50,7 +48,6 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   const urlForm = useForm<UrlImageForm>({
     resolver: zodResolver(urlImageSchema),
     defaultValues: {
-      imageKey: imageType === "banner" ? "banner" : `gallery_${Date.now()}`,
       imageUrl: "",
       title: "",
       description: "",
@@ -61,7 +58,6 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   const fileForm = useForm<FileUploadForm>({
     resolver: zodResolver(fileUploadSchema),
     defaultValues: {
-      imageKey: imageType === "banner" ? "banner" : `gallery_${Date.now()}`,
       title: "",
       description: "",
       file: null,
@@ -71,10 +67,12 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   // URL submission mutation
   const urlMutation = useMutation({
     mutationFn: async (data: UrlImageForm) => {
+      const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
       return apiRequest("/api/admin/config-images", {
         method: "POST",
         body: {
           ...data,
+          imageKey,
           imageType,
           isActive: true
         }
@@ -105,6 +103,8 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
     mutationFn: async (data: FileUploadForm) => {
       const formData = new FormData();
       formData.append("file", data.file);
+      formData.append("caption", data.title || "");
+      formData.append("submittedBy", "admin");
       
       // First upload the file
       const uploadResponse = await fetch("/api/upload", {
@@ -113,16 +113,18 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
       });
       
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload file");
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.message || "Failed to upload file");
       }
       
       const uploadResult = await uploadResponse.json();
       
       // Then create the config image record
+      const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
       return apiRequest("/api/admin/config-images", {
         method: "POST",
         body: {
-          imageKey: data.imageKey,
+          imageKey,
           imageUrl: uploadResult.url,
           imageType,
           title: data.title,
@@ -224,7 +226,9 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
             </div>
             <div>
               <DialogTitle className="text-xl">Add {imageType === "banner" ? "Banner" : "Gallery"} Image</DialogTitle>
-              <p className="text-sm text-gray-500">Upload a file or add an image URL</p>
+              <DialogDescription className="text-sm text-gray-500">
+                Upload a file or add an image URL
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -305,19 +309,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
                   />
                 </div>
 
-                <FormField
-                  control={fileForm.control}
-                  name="imageKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image Key</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="unique-image-key" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
 
                 <FormField
                   control={fileForm.control}
@@ -391,19 +383,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
                   )}
                 />
 
-                <FormField
-                  control={urlForm.control}
-                  name="imageKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image Key</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="unique-image-key" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
 
                 <FormField
                   control={urlForm.control}

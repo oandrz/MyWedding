@@ -6,9 +6,18 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 ## Recent Changes
 
-**Security Updates:**
+**Image Management System Enhancements:**
 
 **January 16, 2025:**
+- ✓ Created Google Drive-style image upload interface with drag-and-drop functionality
+- ✓ Added dual upload options: file upload and URL-based image addition
+- ✓ Removed confusing "Image Key" field - now auto-generated for better UX
+- ✓ Fixed file upload API integration with proper required fields
+- ✓ Implemented modal-based image management for cleaner interface
+- ✓ Added visual feedback for drag operations and file selection
+- ✓ Fixed accessibility warnings with proper dialog descriptions
+
+**Security Updates:**
 - ✓ Fixed critical security vulnerability CVE-2025-48997 in Multer
 - ✓ Upgraded Multer from 1.4.5-lts.2 to 2.0.1 (patched DoS vulnerability)
 - ✓ Updated @types/multer to 2.0.0 for compatibility
