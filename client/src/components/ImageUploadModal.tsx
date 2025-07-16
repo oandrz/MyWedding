@@ -103,8 +103,9 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
     mutationFn: async (data: FileUploadForm) => {
       const formData = new FormData();
       formData.append("file", data.file);
+      formData.append("name", "Admin");
+      formData.append("email", "admin@wedding.com");
       formData.append("caption", data.title || "");
-      formData.append("submittedBy", "admin");
       
       // First upload the file
       const uploadResponse = await fetch("/api/upload", {
