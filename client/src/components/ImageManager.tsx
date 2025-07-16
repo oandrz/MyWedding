@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Trash2, Edit, Plus, Eye, EyeOff } from "lucide-react";
 import type { ConfigImage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import ImageUploadModal from "./ImageUploadModal";
 
 const imageConfigSchema = z.object({
   imageKey: z.string().min(1, "Image key is required"),
@@ -30,6 +31,8 @@ type ImageConfigForm = z.infer<typeof imageConfigSchema>;
 const ImageManager = () => {
   const [activeTab, setActiveTab] = useState("banner");
   const [editingImage, setEditingImage] = useState<ConfigImage | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery">("banner");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -107,15 +110,8 @@ const ImageManager = () => {
   };
 
   const handleNewImage = (type: "banner" | "gallery") => {
-    setEditingImage(null);
-    form.reset({
-      imageKey: type === "banner" ? "banner" : `gallery_custom_${Date.now()}`,
-      imageUrl: "",
-      imageType: type,
-      title: "",
-      description: "",
-      isActive: true
-    });
+    setUploadModalType(type);
+    setShowUploadModal(true);
   };
 
   const ImageCard = ({ image }: { image: ConfigImage }) => (
@@ -218,118 +214,87 @@ const ImageManager = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Image Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {editingImage ? "Edit Image" : "Add New Image"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="imageKey"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image Key</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder="unique-image-key"
-                        disabled={!!editingImage}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="imageUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder="https://example.com/image.jpg"
-                        type="url"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="imageType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image Type</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                      disabled={!!editingImage}
-                    >
+      {/* Edit Image Form - only show when editing */}
+      {editingImage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit Image</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="imageKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image Key</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select image type" />
-                        </SelectTrigger>
+                        <Input 
+                          {...field} 
+                          placeholder="unique-image-key"
+                          disabled={!!editingImage}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="banner">Banner</SelectItem>
-                        <SelectItem value="gallery">Gallery</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title (Optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Image title" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image URL</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder="https://example.com/image.jpg"
+                          type="url"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Image description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title (Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Image title" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="flex gap-2">
-                <Button 
-                  type="submit" 
-                  disabled={updateImageMutation.isPending}
-                >
-                  {updateImageMutation.isPending 
-                    ? "Saving..." 
-                    : editingImage ? "Update Image" : "Add Image"
-                  }
-                </Button>
-                
-                {editingImage && (
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Image description" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2">
+                  <Button 
+                    type="submit" 
+                    disabled={updateImageMutation.isPending}
+                  >
+                    {updateImageMutation.isPending ? "Saving..." : "Update Image"}
+                  </Button>
+                  
                   <Button 
                     type="button" 
                     variant="outline"
@@ -340,12 +305,22 @@ const ImageManager = () => {
                   >
                     Cancel
                   </Button>
-                )}
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upload Modal */}
+      <ImageUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        imageType={uploadModalType}
+        onSuccess={() => {
+          // Refresh the images
+        }}
+      />
     </div>
   );
 };
