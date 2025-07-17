@@ -6,6 +6,19 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 ## Recent Changes
 
+**Core System Improvements:**
+
+**January 18, 2025:**
+- ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests
+- ✓ Separated admin uploads from guest memories gallery to prevent confusion
+- ✓ Auto-approve admin uploads while requiring approval for guest submissions
+- ✓ Simplified memory sharing flow - made name and email optional for faster uploads during events
+- ✓ Fixed banner image glitch with preloading to eliminate flash of previous image
+- ✓ Improved gallery image performance with better lazy loading and error handling
+- ✓ Enhanced admin interface with visible Approve/Reject buttons and better button placement
+- ✓ Clarified messages section purpose as congratulations and well-wishes platform
+- ✓ Relocated "Add Image" buttons within tabs for more natural admin experience
+
 **Image Management System Enhancements:**
 
 **January 16, 2025:**

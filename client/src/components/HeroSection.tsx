@@ -1,10 +1,14 @@
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 
 const HeroSection = () => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [preloadedImage, setPreloadedImage] = useState<string | null>(null);
+  
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     month: 'long',
@@ -19,18 +23,40 @@ const HeroSection = () => {
   });
 
   // Get the banner image URL or fallback to default
-  const bannerImage = bannerData?.images?.[0]?.imageUrl || 
+  const bannerImageUrl = bannerData?.images?.[0]?.imageUrl || 
     "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80";
+
+  // Preload the image to avoid glitches
+  useEffect(() => {
+    if (bannerImageUrl && bannerImageUrl !== preloadedImage) {
+      const img = new Image();
+      img.onload = () => {
+        setPreloadedImage(bannerImageUrl);
+        setImageLoaded(true);
+      };
+      img.src = bannerImageUrl;
+    }
+  }, [bannerImageUrl, preloadedImage]);
+  
+  // Use preloaded image or fallback
+  const bannerImage = preloadedImage || bannerImageUrl;
   
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       <div 
-        className="absolute inset-0 bg-cover bg-center" 
+        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         style={{ backgroundImage: `url('${bannerImage}')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-[#00000080] to-[#00000040]"></div>
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHZpZXdCb3g9IjAgMCA1NiA1NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjggMEMzMi43ODY5IDAgMzcuNDI3MSAxLjQ5OTYgNDEuMzMzNCA0LjMwNjA2QzQ1LjIzOTcgNy4xMTI1MiA0OC4yMTQgMTEuMTE0IDQ5Ljg1MzQgMTUuNzA3N0M1MS40OTI3IDIwLjMwMTUgNTEuNzI2OSAyNS4yODM1IDUwLjUyMDMgMzAuMDE3QzQ5LjMxMzYgMzQuNzUwNSA0Ni43MjgzIDM4Ljk4NDggNDIuOTcwNiA0Mi4yMTc4QzM5LjIxMyA0NS40NTA4IDM0LjUxOTMgNDcuNTIwMyAyOS41NjIxIDQ4LjEzMDRDMjQuNjA0OSA0OC43NDA0IDE5LjU3NjMgNDcuODYyNiAxNS4xMzY2IDQ1LjU5NDlDMTAuNjk2OSA0My4zMjcyIDcuMDgwNyAzOS43ODc1IDQuNzk3MDIgMzUuNDU5MUMyLjUxMzM0IDMxLjEzMDYgMS42NTgyOSAyNi4xMSAyLjI5MTUyIDIxLjE1MzJDMi45MjQ3NiAxNi4xOTY0IDUuMDE4MTggMTEuNTAxMSA4LjI3MTEyIDcuNzQ2NjVDMTEuNTI0MSAzLjk5MjE3IDE1Ljc3MzQgMS40MTQ2OCAyMC41MTU5IDAuMjIxNjA0QzI1LjI1ODMgLTAuOTcxNDc3IDMwLjI0NDEgLTAuNzI1Mjc5IDM0LjgzNDcgMC45MjE2MzJWMEgyOFoiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuMDMiLz48L3N2Zz4=')] opacity-20"></div>
       </div>
+      
+      {/* Fallback loading background */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 bg-gray-800">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#00000080] to-[#00000040]"></div>
+        </div>
+      )}
       
       <motion.div 
         className="relative z-10 text-center px-4"

@@ -17,10 +17,10 @@ import { insertMediaSchema } from "../../../shared/schema";
 import NavBar from "@/components/NavBar";
 import { Upload } from "lucide-react";
 
-// Extend the schema for form validation
+// Simplified schema for quick memory sharing
 const formSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email address." }),
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
+  email: z.string().email({ message: "Please enter a valid email address." }).optional(),
   mediaUrl: z.string().url({ message: "Please enter a valid URL." }),
   caption: z.string().optional(),
 });
@@ -50,8 +50,8 @@ const Gallery = () => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      email: "",
+      name: "Anonymous",
+      email: "guest@event.com", 
       mediaUrl: "",
       caption: "",
     },
@@ -258,8 +258,8 @@ const Gallery = () => {
                 <div className="mb-6">
                   <h2 className="text-xl font-semibold mb-2">Share Your Memory</h2>
                   <p className="text-gray-600">
-                    Please share photos or videos from our wedding or related events.
-                    All shared memories will appear immediately in the gallery.
+                    Quickly share photos or videos from our wedding! Perfect for capturing moments during the event.
+                    Name and email are optional - just upload and share instantly.
                   </p>
                 </div>
                 
@@ -280,9 +280,9 @@ const Gallery = () => {
                             name="name"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Your Name</FormLabel>
+                                <FormLabel>Your Name (Optional)</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter your name" {...field} />
+                                  <Input placeholder="Anonymous" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -294,9 +294,9 @@ const Gallery = () => {
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Email Address</FormLabel>
+                                <FormLabel>Email (Optional)</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="your@email.com" {...field} />
+                                  <Input placeholder="guest@event.com" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -354,26 +354,26 @@ const Gallery = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label htmlFor="name" className="text-sm font-medium">
-                            Your Name
+                            Your Name (Optional)
                           </label>
                           <Input 
                             id="name" 
                             name="name" 
-                            required 
-                            placeholder="Enter your name" 
+                            placeholder="Anonymous" 
+                            defaultValue="Anonymous"
                           />
                         </div>
                         
                         <div className="space-y-2">
                           <label htmlFor="email" className="text-sm font-medium">
-                            Email Address
+                            Email (Optional)
                           </label>
                           <Input 
                             id="email" 
                             name="email" 
                             type="email" 
-                            required 
-                            placeholder="your@email.com" 
+                            placeholder="guest@event.com" 
+                            defaultValue="guest@event.com"
                           />
                         </div>
                       </div>

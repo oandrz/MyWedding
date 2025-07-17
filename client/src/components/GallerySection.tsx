@@ -96,6 +96,12 @@ const GallerySection = () => {
                     const img = e.target as HTMLImageElement;
                     img.style.backgroundColor = 'transparent';
                   }}
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.backgroundColor = '#ef4444';
+                    img.style.color = 'white';
+                    img.alt = 'Failed to load image';
+                  }}
                 />
               </motion.div>
             ))

@@ -250,10 +250,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mediaUrl
       });
       
-      // Auto-approve all submissions
+      // Admin uploads are auto-approved, guest uploads need approval
+      const isAdminUpload = validatedData.email === 'admin@wedding.com';
       const mediaWithApproval = {
         ...validatedData,
-        approved: true
+        approved: isAdminUpload
       };
       
       // Store the media
@@ -301,14 +302,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Missing required fields' });
       }
       
-      // Create media entry with the file URL (auto-approved)
+      // Create media entry with the file URL
+      // Admin uploads are auto-approved, guest uploads need approval
+      const isAdminUpload = email === 'admin@wedding.com';
       const mediaData = {
         name,
         email,
         mediaType,
         mediaUrl: fileUrl,
         caption: caption || undefined,
-        approved: true // Auto-approve uploads
+        approved: isAdminUpload // Auto-approve only admin uploads
       };
       
       // Store the media entry
@@ -327,11 +330,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get approved media only
+  // Get approved media only (excludes admin uploads for guest memories gallery)
   app.get("/api/media", async (req: Request, res: Response) => {
     try {
       const mediaItems = await storage.getApprovedMedia();
-      res.status(200).json({ media: mediaItems });
+      // Filter out admin uploads from guest memories gallery
+      const guestMedia = mediaItems.filter(media => media.email !== 'admin@wedding.com');
+      res.status(200).json({ media: guestMedia });
     } catch (error) {
       console.error("Error fetching media:", error);
       res.status(500).json({ message: "Failed to fetch media" });
@@ -520,10 +525,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attending = rsvps.filter(rsvp => rsvp.attending).length;
       const notAttending = rsvps.filter(rsvp => !rsvp.attending).length;
       
-      // Calculate total guests
+      // Calculate total guests (including the main attendee + additional guests)
       const totalGuests = rsvps
-        .filter(rsvp => rsvp.attending && rsvp.guestCount)
-        .reduce((sum, current) => sum + (current.guestCount || 0), 0);
+        .filter(rsvp => rsvp.attending)
+        .reduce((sum, current) => sum + (current.guestCount || 1), 0);
       
       res.status(200).json({ 
         rsvps,
@@ -531,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total: rsvps.length,
           attending,
           notAttending,
-          totalGuests
+          guestCount: totalGuests
         }
       });
     } catch (error) {

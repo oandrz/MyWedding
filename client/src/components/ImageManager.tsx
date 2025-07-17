@@ -199,8 +199,11 @@ const ImageManager = () => {
 
         <TabsContent value="banner" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Banner Images</h3>
-            <Button onClick={() => handleNewImage("banner")}>
+            <div>
+              <h3 className="text-lg font-semibold">Banner Images</h3>
+              <p className="text-sm text-gray-600">Hero section background image</p>
+            </div>
+            <Button onClick={() => handleNewImage("banner")} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Add Banner Image
             </Button>
@@ -220,8 +223,11 @@ const ImageManager = () => {
 
         <TabsContent value="gallery" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Gallery Images</h3>
-            <Button onClick={() => handleNewImage("gallery")}>
+            <div>
+              <h3 className="text-lg font-semibold">Gallery Images</h3>
+              <p className="text-sm text-gray-600">Images showcased in the gallery section</p>
+            </div>
+            <Button onClick={() => handleNewImage("gallery")} className="bg-green-600 hover:bg-green-700">
               <Plus className="h-4 w-4 mr-2" />
               Add Gallery Image
             </Button>

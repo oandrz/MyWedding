@@ -252,14 +252,25 @@ export default function AdminDashboard() {
                           )}
                           <div className="flex gap-2 pt-2">
                             {!media.approved ? (
-                              <Button 
-                                onClick={() => handleApproval(media.id, true)}
-                                className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-                                disabled={approvalMutation.isPending}
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                                Approve
-                              </Button>
+                              <>
+                                <Button 
+                                  onClick={() => handleApproval(media.id, true)}
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
+                                  disabled={approvalMutation.isPending}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                  Approve
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => handleApproval(media.id, false)}
+                                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 gap-2"
+                                  disabled={approvalMutation.isPending}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  Reject
+                                </Button>
+                              </>
                             ) : (
                               <Button 
                                 variant="outline" 
@@ -268,7 +279,7 @@ export default function AdminDashboard() {
                                 disabled={approvalMutation.isPending}
                               >
                                 <XCircle className="h-4 w-4" />
-                                Reject
+                                Unapprove
                               </Button>
                             )}
                           </div>

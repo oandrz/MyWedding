@@ -173,7 +173,7 @@ const MessageWallSection = () => {
             className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
             variants={fadeIn}
           >
-            Share your congratulations, memories, and well-wishes for the couple
+            Leave your heartfelt congratulations and well-wishes for the happy couple. Share your thoughts, memories, or advice as they begin their journey together.
           </motion.p>
         </motion.div>
         
