@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Eye, EyeOff } from "lucide-react";
+import { Trash2, Edit, Plus } from "lucide-react";
 import type { ConfigImage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import ImageUploadModal from "./ImageUploadModal";
@@ -33,6 +34,7 @@ const ImageManager = () => {
   const [editingImage, setEditingImage] = useState<ConfigImage | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery">("banner");
+  const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -62,15 +64,9 @@ const ImageManager = () => {
   const updateImageMutation = useMutation({
     mutationFn: async (data: ImageConfigForm) => {
       if (editingImage) {
-        return apiRequest(`/api/admin/config-images/${editingImage.imageKey}`, {
-          method: "PUT",
-          body: data
-        });
+        return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, data);
       } else {
-        return apiRequest("/api/admin/config-images", {
-          method: "POST",
-          body: data
-        });
+        return apiRequest("POST", "/api/admin/config-images", data);
       }
     },
     onSuccess: () => {
@@ -98,18 +94,37 @@ const ImageManager = () => {
   };
 
   const handleEdit = (image: ConfigImage) => {
+    setUploadModalType(image.imageType as "banner" | "gallery");
     setEditingImage(image);
-    form.reset({
-      imageKey: image.imageKey,
-      imageUrl: image.imageUrl,
-      imageType: image.imageType as "banner" | "gallery",
-      title: image.title || "",
-      description: image.description || "",
-      isActive: image.isActive ?? true
-    });
+    setShowUploadModal(true);
   };
 
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (imageKey: string) => {
+      return apiRequest("DELETE", `/api/admin/config-images/${imageKey}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images/banner"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
+      toast({
+        title: "Success",
+        description: "Image deleted successfully!"
+      });
+      setShowDeleteDialog(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete image",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleNewImage = (type: "banner" | "gallery") => {
+    setEditingImage(null); // Clear editing state for new image
     setUploadModalType(type);
     setShowUploadModal(true);
   };
@@ -121,6 +136,15 @@ const ImageManager = () => {
           src={image.imageUrl} 
           alt={image.title || "Config image"}
           className="w-full h-full object-cover"
+          loading="lazy"
+          style={{
+            backgroundColor: '#f3f4f6',
+            minHeight: '192px'
+          }}
+          onLoad={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.style.backgroundColor = 'transparent';
+          }}
         />
         <div className="absolute top-2 right-2 flex gap-2">
           <Button
@@ -130,11 +154,13 @@ const ImageManager = () => {
           >
             <Edit className="h-4 w-4" />
           </Button>
-          {image.isActive ? (
-            <Eye className="h-4 w-4 text-green-600" />
-          ) : (
-            <EyeOff className="h-4 w-4 text-gray-400" />
-          )}
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(image)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
       <CardContent className="p-4">
@@ -214,8 +240,48 @@ const ImageManager = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Image Form - only show when editing */}
-      {editingImage && (
+      {/* Upload Modal */}
+      <ImageUploadModal
+        isOpen={showUploadModal}
+        onClose={() => {
+          setShowUploadModal(false);
+          setEditingImage(null);
+        }}
+        imageType={uploadModalType}
+        editingImage={editingImage}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/config-images/banner"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
+        }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Image</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this image? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => showDeleteDialog && deleteMutation.mutate(showDeleteDialog.imageKey)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Legacy form - hide this for now */}
+      {false && editingImage && (
         <Card>
           <CardHeader>
             <CardTitle>Edit Image</CardTitle>
@@ -312,15 +378,6 @@ const ImageManager = () => {
         </Card>
       )}
 
-      {/* Upload Modal */}
-      <ImageUploadModal
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        imageType={uploadModalType}
-        onSuccess={() => {
-          // Refresh the images
-        }}
-      />
     </div>
   );
 };

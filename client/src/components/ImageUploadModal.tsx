@@ -33,10 +33,11 @@ interface ImageUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   imageType: "banner" | "gallery";
+  editingImage?: any; // ConfigImage type
   onSuccess?: () => void;
 }
 
-const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUploadModalProps) => {
+const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess }: ImageUploadModalProps) => {
   const [activeTab, setActiveTab] = useState("upload");
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -48,9 +49,9 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   const urlForm = useForm<UrlImageForm>({
     resolver: zodResolver(urlImageSchema),
     defaultValues: {
-      imageUrl: "",
-      title: "",
-      description: "",
+      imageUrl: editingImage?.imageUrl || "",
+      title: editingImage?.title || "",
+      description: editingImage?.description || "",
     }
   });
 
@@ -58,8 +59,8 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   const fileForm = useForm<FileUploadForm>({
     resolver: zodResolver(fileUploadSchema),
     defaultValues: {
-      title: "",
-      description: "",
+      title: editingImage?.title || "",
+      description: editingImage?.description || "",
       file: null,
     }
   });
@@ -67,13 +68,24 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
   // URL submission mutation
   const urlMutation = useMutation({
     mutationFn: async (data: UrlImageForm) => {
-      const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
-      return apiRequest("POST", "/api/admin/config-images", {
-        ...data,
-        imageKey,
-        imageType,
-        isActive: true
-      });
+      if (editingImage) {
+        // Update existing image
+        return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, {
+          ...data,
+          imageKey: editingImage.imageKey,
+          imageType,
+          isActive: true
+        });
+      } else {
+        // Create new image
+        const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
+        return apiRequest("POST", "/api/admin/config-images", {
+          ...data,
+          imageKey,
+          imageType,
+          isActive: true
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
@@ -129,16 +141,29 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
       // Ensure the URL is absolute for display
       const fullImageUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
       
-      // Then create the config image record
-      const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
-      return apiRequest("POST", "/api/admin/config-images", {
-        imageKey,
-        imageUrl: fullImageUrl,
-        imageType,
-        title: data.title,
-        description: data.description,
-        isActive: true
-      });
+      // Then create or update the config image record
+      if (editingImage) {
+        // Update existing image
+        return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, {
+          imageKey: editingImage.imageKey,
+          imageUrl: fullImageUrl,
+          imageType,
+          title: data.title,
+          description: data.description,
+          isActive: true
+        });
+      } else {
+        // Create new image
+        const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
+        return apiRequest("POST", "/api/admin/config-images", {
+          imageKey,
+          imageUrl: fullImageUrl,
+          imageType,
+          title: data.title,
+          description: data.description,
+          isActive: true
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
@@ -232,9 +257,11 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, onSuccess }: ImageUpload
               <Upload className="h-6 w-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-xl">Add {imageType === "banner" ? "Banner" : "Gallery"} Image</DialogTitle>
+              <DialogTitle className="text-xl">
+                {editingImage ? "Edit" : "Add"} {imageType === "banner" ? "Banner" : "Gallery"} Image
+              </DialogTitle>
               <DialogDescription className="text-sm text-gray-500">
-                Upload a file or add an image URL
+                {editingImage ? "Update the image details or replace the image" : "Upload a file or add an image URL"}
               </DialogDescription>
             </div>
           </div>

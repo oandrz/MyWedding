@@ -87,6 +87,15 @@ const GallerySection = () => {
                   alt={photo.alt} 
                   className="w-full h-64 object-cover transition duration-300"
                   variants={scaleOnHover}
+                  loading="lazy"
+                  style={{
+                    backgroundColor: '#f3f4f6',
+                    minHeight: '256px'
+                  }}
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.backgroundColor = 'transparent';
+                  }}
                 />
               </motion.div>
             ))

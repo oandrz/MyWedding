@@ -27,6 +27,7 @@ export interface IStorage {
   // Configurable images methods
   createConfigImage(imageData: InsertConfigImage): Promise<ConfigImage>;
   updateConfigImage(imageKey: string, imageData: InsertConfigImage): Promise<ConfigImage>;
+  deleteConfigImage(imageKey: string): Promise<boolean>;
   getConfigImage(imageKey: string): Promise<ConfigImage | undefined>;
   getConfigImagesByType(imageType: string): Promise<ConfigImage[]>;
   getAllConfigImages(): Promise<ConfigImage[]>;
@@ -239,6 +240,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.configImages.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
+
+  async deleteConfigImage(imageKey: string): Promise<boolean> {
+    return this.configImages.delete(imageKey);
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -379,6 +384,13 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(configImages)
       .orderBy(desc(configImages.updatedAt));
+  }
+
+  async deleteConfigImage(imageKey: string): Promise<boolean> {
+    const result = await db
+      .delete(configImages)
+      .where(eq(configImages.imageKey, imageKey));
+    return result.rowCount > 0;
   }
 }
 

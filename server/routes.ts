@@ -455,6 +455,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete configurable image (admin only)
+  app.delete("/api/admin/config-images/:imageKey", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const imageKey = req.params.imageKey;
+      
+      const success = await storage.deleteConfigImage(imageKey);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+      
+      res.status(200).json({ 
+        message: "Image deleted successfully" 
+      });
+    } catch (error) {
+      console.error("Config image delete error:", error);
+      res.status(500).json({ message: "Failed to delete image configuration" });
+    }
+  });
+
   // Fallback API handlers for RSVP submission (used if Flask server is not available)
   async function handleRsvpSubmission(req: Request, res: Response) {
     try {
