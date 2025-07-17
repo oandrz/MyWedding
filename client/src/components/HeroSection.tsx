@@ -16,10 +16,11 @@ const HeroSection = () => {
     year: 'numeric'
   }).format(WEDDING_DATE);
 
-  // Fetch banner image from API
+  // Fetch banner image from API - force fresh data
   const { data: bannerData } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/banner"],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 0, // No cache - always fetch fresh data
+    refetchOnWindowFocus: true,
   });
 
   // Get the banner image URL or fallback to default

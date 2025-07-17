@@ -38,9 +38,11 @@ const ImageManager = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch all configurable images
+  // Fetch all configurable images - force fresh data
   const { data: imagesData, isLoading } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images"],
+    staleTime: 0, // No cache - always fetch fresh data
+    refetchOnWindowFocus: true,
   });
 
   // Filter images by type
@@ -203,16 +205,29 @@ const ImageManager = () => {
               <h3 className="text-lg font-semibold">Banner Images</h3>
               <p className="text-sm text-gray-600">Hero section background image</p>
             </div>
-            <Button onClick={() => handleNewImage("banner")} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Banner Image
-            </Button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bannerImages.map((image) => (
               <ImageCard key={image.id} image={image} />
             ))}
+            
+            {/* Add Image Card - Integrated into grid */}
+            <Card className="overflow-hidden border-2 border-dashed border-blue-300 hover:border-blue-400 transition-colors cursor-pointer group">
+              <div 
+                className="relative h-48 flex items-center justify-center bg-blue-50 hover:bg-blue-100 transition-colors"
+                onClick={() => handleNewImage("banner")}
+              >
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+                    <Plus className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-blue-700 font-medium">Add Banner Image</p>
+                  <p className="text-blue-600 text-sm mt-1">Click to upload</p>
+                </div>
+              </div>
+            </Card>
+            
             {bannerImages.length === 0 && (
               <div className="col-span-full text-center py-8 text-gray-500">
                 No banner images configured. Add one to get started.
@@ -227,16 +242,29 @@ const ImageManager = () => {
               <h3 className="text-lg font-semibold">Gallery Images</h3>
               <p className="text-sm text-gray-600">Images showcased in the gallery section</p>
             </div>
-            <Button onClick={() => handleNewImage("gallery")} className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Gallery Image
-            </Button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {galleryImages.map((image) => (
               <ImageCard key={image.id} image={image} />
             ))}
+            
+            {/* Add Image Card - Integrated into grid */}
+            <Card className="overflow-hidden border-2 border-dashed border-green-300 hover:border-green-400 transition-colors cursor-pointer group">
+              <div 
+                className="relative h-48 flex items-center justify-center bg-green-50 hover:bg-green-100 transition-colors"
+                onClick={() => handleNewImage("gallery")}
+              >
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-600 flex items-center justify-center group-hover:bg-green-700 transition-colors">
+                    <Plus className="h-6 w-6 text-white" />
+                  </div>
+                  <p className="text-green-700 font-medium">Add Gallery Image</p>
+                  <p className="text-green-600 text-sm mt-1">Click to upload</p>
+                </div>
+              </div>
+            </Card>
+            
             {galleryImages.length === 0 && (
               <div className="col-span-full text-center py-8 text-gray-500">
                 No gallery images configured. Default images will be used.

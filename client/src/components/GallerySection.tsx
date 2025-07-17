@@ -14,10 +14,11 @@ const GallerySection = () => {
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
   const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.2 });
 
-  // Fetch gallery images from API
+  // Fetch gallery images from API - force fresh data
   const { data: galleryData, isLoading } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/gallery"],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 0, // No cache - always fetch fresh data
+    refetchOnWindowFocus: true,
   });
 
   // Use configurable images if available, otherwise fallback to constants
