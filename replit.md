@@ -18,6 +18,11 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Enhanced admin interface with visible Approve/Reject buttons and better button placement
 - ✓ Clarified messages section purpose as congratulations and well-wishes platform
 - ✓ Relocated "Add Image" buttons within tabs for more natural admin experience
+- ✓ Removed delete button for banner images to encourage consistent hero section presence
+- ✓ Auto-hide gallery section when no images configured to prevent empty content
+- ✓ Updated admin button colors to match wedding theme (rose/pink) instead of generic colors
+- ✓ Implemented Google Drive A/B testing for memory uploads with embedded folder view
+- ✓ Added cross-linking between traditional upload and Google Drive options for testing
 
 **Image Management System Enhancements:**
 

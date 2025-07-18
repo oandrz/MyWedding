@@ -15,7 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { insertMediaSchema } from "../../../shared/schema";
 import NavBar from "@/components/NavBar";
-import { Upload } from "lucide-react";
+import { Link } from "wouter";
+import { Camera, Upload, Users, Clock, CheckCircle, XCircle, Plus, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
 
 // Simplified schema for quick memory sharing
 const formSchema = z.object({
@@ -261,6 +262,17 @@ const Gallery = () => {
                     Quickly share photos or videos from our wedding! Perfect for capturing moments during the event.
                     Name and email are optional - just upload and share instantly.
                   </p>
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-blue-800 text-sm mb-2">
+                      <strong>New!</strong> Try our Google Drive option for faster uploads:
+                    </p>
+                    <Link href="/memories-drive">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <ExternalLink className="h-4 w-4" />
+                        Upload via Google Drive
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
                 
                 <Separator className="my-6" />

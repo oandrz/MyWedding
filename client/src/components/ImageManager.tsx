@@ -156,13 +156,15 @@ const ImageManager = () => {
           >
             <Edit className="h-4 w-4" />
           </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => setShowDeleteDialog(image)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {image.imageType !== "banner" && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setShowDeleteDialog(image)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
       <CardContent className="p-4">
@@ -213,17 +215,17 @@ const ImageManager = () => {
             ))}
             
             {/* Add Image Card - Integrated into grid */}
-            <Card className="overflow-hidden border-2 border-dashed border-blue-300 hover:border-blue-400 transition-colors cursor-pointer group">
+            <Card className="overflow-hidden border-2 border-dashed border-rose-300 hover:border-rose-400 transition-colors cursor-pointer group">
               <div 
-                className="relative h-48 flex items-center justify-center bg-blue-50 hover:bg-blue-100 transition-colors"
+                className="relative h-48 flex items-center justify-center bg-rose-50 hover:bg-rose-100 transition-colors"
                 onClick={() => handleNewImage("banner")}
               >
                 <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-600 flex items-center justify-center group-hover:bg-rose-700 transition-colors">
                     <Plus className="h-6 w-6 text-white" />
                   </div>
-                  <p className="text-blue-700 font-medium">Add Banner Image</p>
-                  <p className="text-blue-600 text-sm mt-1">Click to upload</p>
+                  <p className="text-rose-700 font-medium">Add Banner Image</p>
+                  <p className="text-rose-600 text-sm mt-1">Click to upload</p>
                 </div>
               </div>
             </Card>
@@ -250,17 +252,17 @@ const ImageManager = () => {
             ))}
             
             {/* Add Image Card - Integrated into grid */}
-            <Card className="overflow-hidden border-2 border-dashed border-green-300 hover:border-green-400 transition-colors cursor-pointer group">
+            <Card className="overflow-hidden border-2 border-dashed border-pink-300 hover:border-pink-400 transition-colors cursor-pointer group">
               <div 
-                className="relative h-48 flex items-center justify-center bg-green-50 hover:bg-green-100 transition-colors"
+                className="relative h-48 flex items-center justify-center bg-pink-50 hover:bg-pink-100 transition-colors"
                 onClick={() => handleNewImage("gallery")}
               >
                 <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-600 flex items-center justify-center group-hover:bg-green-700 transition-colors">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-pink-600 flex items-center justify-center group-hover:bg-pink-700 transition-colors">
                     <Plus className="h-6 w-6 text-white" />
                   </div>
-                  <p className="text-green-700 font-medium">Add Gallery Image</p>
-                  <p className="text-green-600 text-sm mt-1">Click to upload</p>
+                  <p className="text-pink-700 font-medium">Add Gallery Image</p>
+                  <p className="text-pink-600 text-sm mt-1">Click to upload</p>
                 </div>
               </div>
             </Card>

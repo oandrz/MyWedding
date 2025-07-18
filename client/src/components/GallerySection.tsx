@@ -28,6 +28,14 @@ const GallerySection = () => {
         alt: img.title || img.description || "Gallery image"
       }))
     : GALLERY_PHOTOS;
+
+  // Hide gallery section if no images are configured
+  const hasConfiguredImages = galleryData?.images?.length > 0;
+  const shouldShowGallery = hasConfiguredImages || (!galleryData && GALLERY_PHOTOS.length > 0);
+
+  if (!shouldShowGallery) {
+    return null;
+  }
   
   return (
     <section id="gallery" className="py-20 bg-background" ref={sectionRef}>
