@@ -11,11 +11,11 @@ const GallerySection = () => {
   const galleryRef = useRef(null);
   
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
-  const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
-  const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.2 });
+  const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
+  const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.1 });
 
   // Fetch gallery images from API - force fresh data
-  const { data: galleryData, isLoading } = useQuery<{ images: ConfigImage[] }>({
+  const { data: galleryData, isLoading, error } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/gallery"],
     staleTime: 0, // No cache - always fetch fresh data
     refetchOnWindowFocus: true,
@@ -62,7 +62,7 @@ const GallerySection = () => {
           ref={galleryRef}
           variants={staggerContainer}
           initial="hidden"
-          animate={isGalleryInView ? "visible" : "hidden"}
+          animate="visible"
         >
           {isLoading ? (
             // Loading skeleton
