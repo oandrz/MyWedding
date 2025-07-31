@@ -6,6 +6,7 @@ import Home from "@/pages/Home";
 import Messages from "@/pages/Messages";
 import Gallery from "@/pages/Gallery";
 import MemoriesGoogleDrive from "@/pages/MemoriesGoogleDrive";
+import MemoriesGoogleDriveUpload from "@/pages/MemoriesGoogleDriveUpload";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import NotFound from "@/pages/not-found";
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/gallery" component={Gallery} />
       <Route path="/memories" component={Gallery} />
       <Route path="/memories-drive" component={MemoriesGoogleDrive} />
+      <Route path="/memories-upload" component={MemoriesGoogleDriveUpload} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
       <Route path="/admin-login" component={AdminLogin} />

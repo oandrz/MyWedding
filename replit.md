@@ -14,6 +14,11 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Fixed navigation scrolling issues - all menu links now smoothly scroll to sections
 - ✓ Removed "Add Banner Image" button when banner exists - replace-only model
 - ✓ Created comprehensive issues.md documentation for all resolved problems
+- ✓ Simplified RSVP form - replaced firstName/lastName with single name field
+- ✓ Removed dietary restrictions and message fields from RSVP for streamlined experience
+- ✓ Created direct Google Drive upload page (/memories-upload) with drag-and-drop functionality
+- ✓ Enhanced Google Drive integration with embedded folder view always visible
+- ✓ Updated backend schema and routes to handle simplified RSVP structure
 
 **January 18, 2025:**
 - ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests

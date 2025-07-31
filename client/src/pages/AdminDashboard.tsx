@@ -353,7 +353,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                           <div>
                             <h3 className="font-semibold text-lg text-gray-900">
-                              {rsvp.firstName} {rsvp.lastName}
+                              {rsvp.name}
                             </h3>
                             <p className="text-sm text-gray-600">{rsvp.email}</p>
                           </div>
@@ -379,23 +379,10 @@ export default function AdminDashboard() {
                           </Badge>
                         </div>
                         
-                        {rsvp.attending && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <p className="text-sm font-medium text-blue-900">Additional Guests</p>
-                              <p className="text-lg font-semibold text-blue-700">{rsvp.guestCount || 0}</p>
-                            </div>
-                            <div className="bg-orange-50 p-3 rounded-lg">
-                              <p className="text-sm font-medium text-orange-900">Dietary Restrictions</p>
-                              <p className="text-sm text-orange-700">{rsvp.dietaryRestrictions || "None specified"}</p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {rsvp.message && (
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-sm font-medium text-gray-900 mb-2">Personal Message</p>
-                            <p className="text-gray-700 italic">"{rsvp.message}"</p>
+                        {rsvp.attending && rsvp.guestCount && (
+                          <div className="bg-blue-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-blue-900">Number of Guests</p>
+                            <p className="text-lg font-semibold text-blue-700">{rsvp.guestCount}</p>
                           </div>
                         )}
                       </CardContent>

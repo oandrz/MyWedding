@@ -11,13 +11,10 @@ import { fadeIn, staggerContainer } from "@/lib/animations";
 
 // Extended schema with validation
 const rsvpSchema = z.object({
-  firstName: z.string().min(1, { message: "First name is required" }),
-  lastName: z.string().min(1, { message: "Last name is required" }),
+  name: z.string().min(1, { message: "Name is required" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
   attending: z.boolean(),
-  guestCount: z.number().optional(),
-  dietaryRestrictions: z.string().optional(),
-  message: z.string().optional()
+  guestCount: z.number().optional()
 });
 
 type RsvpFormValues = z.infer<typeof rsvpSchema>;
@@ -38,13 +35,10 @@ const RsvpSection = () => {
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<RsvpFormValues>({
     resolver: zodResolver(rsvpSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      name: "",
       email: "",
       attending: true,
-      guestCount: 1,
-      dietaryRestrictions: "",
-      message: ""
+      guestCount: 1
     }
   });
 
@@ -56,7 +50,6 @@ const RsvpSection = () => {
     // If not attending, clear guest-specific fields
     if (!isAttending) {
       setValue("guestCount", undefined);
-      setValue("dietaryRestrictions", "");
     } else {
       setValue("guestCount", 1);
     }
@@ -135,32 +128,18 @@ const RsvpSection = () => {
               onSubmit={handleSubmit(onSubmit)}
               variants={fadeIn}
             >
-              {/* Name Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="firstName" className="block text-foreground font-montserrat text-sm mb-2">First Name</label>
-                  <input 
-                    type="text" 
-                    id="firstName" 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                    {...register("firstName")}
-                  />
-                  {errors.firstName && (
-                    <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>
-                  )}
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-foreground font-montserrat text-sm mb-2">Last Name</label>
-                  <input 
-                    type="text" 
-                    id="lastName" 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                    {...register("lastName")}
-                  />
-                  {errors.lastName && (
-                    <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>
-                  )}
-                </div>
+              {/* Name Field */}
+              <div>
+                <label htmlFor="name" className="block text-foreground font-montserrat text-sm mb-2">Name</label>
+                <input 
+                  type="text" 
+                  id="name" 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
+                  {...register("name")}
+                />
+                {errors.name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+                )}
               </div>
               
               {/* Email */}
@@ -224,31 +203,7 @@ const RsvpSection = () => {
                 </div>
               )}
               
-              {/* Dietary Restrictions - Only show if attending */}
-              {showGuestOptions && (
-                <div>
-                  <label htmlFor="dietaryRestrictions" className="block text-foreground font-montserrat text-sm mb-2">Dietary Restrictions</label>
-                  <textarea 
-                    id="dietaryRestrictions" 
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                    placeholder="Please let us know of any allergies or dietary requirements"
-                    {...register("dietaryRestrictions")}
-                  ></textarea>
-                </div>
-              )}
-              
-              {/* Message */}
-              <div>
-                <label htmlFor="message" className="block text-foreground font-montserrat text-sm mb-2">Message (Optional)</label>
-                <textarea 
-                  id="message" 
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                  placeholder="Share your well wishes or thoughts"
-                  {...register("message")}
-                ></textarea>
-              </div>
+
               
               {/* Submit Button */}
               <div className="text-center pt-4">

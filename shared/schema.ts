@@ -10,13 +10,10 @@ export const users = pgTable("users", {
 
 export const rsvp = pgTable("rsvp", {
   id: serial("id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  name: text("name").notNull(),
   email: text("email").notNull(),
   attending: boolean("attending").notNull(),
   guestCount: integer("guest_count"),
-  dietaryRestrictions: text("dietary_restrictions"),
-  message: text("message"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -25,13 +22,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertRsvpSchema = createInsertSchema(rsvp).pick({
-  firstName: true,
-  lastName: true,
+  name: true,
   email: true,
   attending: true,
   guestCount: true,
-  dietaryRestrictions: true,
-  message: true,
 });
 
 export const media = pgTable("media", {

@@ -11,7 +11,7 @@ import Footer from "@/components/Footer";
 
 const MemoriesGoogleDrive = () => {
   const sectionRef = useRef(null);
-  const [embedVisible, setEmbedVisible] = useState(false);
+
   
   // Google Drive folder URL for wedding memories
   const googleDriveUrl = "https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC?usp=sharing";
@@ -116,23 +116,24 @@ const MemoriesGoogleDrive = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <Button 
-                onClick={() => window.open(googleDriveUrl, '_blank')}
-                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 px-8 py-3"
-                size="lg"
-              >
-                <ExternalLink className="h-5 w-5" />
-                Open Google Drive Folder
-              </Button>
+              <Link href="/memories-upload">
+                <Button 
+                  className="bg-rose-600 hover:bg-rose-700 text-white gap-2 px-8 py-3"
+                  size="lg"
+                >
+                  <Upload className="h-5 w-5" />
+                  Upload Your Photos
+                </Button>
+              </Link>
               
               <Button 
-                onClick={() => setEmbedVisible(!embedVisible)}
+                onClick={() => window.open(googleDriveUrl, '_blank')}
                 variant="outline"
                 className="gap-2 px-8 py-3"
                 size="lg"
               >
                 <Cloud className="h-5 w-5" />
-                {embedVisible ? 'Hide' : 'Show'} Embedded View
+                Open in Google Drive
               </Button>
             </motion.div>
 
@@ -152,29 +153,26 @@ const MemoriesGoogleDrive = () => {
             </motion.div>
 
             {/* Embedded Google Drive */}
-            {embedVisible && (
-              <motion.div 
-                className="mb-8"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 600 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-center">Wedding Memories Folder</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <iframe
-                      src={embedUrl}
-                      className="w-full h-96 border-0 rounded-b-lg"
-                      title="Wedding Memories Google Drive Folder"
-                      style={{ minHeight: '500px' }}
-                    />
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+            <motion.div 
+              className="mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              <Card className="shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-rose-100 to-pink-100 pb-3">
+                  <CardTitle className="text-center text-2xl">Wedding Memories Folder</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <iframe
+                    src={embedUrl}
+                    className="w-full border-0"
+                    title="Wedding Memories Google Drive Folder"
+                    style={{ minHeight: '600px', height: '70vh' }}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
 
             {/* A/B Testing Notice */}
             <motion.div 

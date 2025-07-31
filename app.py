@@ -13,22 +13,16 @@ CORS(app)
 # Define schemas
 class Rsvp(BaseModel):
     id: int
-    firstName: str
-    lastName: str
+    name: str
     email: str
     attending: bool
     guestCount: Optional[int] = None
-    dietaryRestrictions: Optional[str] = None
-    message: Optional[str] = None
 
 class InsertRsvp(BaseModel):
-    firstName: str
-    lastName: str
+    name: str
     email: str
     attending: bool
     guestCount: Optional[int] = None
-    dietaryRestrictions: Optional[str] = None
-    message: Optional[str] = None
 
 class User(BaseModel):
     id: int
@@ -92,7 +86,7 @@ storage = MemStorage()
 @app.route('/api/rsvp', methods=['POST'])
 def create_rsvp():
     try:
-        data = request.json
+        data = request.json or {}
         validated_data = InsertRsvp(**data)
         
         # Check if this email has already RSVP'd
@@ -207,7 +201,7 @@ message_board = MessageBoard()
 @app.route('/api/messages', methods=['POST'])
 def create_message():
     try:
-        data = request.json
+        data = request.json or {}
         validated_data = InsertMessage(**data)
         message = message_board.add_message(validated_data)
         
@@ -238,7 +232,7 @@ def get_messages():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    if path != "" and os.path.exists(app.static_folder + '/' + path):
+    if path != "" and app.static_folder and os.path.exists(os.path.join(app.static_folder, path)):
         return app.send_static_file(path)
     else:
         return app.send_static_file('index.html')
