@@ -55,6 +55,16 @@ export default function GoogleDriveSetup() {
               </AlertDescription>
             </Alert>
 
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Getting "redirect_uri_mismatch" error?</strong> You need to configure your Google Cloud Console first.{" "}
+                <a href="/google-drive-instructions" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                  Click here for detailed fix instructions
+                </a>
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-3">
               <h3 className="font-semibold">Setup Steps:</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">

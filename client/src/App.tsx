@@ -8,6 +8,7 @@ import Gallery from "@/pages/Gallery";
 import MemoriesGoogleDrive from "@/pages/MemoriesGoogleDrive";
 import MemoriesGoogleDriveUpload from "@/pages/MemoriesGoogleDriveUpload";
 import GoogleDriveSetup from "@/pages/GoogleDriveSetup";
+import GoogleDriveInstructions from "@/pages/GoogleDriveInstructions";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import NotFound from "@/pages/not-found";
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/memories-drive" component={MemoriesGoogleDrive} />
       <Route path="/memories-upload" component={MemoriesGoogleDriveUpload} />
       <Route path="/google-drive-setup" component={GoogleDriveSetup} />
+      <Route path="/google-drive-instructions" component={GoogleDriveInstructions} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
       <Route path="/admin-login" component={AdminLogin} />

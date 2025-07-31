@@ -11,10 +11,15 @@ export class GoogleDriveService {
   constructor() {
     try {
       // Primary approach: OAuth2 for personal folders (works with personal Drive folders)
+      // Auto-detect the correct redirect URI based on environment
+      const defaultRedirectUri = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/auth/google/callback`
+        : 'http://localhost:5000/auth/google/callback';
+      
       this.oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
-        process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback'
+        process.env.GOOGLE_REDIRECT_URI || defaultRedirectUri
       );
 
       // Check if we have stored refresh token for the user

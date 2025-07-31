@@ -328,11 +328,18 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600">
                     Enable guests to upload photos directly to your Google Drive folder. Requires one-time OAuth setup.
                   </p>
-                  <Button asChild className="w-full sm:w-auto">
-                    <a href="/google-drive-setup" target="_blank" rel="noopener noreferrer">
-                      Configure Google Drive OAuth
-                    </a>
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button asChild className="flex-1">
+                      <a href="/google-drive-setup" target="_blank" rel="noopener noreferrer">
+                        Configure Google Drive OAuth
+                      </a>
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1">
+                      <a href="/google-drive-instructions" target="_blank" rel="noopener noreferrer">
+                        Setup Instructions
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
