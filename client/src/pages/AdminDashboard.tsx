@@ -311,20 +311,48 @@ export default function AdminDashboard() {
         
         {/* Image Configuration Tab */}
         <TabsContent value="images">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <Settings className="h-6 w-6 text-purple-600" />
-                <div>
-                  <CardTitle className="text-xl">Image Configuration</CardTitle>
-                  <CardDescription>Configure banner and gallery images</CardDescription>
+          <div className="space-y-6">
+            {/* Google Drive Configuration */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-6 w-6 text-blue-600" />
+                  <div>
+                    <CardTitle className="text-xl">Google Drive Integration</CardTitle>
+                    <CardDescription>Configure Google Drive for guest photo uploads</CardDescription>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ImageManager />
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Enable guests to upload photos directly to your Google Drive folder. Requires one-time OAuth setup.
+                  </p>
+                  <Button asChild className="w-full sm:w-auto">
+                    <a href="/google-drive-setup" target="_blank" rel="noopener noreferrer">
+                      Configure Google Drive OAuth
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Image Configuration */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-6 w-6 text-purple-600" />
+                  <div>
+                    <CardTitle className="text-xl">Image Configuration</CardTitle>
+                    <CardDescription>Configure banner and gallery images</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ImageManager />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
         
         {/* RSVPs Tab */}
