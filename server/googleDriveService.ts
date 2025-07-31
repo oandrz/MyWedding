@@ -6,35 +6,51 @@ const WEDDING_FOLDER_ID = '1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC';
 
 export class GoogleDriveService {
   private drive: any;
+  private oauth2Client: any;
   
   constructor() {
     try {
-      // Check if we have service account credentials
-      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-      
-      if (serviceAccountKey) {
-        // Use service account authentication for direct uploads
-        const serviceAccount = JSON.parse(serviceAccountKey);
-        const auth = new google.auth.GoogleAuth({
-          credentials: serviceAccount,
-          scopes: ['https://www.googleapis.com/auth/drive.file'],
+      // Primary approach: OAuth2 for personal folders (works with personal Drive folders)
+      this.oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback'
+      );
+
+      // Check if we have stored refresh token for the user
+      const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+      if (refreshToken) {
+        this.oauth2Client.setCredentials({
+          refresh_token: refreshToken
         });
-        this.drive = google.drive({ version: 'v3', auth });
-        console.log('Google Drive service initialized with service account');
+        console.log('Google Drive service initialized with OAuth2 refresh token');
       } else {
-        // Fallback: Use OAuth2 client (requires user authentication)
-        const oauth2Client = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET,
-          'urn:ietf:wg:oauth:2.0:oob'
-        );
-        this.drive = google.drive({ version: 'v3', auth: oauth2Client });
-        console.log('Google Drive service initialized with OAuth2 (service account recommended)');
+        console.log('Google Drive service initialized - OAuth2 setup required');
       }
+
+      this.drive = google.drive({ version: 'v3', auth: this.oauth2Client });
     } catch (error) {
       console.error('Failed to initialize Google Drive service:', error);
-      this.drive = null; // Set to null to indicate initialization failure
+      this.drive = null;
     }
+  }
+
+  async getAuthUrl(): Promise<string> {
+    const scopes = ['https://www.googleapis.com/auth/drive.file'];
+    
+    const authUrl = this.oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: scopes,
+      prompt: 'consent' // Force consent to get refresh token
+    });
+    
+    return authUrl;
+  }
+
+  async handleAuthCallback(code: string): Promise<any> {
+    const { tokens } = await this.oauth2Client.getToken(code);
+    this.oauth2Client.setCredentials(tokens);
+    return tokens;
   }
 
   async checkIfSharedDrive(folderId: string): Promise<boolean> {
@@ -120,16 +136,16 @@ export class GoogleDriveService {
       }
       
       // Check for specific Google Drive errors
+      if ((error as any).code === 401) {
+        throw new Error('OAUTH_REQUIRED: Please authorize the application to access your Google Drive.');
+      }
+      
       if ((error as any).code === 403) {
         const errorMessage = (error as any).cause?.message || (error as Error).message;
         if (errorMessage.includes('Service Accounts do not have storage quota')) {
-          throw new Error('SHARED_DRIVE_REQUIRED: Please convert your Google Drive folder to a Shared Drive or create a new Shared Drive for direct uploads to work.');
+          throw new Error('OAUTH_REQUIRED: Please authorize the application to access your Google Drive.');
         }
         throw new Error(`Permission denied: ${errorMessage}`);
-      }
-      
-      if ((error as any).code === 401) {
-        throw new Error('Authentication failed. Please check Google Drive service account credentials.');
       }
       
       throw new Error(`Failed to upload to Google Drive: ${(error as Error).message}`);

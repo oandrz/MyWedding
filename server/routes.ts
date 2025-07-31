@@ -381,6 +381,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google OAuth2 authorization URL
+  app.get('/api/google-auth-url', async (req: Request, res: Response) => {
+    try {
+      const authUrl = await googleDriveService.getAuthUrl();
+      res.status(200).json({ authUrl });
+    } catch (error) {
+      console.error('Error generating auth URL:', error);
+      res.status(500).json({
+        message: 'Failed to generate authentication URL',
+        error: (error as Error).message
+      });
+    }
+  });
+
+  // Google OAuth2 callback
+  app.get('/auth/google/callback', async (req: Request, res: Response) => {
+    try {
+      const { code } = req.query;
+      if (!code || typeof code !== 'string') {
+        return res.status(400).send('Authorization code missing');
+      }
+
+      const tokens = await googleDriveService.handleAuthCallback(code);
+      
+      // In production, you'd want to store the refresh token securely
+      // For now, we'll show it to the user to add to environment variables
+      res.send(`
+        <html>
+          <body>
+            <h2>Google Drive Authorization Successful!</h2>
+            <p>Please add this refresh token to your environment variables:</p>
+            <code>GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}</code>
+            <p>Then restart your application.</p>
+            <p>You can close this window.</p>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      res.status(500).send('Authorization failed');
+    }
+  });
+
   // Get Google Drive folder contents
   app.get('/api/drive-folder-contents', async (req: Request, res: Response) => {
     try {

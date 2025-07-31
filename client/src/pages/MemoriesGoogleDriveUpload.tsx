@@ -19,6 +19,31 @@ const MemoriesGoogleDriveUpload = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const handleOAuthSetup = async () => {
+    try {
+      const response = await fetch('/api/google-auth-url');
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        toast({
+          title: "Authorization Required",
+          description: "Opening Google authorization page to enable direct uploads",
+          variant: "default"
+        });
+        
+        // Open authorization URL in new window
+        window.open(data.authUrl, '_blank', 'width=500,height=600');
+      }
+    } catch (error) {
+      console.error('Error getting auth URL:', error);
+      toast({
+        title: "Setup Error",
+        description: "Could not initiate Google Drive authorization",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Google Drive folder URL for wedding memories
   const googleDriveUrl = "https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC?usp=sharing";
   const embedUrl = "https://drive.google.com/embeddedfolderview?id=1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC#grid";
@@ -99,19 +124,16 @@ const MemoriesGoogleDriveUpload = () => {
             setUploadSuccess(false);
           }, 3000);
         } else if (failCount > 0) {
-          // Check if it's a shared drive requirement error
-          const sharedDriveError = result.results?.find((r: any) => 
-            r.error?.includes('SHARED_DRIVE_REQUIRED')
+          // Check if it's an OAuth requirement error
+          const oauthError = result.results?.find((r: any) => 
+            r.error?.includes('OAUTH_REQUIRED')
           );
           
           setSelectedFiles([]);
           
-          if (sharedDriveError) {
-            toast({
-              title: "Shared Drive Setup Needed",
-              description: "Please convert your Google Drive folder to a Shared Drive to enable direct uploads",
-              variant: "destructive"
-            });
+          if (oauthError) {
+            // Handle OAuth requirement
+            handleOAuthSetup();
           } else {
             toast({
               title: "Direct upload not available",

@@ -24,6 +24,9 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Created seamless upload flow that guides users to Google Drive folder
 - ✓ Configured service account authentication for real file uploads
 - ✓ Fixed critical upload simulation issue - now performs actual Google Drive uploads
+- ✓ Implemented OAuth2 authentication to solve Google Drive personal folder restriction
+- ✓ Added automatic authorization flow for seamless one-time setup
+- ✓ Enabled true direct uploads to personal Google Drive folders
 
 **January 18, 2025:**
 - ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests

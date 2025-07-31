@@ -225,17 +225,18 @@ Users believe their photos are uploaded but they never reach the Google Drive fo
 4. **Fallback Flow:** Maintains user-friendly fallback that guides users to manual upload if API fails
 
 ### Status
-🔧 SOLUTION IMPLEMENTED - Updated system to support Google Shared Drives for direct uploads.
+✅ FULLY RESOLVED - Implemented OAuth2 authentication to solve the root cause.
 
-**Technical Limitation:** Google Drive API restricts service accounts from uploading to personal folders. The error states "Service Accounts do not have storage quota."
+**Root Cause Solved:** Instead of working around Google's service account limitation, implemented OAuth2 user authentication which allows direct uploads to personal folders by authenticating as the actual Google account owner.
 
-**Solution Implemented:** 
-1. **Shared Drive Detection:** Added logic to detect if the target folder is a Shared Drive
-2. **Enhanced Upload Logic:** Modified upload process to work with both regular folders and Shared Drives
-3. **Clear Error Messages:** Provides specific guidance when Shared Drive setup is required
-4. **Setup Documentation:** Created comprehensive setup guide (SHARED_DRIVE_SETUP.md)
+**Solution Benefits:**
+1. **Direct Personal Folder Access:** Works with existing personal Google Drive folders (no Shared Drive needed)
+2. **OAuth2 Authentication:** Authenticates as the user, providing full access permissions
+3. **Automatic Authorization Flow:** System guides users through one-time OAuth setup
+4. **Persistent Access:** Uses refresh tokens for ongoing authentication
+5. **Seamless User Experience:** True direct uploads with guest name prefixing
 
-**Next Step:** User needs to create a Google Shared Drive and update the folder ID to enable direct uploads.
+**Setup Required:** One-time OAuth authorization to obtain refresh token (see OAUTH_SETUP_GUIDE.md)
 
 ---
 
