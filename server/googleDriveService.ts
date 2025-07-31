@@ -37,6 +37,19 @@ export class GoogleDriveService {
     }
   }
 
+  async checkIfSharedDrive(folderId: string): Promise<boolean> {
+    try {
+      const response = await this.drive.drives.get({
+        driveId: folderId,
+        fields: 'id,name'
+      });
+      return !!response.data;
+    } catch (error) {
+      // If we get an error, it's likely not a shared drive
+      return false;
+    }
+  }
+
   async uploadFile(file: Express.Multer.File, guestName?: string): Promise<{ fileId: string; webViewLink: string }> {
     if (!this.drive) {
       throw new Error('Google Drive service not properly initialized. Service account credentials required.');
@@ -47,30 +60,45 @@ export class GoogleDriveService {
       
       const fileName = guestName ? `${guestName}_${file.originalname}` : file.originalname;
       
-      const fileMetadata = {
+      // Check if this is a shared drive
+      const isSharedDrive = await this.checkIfSharedDrive(WEDDING_FOLDER_ID);
+      
+      const fileMetadata: any = {
         name: fileName,
         parents: [WEDDING_FOLDER_ID],
       };
 
-      const media = {
-        mimeType: file.mimetype,
-        body: fs.createReadStream(file.path),
+      // If it's a shared drive, we need to specify the driveId
+      const requestBody: any = {
+        requestBody: fileMetadata,
+        media: {
+          mimeType: file.mimetype,
+          body: fs.createReadStream(file.path),
+        },
+        fields: 'id,webViewLink',
       };
 
-      const response = await this.drive.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id,webViewLink',
-      });
+      if (isSharedDrive) {
+        requestBody.supportsAllDrives = true;
+        console.log('Uploading to shared drive');
+      }
+
+      const response = await this.drive.files.create(requestBody);
 
       // Make the file publicly viewable
-      await this.drive.permissions.create({
+      const permissionRequest: any = {
         fileId: response.data.id,
         requestBody: {
           role: 'reader',
           type: 'anyone',
         },
-      });
+      };
+
+      if (isSharedDrive) {
+        permissionRequest.supportsAllDrives = true;
+      }
+
+      await this.drive.permissions.create(permissionRequest);
 
       // Clean up the temporary file
       if (fs.existsSync(file.path)) {
@@ -95,7 +123,7 @@ export class GoogleDriveService {
       if ((error as any).code === 403) {
         const errorMessage = (error as any).cause?.message || (error as Error).message;
         if (errorMessage.includes('Service Accounts do not have storage quota')) {
-          throw new Error('Service account cannot upload to personal folders. Please use OAuth authentication or create a shared drive.');
+          throw new Error('SHARED_DRIVE_REQUIRED: Please convert your Google Drive folder to a Shared Drive or create a new Shared Drive for direct uploads to work.');
         }
         throw new Error(`Permission denied: ${errorMessage}`);
       }

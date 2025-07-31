@@ -99,19 +99,31 @@ const MemoriesGoogleDriveUpload = () => {
             setUploadSuccess(false);
           }, 3000);
         } else if (failCount > 0) {
-          // All uploads failed, fall back to manual upload
+          // Check if it's a shared drive requirement error
+          const sharedDriveError = result.results?.find((r: any) => 
+            r.error?.includes('SHARED_DRIVE_REQUIRED')
+          );
+          
           setSelectedFiles([]);
           
-          toast({
-            title: "Direct upload not available",
-            description: "Opening Google Drive folder for manual upload",
-            variant: "default"
-          });
-          
-          // Open Google Drive folder in new tab for manual upload
-          setTimeout(() => {
-            window.open(googleDriveUrl, '_blank');
-          }, 1000);
+          if (sharedDriveError) {
+            toast({
+              title: "Shared Drive Setup Needed",
+              description: "Please convert your Google Drive folder to a Shared Drive to enable direct uploads",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Direct upload not available",
+              description: "Opening Google Drive folder for manual upload",
+              variant: "default"
+            });
+            
+            // Open Google Drive folder in new tab for manual upload
+            setTimeout(() => {
+              window.open(googleDriveUrl, '_blank');
+            }, 1000);
+          }
         }
       } else {
         throw new Error(result.message || 'Upload failed');
