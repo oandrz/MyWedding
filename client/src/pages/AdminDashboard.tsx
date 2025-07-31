@@ -34,7 +34,7 @@ export default function AdminDashboard() {
     data: allMedia,
     isLoading: mediaLoading,
     error: mediaError
-  } = useQuery({
+  } = useQuery<{ media: Media[] }>({
     queryKey: ["/api/admin/media"],
     enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
   });
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   const {
     data: rsvps,
     isLoading: rsvpLoading
-  } = useQuery({
+  } = useQuery<{ rsvps: Rsvp[], stats: { attending: number, guestCount: number, notAttending: number } }>({
     queryKey: ["/api/rsvp"],
   });
 
@@ -162,22 +162,26 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="media" className="gap-2">
-              <Image className="h-4 w-4" />
-              Media Management
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+            <TabsTrigger value="media" className="gap-1 md:gap-2 text-xs md:text-sm">
+              <Image className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Media</span>
+              <span className="sm:hidden">Media</span>
             </TabsTrigger>
-            <TabsTrigger value="images" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Image Config
+            <TabsTrigger value="images" className="gap-1 md:gap-2 text-xs md:text-sm">
+              <Settings className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Config</span>
+              <span className="sm:hidden">Config</span>
             </TabsTrigger>
-            <TabsTrigger value="rsvps" className="gap-2">
-              <Users className="h-4 w-4" />
-              RSVP Responses
+            <TabsTrigger value="rsvps" className="gap-1 md:gap-2 text-xs md:text-sm">
+              <Users className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">RSVP</span>
+              <span className="sm:hidden">RSVP</span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Detailed Stats
+            <TabsTrigger value="stats" className="gap-1 md:gap-2 text-xs md:text-sm">
+              <BarChart3 className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Stats</span>
+              <span className="sm:hidden">Stats</span>
             </TabsTrigger>
           </TabsList>
         

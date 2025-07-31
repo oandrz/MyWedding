@@ -13,9 +13,10 @@ const MemoriesGoogleDrive = () => {
   const sectionRef = useRef(null);
   const [embedVisible, setEmbedVisible] = useState(false);
   
-  // Google Drive folder URL (replace with actual wedding folder)
-  const googleDriveUrl = "https://drive.google.com/drive/folders/1234567890abcdef?usp=sharing";
-  const embedUrl = "https://drive.google.com/embeddedfolderview?id=1234567890abcdef#grid";
+  // Google Drive folder URL - placeholder for actual wedding folder
+  // User will need to replace this with their actual Google Drive folder
+  const googleDriveUrl = "https://drive.google.com/drive/folders/YOUR_FOLDER_ID?usp=sharing";
+  const embedUrl = "https://drive.google.com/embeddedfolderview?id=YOUR_FOLDER_ID#grid";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 to-pink-50">
@@ -149,6 +150,16 @@ const MemoriesGoogleDrive = () => {
                   <strong>How to upload:</strong> Click "Open Google Drive Folder" above, then drag and drop your photos/videos or click the "+" button to add files. No account required!
                 </AlertDescription>
               </Alert>
+              
+              {/* Admin Setup Notice */}
+              {googleDriveUrl.includes("YOUR_FOLDER_ID") && (
+                <Alert className="border-orange-200 bg-orange-50 mt-4">
+                  <AlertDescription className="text-orange-800">
+                    <strong>Admin Setup Required:</strong> Please replace YOUR_FOLDER_ID in the code with your actual Google Drive folder ID. 
+                    Create a public folder in Google Drive and copy the ID from the URL.
+                  </AlertDescription>
+                </Alert>
+              )}
             </motion.div>
 
             {/* Embedded Google Drive */}

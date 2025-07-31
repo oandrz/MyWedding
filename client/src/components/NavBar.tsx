@@ -83,28 +83,56 @@ const NavBar = () => {
               <a 
                 href="#couple" 
                 className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
-                onClick={() => setActiveSection('couple')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.getElementById('couple');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  setActiveSection('couple');
+                }}
               >
                 Our Story
               </a>
               <a 
                 href="#details" 
                 className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
-                onClick={() => setActiveSection('details')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.getElementById('details');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  setActiveSection('details');
+                }}
               >
                 Wedding Details
               </a>
               <a 
                 href="#gallery" 
                 className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
-                onClick={() => setActiveSection('gallery')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.getElementById('gallery');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  setActiveSection('gallery');
+                }}
               >
                 Gallery
               </a>
               <a 
                 href="#rsvp" 
                 className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
-                onClick={() => setActiveSection('rsvp')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.getElementById('rsvp');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  setActiveSection('rsvp');
+                }}
               >
                 RSVP
               </a>
@@ -141,8 +169,13 @@ const NavBar = () => {
                   <a 
                     href="#couple" 
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       closeMenu();
+                      const element = document.getElementById('couple');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
                       setActiveSection('couple');
                     }}
                   >
@@ -151,8 +184,13 @@ const NavBar = () => {
                   <a 
                     href="#details" 
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       closeMenu();
+                      const element = document.getElementById('details');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
                       setActiveSection('details');
                     }}
                   >
@@ -161,8 +199,13 @@ const NavBar = () => {
                   <a 
                     href="#gallery" 
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       closeMenu();
+                      const element = document.getElementById('gallery');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
                       setActiveSection('gallery');
                     }}
                   >
@@ -171,8 +214,13 @@ const NavBar = () => {
                   <a 
                     href="#rsvp" 
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       closeMenu();
+                      const element = document.getElementById('rsvp');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
                       setActiveSection('rsvp');
                     }}
                   >

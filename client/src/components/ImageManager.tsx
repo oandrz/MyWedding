@@ -214,26 +214,23 @@ const ImageManager = () => {
               <ImageCard key={image.id} image={image} />
             ))}
             
-            {/* Add Image Card - Integrated into grid */}
-            <Card className="overflow-hidden border-2 border-dashed border-rose-300 hover:border-rose-400 transition-colors cursor-pointer group">
-              <div 
-                className="relative h-48 flex items-center justify-center bg-rose-50 hover:bg-rose-100 transition-colors"
-                onClick={() => handleNewImage("banner")}
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-600 flex items-center justify-center group-hover:bg-rose-700 transition-colors">
-                    <Plus className="h-6 w-6 text-white" />
-                  </div>
-                  <p className="text-rose-700 font-medium">Add Banner Image</p>
-                  <p className="text-rose-600 text-sm mt-1">Click to upload</p>
-                </div>
-              </div>
-            </Card>
+
             
             {bannerImages.length === 0 && (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                No banner images configured. Add one to get started.
-              </div>
+              <Card className="overflow-hidden border-2 border-dashed border-rose-300 hover:border-rose-400 transition-colors cursor-pointer group">
+                <div 
+                  className="relative h-48 flex items-center justify-center bg-rose-50 hover:bg-rose-100 transition-colors"
+                  onClick={() => handleNewImage("banner")}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-600 flex items-center justify-center group-hover:bg-rose-700 transition-colors">
+                      <Plus className="h-6 w-6 text-white" />
+                    </div>
+                    <p className="text-rose-700 font-medium">Add Banner Image</p>
+                    <p className="text-rose-600 text-sm mt-1">Click to upload</p>
+                  </div>
+                </div>
+              </Card>
             )}
           </div>
         </TabsContent>
