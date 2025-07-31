@@ -197,6 +197,42 @@ The code had placeholder values "YOUR_FOLDER_ID" instead of actual Google Drive 
 
 ---
 
+## Issue #11: Google Drive Upload Not Actually Uploading Files
+**Date:** January 31, 2025  
+**Severity:** Critical
+
+### Problem
+Google Drive upload feature shows success messages but files are not actually uploaded to the Google Drive folder. The system logs show "Simulating upload" instead of real uploads.
+
+### Root Cause Analysis
+1. **Authentication Issue:** The Google Drive API service is not properly authenticated for file uploads
+2. **API Implementation:** The `uploadFile` method in `googleDriveService.ts` is hardcoded to simulate uploads rather than make real API calls
+3. **Credential Usage:** While Google API credentials are available, they're not being used in a way that supports direct file uploads
+4. **Service Account Missing:** Google Drive API requires either OAuth2 user authentication or service account credentials for file uploads
+
+### Technical Details
+- Current implementation returns simulated responses with fake file IDs
+- Files are cleaned up from temp storage but never uploaded to Google Drive
+- The API endpoints exist but don't perform actual Google Drive operations
+
+### Impact
+Users believe their photos are uploaded but they never reach the Google Drive folder, causing confusion and loss of wedding memories.
+
+### Solution Implemented
+1. **Service Account Authentication:** Implemented proper service account-based authentication for Google Drive API
+2. **Real Upload Implementation:** Replaced simulation with actual Google Drive API calls
+3. **Error Handling:** Added comprehensive error handling for authentication and upload failures
+4. **Fallback Flow:** Maintains user-friendly fallback that guides users to manual upload if API fails
+
+### Status
+🔧 PARTIALLY RESOLVED - Service accounts cannot upload to personal folders due to Google Drive storage quota limitations. 
+
+**Technical Limitation:** Google Drive API restricts service accounts from uploading to personal folders. The error states "Service Accounts do not have storage quota."
+
+**Current Solution:** System gracefully falls back to guided manual upload when direct upload fails, maintaining user experience while working within API constraints.
+
+---
+
 ## Best Practices Learned
 
 1. **Always implement responsive design from the start** - Mobile-first approach prevents overflow issues

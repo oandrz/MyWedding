@@ -81,24 +81,38 @@ const MemoriesGoogleDriveUpload = () => {
       const result = await response.json();
 
       if (response.ok) {
-        setUploadSuccess(true);
-        setSelectedFiles([]);
+        const successCount = result.results?.filter((r: any) => r.success).length || 0;
+        const failCount = result.results?.filter((r: any) => !r.success).length || 0;
         
-        toast({
-          title: "Ready to upload!",
-          description: "Opening Google Drive folder where you can add your photos",
-          variant: "default"
-        });
-        
-        // Open Google Drive folder in new tab for manual upload
-        setTimeout(() => {
-          window.open(googleDriveUrl, '_blank');
-        }, 1000);
-        
-        // Reset success state after 3 seconds
-        setTimeout(() => {
-          setUploadSuccess(false);
-        }, 3000);
+        if (successCount > 0) {
+          setUploadSuccess(true);
+          setSelectedFiles([]);
+          
+          toast({
+            title: "Upload successful!",
+            description: `${successCount} file(s) uploaded to Google Drive`,
+            variant: "default"
+          });
+          
+          // Reset success state after 3 seconds
+          setTimeout(() => {
+            setUploadSuccess(false);
+          }, 3000);
+        } else if (failCount > 0) {
+          // All uploads failed, fall back to manual upload
+          setSelectedFiles([]);
+          
+          toast({
+            title: "Direct upload not available",
+            description: "Opening Google Drive folder for manual upload",
+            variant: "default"
+          });
+          
+          // Open Google Drive folder in new tab for manual upload
+          setTimeout(() => {
+            window.open(googleDriveUrl, '_blank');
+          }, 1000);
+        }
       } else {
         throw new Error(result.message || 'Upload failed');
       }
@@ -304,8 +318,7 @@ const MemoriesGoogleDriveUpload = () => {
                   {/* Instructions */}
                   <Alert className="mt-6 border-blue-200 bg-blue-50">
                     <AlertDescription className="text-blue-800">
-                      <strong>Note:</strong> After clicking upload, you'll be guided to add your photos directly to our Google Drive folder. 
-                      This ensures all wedding memories are collected in one place for everyone to enjoy.
+                      <strong>Upload Process:</strong> Select your photos and click upload. If direct upload is available, your photos will be automatically added to our Google Drive folder. Otherwise, you'll be guided to the folder to add them manually.
                     </AlertDescription>
                   </Alert>
                 </CardContent>

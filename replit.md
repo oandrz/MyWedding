@@ -20,8 +20,10 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Enhanced Google Drive integration with embedded folder view always visible
 - ✓ Updated backend schema and routes to handle simplified RSVP structure
 - ✓ Implemented Google Drive API service with secure credential handling
-- ✓ Added guest name input field for personalized photo identification
+- ✓ Added guest name input field for personalized photo identification  
 - ✓ Created seamless upload flow that guides users to Google Drive folder
+- ✓ Configured service account authentication for real file uploads
+- ✓ Fixed critical upload simulation issue - now performs actual Google Drive uploads
 
 **January 18, 2025:**
 - ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests

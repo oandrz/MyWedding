@@ -9,42 +9,103 @@ export class GoogleDriveService {
   
   constructor() {
     try {
-      // Use OAuth2 client for file uploads
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        'urn:ietf:wg:oauth:2.0:oob' // For server-side apps
-      );
-
-      // For file uploads, we need to set credentials
-      // In production, you'd want to implement proper OAuth flow
-      // For now, we'll use the API in a way that works with public folders
-      this.drive = google.drive({ 
-        version: 'v3', 
-        auth: oauth2Client,
-        key: process.env.GOOGLE_DRIVE_API_KEY 
-      });
+      // Check if we have service account credentials
+      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+      
+      if (serviceAccountKey) {
+        // Use service account authentication for direct uploads
+        const serviceAccount = JSON.parse(serviceAccountKey);
+        const auth = new google.auth.GoogleAuth({
+          credentials: serviceAccount,
+          scopes: ['https://www.googleapis.com/auth/drive.file'],
+        });
+        this.drive = google.drive({ version: 'v3', auth });
+        console.log('Google Drive service initialized with service account');
+      } else {
+        // Fallback: Use OAuth2 client (requires user authentication)
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          'urn:ietf:wg:oauth:2.0:oob'
+        );
+        this.drive = google.drive({ version: 'v3', auth: oauth2Client });
+        console.log('Google Drive service initialized with OAuth2 (service account recommended)');
+      }
     } catch (error) {
       console.error('Failed to initialize Google Drive service:', error);
-      throw error;
+      this.drive = null; // Set to null to indicate initialization failure
     }
   }
 
   async uploadFile(file: Express.Multer.File, guestName?: string): Promise<{ fileId: string; webViewLink: string }> {
-    // Since Google Drive API requires proper authentication for uploads,
-    // we'll simulate a successful upload and direct users to the manual upload method
-    console.log(`Simulating upload of ${file.originalname} for ${guestName || 'Anonymous'}`);
-    
-    // Clean up the temporary file
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    if (!this.drive) {
+      throw new Error('Google Drive service not properly initialized. Service account credentials required.');
     }
-    
-    // Return a simulated successful response
-    return {
-      fileId: 'simulated_' + Date.now(),
-      webViewLink: `https://drive.google.com/drive/folders/${WEDDING_FOLDER_ID}`,
-    };
+
+    try {
+      console.log(`Attempting real upload of ${file.originalname} for ${guestName || 'Anonymous'}`);
+      
+      const fileName = guestName ? `${guestName}_${file.originalname}` : file.originalname;
+      
+      const fileMetadata = {
+        name: fileName,
+        parents: [WEDDING_FOLDER_ID],
+      };
+
+      const media = {
+        mimeType: file.mimetype,
+        body: fs.createReadStream(file.path),
+      };
+
+      const response = await this.drive.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id,webViewLink',
+      });
+
+      // Make the file publicly viewable
+      await this.drive.permissions.create({
+        fileId: response.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+
+      // Clean up the temporary file
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+
+      console.log(`Successfully uploaded ${fileName} to Google Drive with ID: ${response.data.id}`);
+
+      return {
+        fileId: response.data.id,
+        webViewLink: response.data.webViewLink,
+      };
+    } catch (error) {
+      console.error('Google Drive upload error:', error);
+      
+      // Clean up the temporary file even on error
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      
+      // Check for specific Google Drive errors
+      if ((error as any).code === 403) {
+        const errorMessage = (error as any).cause?.message || (error as Error).message;
+        if (errorMessage.includes('Service Accounts do not have storage quota')) {
+          throw new Error('Service account cannot upload to personal folders. Please use OAuth authentication or create a shared drive.');
+        }
+        throw new Error(`Permission denied: ${errorMessage}`);
+      }
+      
+      if ((error as any).code === 401) {
+        throw new Error('Authentication failed. Please check Google Drive service account credentials.');
+      }
+      
+      throw new Error(`Failed to upload to Google Drive: ${(error as Error).message}`);
+    }
   }
 
   async uploadFileFromBuffer(
