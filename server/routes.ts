@@ -11,6 +11,7 @@ import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { adminAuthMiddleware } from "./middleware/auth";
+import { googleDriveService } from "./googleDriveService";
 
 const FLASK_API_URL = "http://localhost:5001";
 
@@ -325,6 +326,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('File upload error:', error);
       res.status(500).json({
         message: 'Failed to upload file',
+        error: (error as Error).message
+      });
+    }
+  });
+
+  // Google Drive upload endpoint
+  app.post('/api/upload-to-drive', upload.array('files'), async (req: Request, res: Response) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: 'No files uploaded' });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      const { guestName } = req.body;
+      const uploadResults = [];
+
+      for (const file of files) {
+        try {
+          const result = await googleDriveService.uploadFile(file, guestName);
+          uploadResults.push({
+            filename: file.originalname,
+            success: true,
+            fileId: result.fileId,
+            webViewLink: result.webViewLink
+          });
+
+          // Clean up temp file
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (error) {
+          uploadResults.push({
+            filename: file.originalname,
+            success: false,
+            error: (error as Error).message
+          });
+        }
+      }
+
+      const successCount = uploadResults.filter(r => r.success).length;
+      const failCount = uploadResults.filter(r => !r.success).length;
+
+      res.status(200).json({
+        message: `Successfully uploaded ${successCount} file(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        results: uploadResults
+      });
+    } catch (error) {
+      console.error('Google Drive upload error:', error);
+      res.status(500).json({
+        message: 'Failed to upload files to Google Drive',
+        error: (error as Error).message
+      });
+    }
+  });
+
+  // Get Google Drive folder contents
+  app.get('/api/drive-folder-contents', async (req: Request, res: Response) => {
+    try {
+      const files = await googleDriveService.getFolderContents();
+      res.status(200).json({ files });
+    } catch (error) {
+      console.error('Error fetching Google Drive contents:', error);
+      res.status(500).json({
+        message: 'Failed to fetch folder contents',
         error: (error as Error).message
       });
     }

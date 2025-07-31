@@ -19,6 +19,9 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Created direct Google Drive upload page (/memories-upload) with drag-and-drop functionality
 - ✓ Enhanced Google Drive integration with embedded folder view always visible
 - ✓ Updated backend schema and routes to handle simplified RSVP structure
+- ✓ Implemented Google Drive API service with secure credential handling
+- ✓ Added guest name input field for personalized photo identification
+- ✓ Created seamless upload flow that guides users to Google Drive folder
 
 **January 18, 2025:**
 - ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests

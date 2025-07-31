@@ -15,6 +15,7 @@ const MemoriesGoogleDriveUpload = () => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [guestName, setGuestName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -59,24 +60,58 @@ const MemoriesGoogleDriveUpload = () => {
 
     setIsUploading(true);
     
-    // Simulate upload process
-    // In a real implementation, you would upload to Google Drive API
-    setTimeout(() => {
-      setIsUploading(false);
-      setUploadSuccess(true);
-      setSelectedFiles([]);
+    try {
+      const formData = new FormData();
       
-      toast({
-        title: "Upload successful!",
-        description: `${selectedFiles.length} file(s) uploaded to Google Drive`,
-        variant: "default"
+      // Add all selected files
+      selectedFiles.forEach((file) => {
+        formData.append('files', file);
       });
       
-      // Reset success state after 3 seconds
-      setTimeout(() => {
-        setUploadSuccess(false);
-      }, 3000);
-    }, 2000);
+      // Add guest name if provided
+      if (guestName.trim()) {
+        formData.append('guestName', guestName.trim());
+      }
+
+      const response = await fetch('/api/upload-to-drive', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setUploadSuccess(true);
+        setSelectedFiles([]);
+        
+        toast({
+          title: "Ready to upload!",
+          description: "Opening Google Drive folder where you can add your photos",
+          variant: "default"
+        });
+        
+        // Open Google Drive folder in new tab for manual upload
+        setTimeout(() => {
+          window.open(googleDriveUrl, '_blank');
+        }, 1000);
+        
+        // Reset success state after 3 seconds
+        setTimeout(() => {
+          setUploadSuccess(false);
+        }, 3000);
+      } else {
+        throw new Error(result.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: (error as Error).message || "Failed to upload files to Google Drive",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const getFileIcon = (file: File) => {
@@ -161,7 +196,8 @@ const MemoriesGoogleDriveUpload = () => {
                           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
                             <Check className="h-8 w-8 text-green-600" />
                           </div>
-                          <p className="text-lg font-semibold text-green-700">Upload Successful!</p>
+                          <p className="text-lg font-semibold text-green-700">Ready to Upload!</p>
+                          <p className="text-sm text-green-600 mt-2">Google Drive folder will open shortly</p>
                         </motion.div>
                       ) : (
                         <motion.div
@@ -219,12 +255,32 @@ const MemoriesGoogleDriveUpload = () => {
                     </motion.div>
                   )}
 
+                  {/* Guest Name Input */}
+                  <motion.div
+                    className="mt-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <label htmlFor="guestName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Your Name (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      id="guestName"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      placeholder="Enter your name to identify your photos"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                    />
+                  </motion.div>
+
                   {/* Upload Button */}
                   <motion.div
                     className="mt-6 flex justify-center"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
+                    transition={{ delay: 0.4 }}
                   >
                     <Button
                       onClick={handleUpload}
@@ -234,7 +290,7 @@ const MemoriesGoogleDriveUpload = () => {
                       {isUploading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Uploading...
+                          Preparing upload...
                         </>
                       ) : (
                         <>
@@ -248,8 +304,8 @@ const MemoriesGoogleDriveUpload = () => {
                   {/* Instructions */}
                   <Alert className="mt-6 border-blue-200 bg-blue-50">
                     <AlertDescription className="text-blue-800">
-                      <strong>Note:</strong> Your files will be uploaded to our shared Google Drive folder. 
-                      All guests can view and download the memories after the wedding.
+                      <strong>Note:</strong> After clicking upload, you'll be guided to add your photos directly to our Google Drive folder. 
+                      This ensures all wedding memories are collected in one place for everyone to enjoy.
                     </AlertDescription>
                   </Alert>
                 </CardContent>
