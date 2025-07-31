@@ -58,9 +58,9 @@ export default function GoogleDriveSetup() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Getting "redirect_uri_mismatch" error?</strong> You need to configure your Google Cloud Console first.{" "}
+                <strong>Getting OAuth errors?</strong> Common issues include redirect URI mismatch and access denied (403).{" "}
                 <a href="/google-drive-instructions" target="_blank" rel="noopener noreferrer" className="underline font-medium">
-                  Click here for detailed fix instructions
+                  Click here for detailed troubleshooting guide
                 </a>
               </AlertDescription>
             </Alert>

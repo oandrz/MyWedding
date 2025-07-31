@@ -33,7 +33,7 @@ export default function GoogleDriveInstructions() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            You're getting a redirect URI mismatch error because your Google Cloud Console configuration doesn't match this app's URL.
+            Common OAuth errors: redirect URI mismatch means URL configuration issues, while access_denied (403) means permission or app verification problems.
           </AlertDescription>
         </Alert>
 
@@ -80,11 +80,71 @@ export default function GoogleDriveInstructions() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ExternalLink className="h-5 w-5 text-green-600" />
-              Step-by-Step Fix Instructions
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Fix Error 403: access_denied
             </CardTitle>
             <CardDescription>
-              Complete these steps in Google Cloud Console to fix the OAuth configuration
+              If you're getting "access_denied" error, follow these steps to fix OAuth permissions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Badge className="bg-red-100 text-red-800 shrink-0">1</Badge>
+                <div>
+                  <h3 className="font-semibold">Configure OAuth Consent Screen</h3>
+                  <p className="text-sm text-gray-600 mb-2">Go to Google Cloud Console → APIs & Services → OAuth consent screen</p>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>• Set User Type to "External" (unless you have G Suite)</p>
+                    <p>• Fill in required fields: App name, User support email, Developer contact</p>
+                    <p>• Add your domain to "Authorized domains" if using custom domain</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Badge className="bg-red-100 text-red-800 shrink-0">2</Badge>
+                <div>
+                  <h3 className="font-semibold">Add Test Users (If App is Unverified)</h3>
+                  <p className="text-sm text-gray-600 mb-2">In OAuth consent screen → Test users section:</p>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>• Click "Add Users"</p>
+                    <p>• Add your Google account email</p>
+                    <p>• Save changes</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Badge className="bg-red-100 text-red-800 shrink-0">3</Badge>
+                <div>
+                  <h3 className="font-semibold">Verify Required Scopes</h3>
+                  <p className="text-sm text-gray-600 mb-2">Make sure these scopes are enabled:</p>
+                  <div className="bg-gray-50 p-2 rounded text-sm font-mono">
+                    https://www.googleapis.com/auth/drive.file
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Badge className="bg-green-100 text-green-800 shrink-0">4</Badge>
+                <div>
+                  <h3 className="font-semibold">Try OAuth Again</h3>
+                  <p className="text-sm text-gray-600">After making these changes, try the authorization flow again</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5 text-green-600" />
+              Fix Redirect URI Mismatch
+            </CardTitle>
+            <CardDescription>
+              If you're getting redirect_uri_mismatch error, follow these steps
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
