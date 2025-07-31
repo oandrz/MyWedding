@@ -8,6 +8,13 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 **Core System Improvements:**
 
+**January 31, 2025:**
+- ✓ Fixed admin dashboard tabs breaking on mobile - now shows icon-only tabs on small screens
+- ✓ Integrated actual Google Drive folder for guest uploads (ID: 1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC)
+- ✓ Fixed navigation scrolling issues - all menu links now smoothly scroll to sections
+- ✓ Removed "Add Banner Image" button when banner exists - replace-only model
+- ✓ Created comprehensive issues.md documentation for all resolved problems
+
 **January 18, 2025:**
 - ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests
 - ✓ Separated admin uploads from guest memories gallery to prevent confusion
