@@ -60,18 +60,21 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Start Flask server
+  // Start Flask server with improved error handling
   try {
     const { exec } = await import('child_process');
-    exec('./start_flask.sh', (error, stdout, stderr) => {
+    exec('chmod +x ./start_flask.sh && ./start_flask.sh', (error, stdout, stderr) => {
       if (error) {
         log(`Failed to start Flask server: ${error.message}`, 'flask');
+        log(`Consider running the app without Flask integration if this continues to fail`, 'flask');
         return;
       }
       if (stderr) {
         log(`Flask server stderr: ${stderr}`, 'flask');
       }
-      log(`Flask server started: ${stdout}`, 'flask');
+      if (stdout) {
+        log(`Flask server: ${stdout.trim()}`, 'flask');
+      }
     });
   } catch (err) {
     log(`Failed to start Flask server: ${err}`, 'flask');
@@ -352,16 +355,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             webViewLink: result.webViewLink
           });
 
-          // Clean up temp file
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
+          // Clean up temp file safely
+          try {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+            }
+          } catch (cleanupError) {
+            console.warn(`Failed to clean up temp file ${file.path}:`, cleanupError);
           }
         } catch (error) {
+          console.error(`Google Drive upload failed for ${file.originalname}:`, error);
           uploadResults.push({
             filename: file.originalname,
             success: false,
             error: (error as Error).message
           });
+          
+          // Still clean up temp file even if upload failed
+          try {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+            }
+          } catch (cleanupError) {
+            console.warn(`Failed to clean up temp file ${file.path} after failed upload:`, cleanupError);
+          }
         }
       }
 

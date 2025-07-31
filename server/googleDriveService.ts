@@ -71,6 +71,11 @@ export class GoogleDriveService {
       throw new Error('Google Drive service not properly initialized. Service account credentials required.');
     }
 
+    // Check if we have valid credentials
+    if (!this.oauth2Client.credentials || !this.oauth2Client.credentials.refresh_token) {
+      throw new Error('No access, refresh token, API key or refresh handler callback is set. Please complete OAuth2 authorization first.');
+    }
+
     try {
       console.log(`Attempting real upload of ${file.originalname} for ${guestName || 'Anonymous'}`);
       
