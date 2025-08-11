@@ -33,7 +33,7 @@ export default function GoogleDriveInstructions() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Common OAuth errors: redirect URI mismatch means URL configuration issues, while access_denied (403) means permission or app verification problems.
+            <strong>Getting "app is currently being tested" error?</strong> This means you need to add yourself as a test user in Google Cloud Console OAuth consent screen.
           </AlertDescription>
         </Alert>
 
@@ -92,12 +92,18 @@ export default function GoogleDriveInstructions() {
               <div className="flex items-start gap-3">
                 <Badge className="bg-red-100 text-red-800 shrink-0">1</Badge>
                 <div>
-                  <h3 className="font-semibold">Configure OAuth Consent Screen</h3>
-                  <p className="text-sm text-gray-600 mb-2">Go to Google Cloud Console → APIs & Services → OAuth consent screen</p>
+                  <h3 className="font-semibold">Go to OAuth Consent Screen</h3>
+                  <p className="text-sm text-gray-600 mb-2">Click this direct link to open the OAuth consent screen:</p>
+                  <Button asChild variant="outline" size="sm" className="mb-2">
+                    <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open OAuth Consent Screen
+                    </a>
+                  </Button>
                   <div className="text-sm text-gray-600 space-y-1">
                     <p>• Set User Type to "External" (unless you have G Suite)</p>
                     <p>• Fill in required fields: App name, User support email, Developer contact</p>
-                    <p>• Add your domain to "Authorized domains" if using custom domain</p>
+                    <p>• Save and continue through the scopes (you can skip optional scopes)</p>
                   </div>
                 </div>
               </div>
@@ -105,13 +111,17 @@ export default function GoogleDriveInstructions() {
               <div className="flex items-start gap-3">
                 <Badge className="bg-red-100 text-red-800 shrink-0">2</Badge>
                 <div>
-                  <h3 className="font-semibold">Add Test Users (If App is Unverified)</h3>
-                  <p className="text-sm text-gray-600 mb-2">In OAuth consent screen → Test users section:</p>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>• Click "Add Users"</p>
-                    <p>• Add your Google account email</p>
-                    <p>• Save changes</p>
+                  <h3 className="font-semibold">⚠️ CRITICAL: Add Yourself as Test User</h3>
+                  <p className="text-sm text-gray-600 mb-2">This fixes the "app is currently being tested" error:</p>
+                  <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-2">
+                    <p className="text-sm font-medium">In the OAuth consent screen, scroll down to "Test users" section:</p>
+                    <div className="text-sm space-y-1 mt-1">
+                      <p>1. Click "ADD USERS" button</p>
+                      <p>2. Enter your Google account email (the one you're trying to authorize with)</p>
+                      <p>3. Click "Save" - this is essential!</p>
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-500">Without this step, you'll get the "app is currently being tested" error</p>
                 </div>
               </div>
 
@@ -130,7 +140,12 @@ export default function GoogleDriveInstructions() {
                 <Badge className="bg-green-100 text-green-800 shrink-0">4</Badge>
                 <div>
                   <h3 className="font-semibold">Try OAuth Again</h3>
-                  <p className="text-sm text-gray-600">After making these changes, try the authorization flow again</p>
+                  <p className="text-sm text-gray-600 mb-2">After adding yourself as a test user, try the authorization flow again:</p>
+                  <Button asChild variant="outline" size="sm">
+                    <a href="/google-drive-setup" target="_blank" rel="noopener noreferrer">
+                      Go to OAuth Setup Page
+                    </a>
+                  </Button>
                 </div>
               </div>
             </div>
