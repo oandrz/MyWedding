@@ -207,43 +207,76 @@ const Gallery = () => {
                 >
                   Failed to load memories. Please try again later.
                 </motion.div>
-              ) : data && data.media && data.media.length > 0 ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                >
-                  {data.media.map((item: Media, index) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow">
-                        <CardContent className="p-4">
-                          {renderMedia(item)}
-                          <h3 className="font-semibold text-lg">{item.name}</h3>
-                          {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
-                          <p className="text-xs text-gray-400 mt-2">
-                            Shared on {new Date(item.createdAt).toLocaleDateString()}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </motion.div>
               ) : (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center py-12"
+                  className="space-y-6"
                 >
-                  <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg mb-2">No memories have been shared yet</p>
-                  <p className="text-gray-400">
-                    Be the first to share a special moment by clicking "Share Photos"!
-                  </p>
+                  {/* Google Drive Embedded Folder */}
+                  <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-6 rounded-lg border border-rose-200">
+                    <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                      <Heart className="h-5 w-5 text-rose-500" />
+                      Live Wedding Photos
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      See all the amazing photos guests are sharing in real-time!
+                    </p>
+                    
+                    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                      <iframe
+                        src="https://drive.google.com/embeddedfolderview?id=1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC#grid"
+                        width="100%"
+                        height="400"
+                        frameBorder="0"
+                        className="w-full"
+                        title="Wedding Photos - Live Gallery"
+                      ></iframe>
+                    </div>
+                    
+                    <div className="mt-4 flex justify-center">
+                      <a
+                        href="https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC?usp=sharing"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 transition-colors"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Open Full Gallery in New Window
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Individual Media Cards (if any local uploads exist) */}
+                  {data && data.media && data.media.length > 0 && (
+                    <div>
+                      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <Users className="h-5 w-5 text-gray-600" />
+                        Individual Memories
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {data.media.map((item: Media, index) => (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                          >
+                            <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow">
+                              <CardContent className="p-4">
+                                {renderMedia(item)}
+                                <h3 className="font-semibold text-lg">{item.name}</h3>
+                                {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
+                                <p className="text-xs text-gray-400 mt-2">
+                                  Shared on {new Date(item.createdAt).toLocaleDateString()}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -388,11 +421,19 @@ const Gallery = () => {
                     </AnimatePresence>
                   </div>
 
-                  {/* Simple note */}
+                  {/* Simple note with direct link to view */}
                   <div className="mt-6 p-4 bg-rose-50 rounded-lg border border-rose-200">
-                    <p className="text-sm text-rose-800 text-center">
-                      Photos uploaded here are instantly shared to the wedding memories gallery!
+                    <p className="text-sm text-rose-800 text-center mb-2">
+                      Photos uploaded here appear instantly in your Google Drive wedding folder!
                     </p>
+                    <div className="flex justify-center">
+                      <button 
+                        onClick={() => setActiveTab("view")}
+                        className="text-sm text-rose-600 hover:text-rose-700 underline"
+                      >
+                        View your uploaded photos →
+                      </button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

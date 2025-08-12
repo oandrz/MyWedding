@@ -8,6 +8,17 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 **Core System Improvements:**
 
+**August 12, 2025:**
+- ✓ Completely redesigned wedding memories gallery with guest-friendly interface
+- ✓ Embedded live Google Drive folder (1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC) directly in wedding invitation
+- ✓ Removed all business language - now uses wedding-themed copy with hearts and rose colors
+- ✓ Integrated drag-and-drop photo sharing directly in memories page (no separate pages)
+- ✓ Real-time photo viewing - uploaded photos appear instantly in embedded Google Drive
+- ✓ Simplified upload experience: optional guest name field, instant sharing
+- ✓ Beautiful wedding-themed animations and interactions with Framer Motion
+- ✓ Added direct link to open full Google Drive gallery in new window
+- ✓ Photos now visible immediately after upload without database sync issues
+
 **January 31, 2025:**
 - ✓ Fixed admin dashboard tabs breaking on mobile - now shows icon-only tabs on small screens
 - ✓ Integrated actual Google Drive folder for guest uploads (ID: 1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC)
