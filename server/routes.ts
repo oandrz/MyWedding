@@ -348,11 +348,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const file of files) {
         try {
           const result = await googleDriveService.uploadFile(file, guestName);
+          
+          // Create a direct viewable URL for the Google Drive file
+          const directImageUrl = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
+          
+          // Determine media type
+          let mediaType: string;
+          if (file.mimetype.startsWith('image/')) {
+            mediaType = 'image';
+          } else if (file.mimetype.startsWith('video/')) {
+            mediaType = 'video';
+          } else {
+            mediaType = 'image'; // Default to image
+          }
+          
+          // Save to local media database so it appears in gallery
+          const mediaData = {
+            name: guestName || 'Wedding Guest',
+            email: 'guest@wedding.com',
+            mediaType,
+            mediaUrl: directImageUrl,
+            caption: `Shared via Google Drive`,
+            approved: true // Auto-approve Google Drive uploads
+          };
+          
+          const media = await storage.createMedia(mediaData);
+          
           uploadResults.push({
             filename: file.originalname,
             success: true,
             fileId: result.fileId,
-            webViewLink: result.webViewLink
+            webViewLink: result.webViewLink,
+            mediaId: media.id
           });
 
           // Clean up temp file safely
@@ -387,6 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(200).json({
         message: `Successfully uploaded ${successCount} file(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        successCount,
         results: uploadResults
       });
     } catch (error) {
