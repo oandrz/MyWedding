@@ -1,32 +1,14 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { insertMediaSchema } from "../../../shared/schema";
 import NavBar from "@/components/NavBar";
-import { Link } from "wouter";
-import { Camera, Upload, Users, Clock, CheckCircle, XCircle, Plus, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
-
-// Simplified schema for quick memory sharing
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
-  email: z.string().email({ message: "Please enter a valid email address." }).optional(),
-  mediaUrl: z.string().url({ message: "Please enter a valid URL." }),
-  caption: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { Camera, Upload, Heart, Cloud, CheckCircle, Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Media {
   id: number;
@@ -41,22 +23,12 @@ interface Media {
 
 const Gallery = () => {
   const [activeTab, setActiveTab] = useState("view");
-  const [uploadTab, setUploadTab] = useState<"link" | "file">("link");
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [guestName, setGuestName] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Form for submitting new media
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "Anonymous",
-      email: "guest@event.com", 
-      mediaUrl: "",
-      caption: "",
-    },
-  });
 
   // Query for fetching approved media
   const { data, isLoading, error } = useQuery<{ media: Media[] }>({
@@ -64,106 +36,86 @@ const Gallery = () => {
     enabled: activeTab === "view",
   });
 
-  // Mutation for submitting new media
-  const { mutate, isPending } = useMutation({
-    mutationFn: (values: FormValues) => 
-      apiRequest("POST", "/api/media", values),
-    onSuccess: () => {
-      toast({
-        title: "Success!",
-        description: "Your memory has been shared and added to the gallery.",
-      });
-      form.reset();
-      // Invalidate the query cache to refresh the gallery data
-      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
-      // Switch to the view tab to show the updated gallery
-      setActiveTab("view");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to share your memory. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (values: FormValues) => {
-    mutate(values);
-  };
-
-  // File upload mutation
-  const { mutate: uploadFile, isPending: isUploading } = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to upload file');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      setUploading(false);
-      toast({
-        title: "Upload Successful!",
-        description: "Your memory has been shared and added to the gallery.",
-      });
-      // Invalidate the query cache to refresh the gallery data
-      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
-      // Switch to the view tab to show the updated gallery
-      setActiveTab("view");
-    },
-    onError: (error: any) => {
-      setUploading(false);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to upload your file. Please try again.",
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file.name);
-    } else {
-      setSelectedFile(null);
+  // Google Drive upload functionality
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
     }
   };
-  
-  // Handle file upload
-  const handleFileUpload = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
     
-    // Get form data
-    const formElement = event.currentTarget;
-    const formData = new FormData(formElement);
-    
-    // Check if file was selected
-    const file = formData.get('file') as File;
-    if (!file || file.size === 0) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleFiles = (files: FileList) => {
+    const fileArray = Array.from(files).slice(0, 10); // Limit to 10 files
+    setSelectedFiles(fileArray);
+  };
+
+  const handleGoogleDriveUpload = async () => {
+    if (selectedFiles.length === 0) {
       toast({
-        title: "Error",
-        description: "Please select a file to upload.",
-        variant: "destructive",
+        title: "No files selected",
+        description: "Please choose some photos to share",
+        variant: "destructive"
       });
       return;
     }
-    
 
-    
-    // Set uploading state and submit the file
     setUploading(true);
-    uploadFile(formData);
+    const formData = new FormData();
+    
+    selectedFiles.forEach((file) => {
+      formData.append('files', file);
+    });
+    
+    if (guestName.trim()) {
+      formData.append('guestName', guestName.trim());
+    }
+
+    try {
+      const response = await fetch('/api/upload-to-drive', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Photos shared! ❤️",
+        description: `Successfully shared ${result.successCount} photos to the wedding memories`,
+      });
+      
+      setSelectedFiles([]);
+      setGuestName("");
+      setActiveTab("view");
+      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
+      
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Couldn't share your photos right now. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
   };
-  
+
   // Render media item
   const renderMedia = (item: Media) => {
     if (item.mediaType === "image") {
@@ -210,247 +162,241 @@ const Gallery = () => {
     <div className="min-h-screen bg-white">
       <NavBar />
       <div className="container py-24 max-w-5xl mx-auto px-4">
-        <h1 className="text-4xl font-bold text-center mb-2">Memories Gallery</h1>
-        <p className="text-center text-gray-600 mb-8">
-          Share and view cherished moments from our wedding journey
-        </p>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-3">
+            <Camera className="h-8 w-8 text-rose-500" />
+            Wedding Memories
+          </h1>
+          <p className="text-gray-600">
+            Share and view precious moments from our special day
+          </p>
+        </motion.div>
 
         <Tabs defaultValue="view" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="view">View Gallery</TabsTrigger>
-            <TabsTrigger value="share">Share Your Memory</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="view" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              View Gallery
+            </TabsTrigger>
+            <TabsTrigger value="share" className="flex items-center gap-2">
+              <Heart className="h-4 w-4" />
+              Share Photos
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="view" className="mt-6">
-            {isLoading ? (
-              <div className="text-center py-12">Loading memories...</div>
-            ) : error ? (
-              <div className="text-center py-12 text-red-500">
-                Failed to load memories. Please try again later.
-              </div>
-            ) : data && data.media && data.media.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {data && data.media && data.media.map((item: Media) => (
-                  <Card key={item.id} className="overflow-hidden h-full">
-                    <CardContent className="p-4">
-                      {renderMedia(item)}
-                      <h3 className="font-semibold text-lg">{item.name}</h3>
-                      {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
-                      <p className="text-xs text-gray-400 mt-2">
-                        Shared on {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500">No memories have been shared yet.</p>
-                <p className="mt-2">
-                  Be the first to share your special memory by clicking on "Share Your Memory"!
-                </p>
-              </div>
-            )}
+            <AnimatePresence>
+              {isLoading ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12"
+                >
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
+                  <p className="mt-4 text-gray-600">Loading precious memories...</p>
+                </motion.div>
+              ) : error ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12 text-red-500"
+                >
+                  Failed to load memories. Please try again later.
+                </motion.div>
+              ) : data && data.media && data.media.length > 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                >
+                  {data.media.map((item: Media, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow">
+                        <CardContent className="p-4">
+                          {renderMedia(item)}
+                          <h3 className="font-semibold text-lg">{item.name}</h3>
+                          {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
+                          <p className="text-xs text-gray-400 mt-2">
+                            Shared on {new Date(item.createdAt).toLocaleDateString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12"
+                >
+                  <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg mb-2">No memories have been shared yet</p>
+                  <p className="text-gray-400">
+                    Be the first to share a special moment by clicking "Share Photos"!
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </TabsContent>
           
           <TabsContent value="share" className="mt-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Share Your Memory</h2>
-                  <p className="text-gray-600">
-                    Quickly share photos or videos from our wedding! Perfect for capturing moments during the event.
-                    Name and email are optional - just upload and share instantly.
-                  </p>
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-blue-800 text-sm mb-2">
-                      <strong>New!</strong> Try our Google Drive option for faster uploads:
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                      <Heart className="h-5 w-5 text-rose-500" />
+                      Share Your Photos
+                    </h2>
+                    <p className="text-gray-600">
+                      Drag and drop your photos here or click to select. They'll be shared instantly with everyone!
                     </p>
-                    <Link href="/memories-drive">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <ExternalLink className="h-4 w-4" />
-                        Upload via Google Drive
-                      </Button>
-                    </Link>
                   </div>
-                </div>
-                
-                <Separator className="my-6" />
-                
-                <Tabs defaultValue="link" value={uploadTab} onValueChange={(value) => setUploadTab(value as "link" | "file")} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="link">Share via URL</TabsTrigger>
-                    <TabsTrigger value="file">Upload from Device</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="link" className="mt-6">
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Your Name (Optional)</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Anonymous" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email (Optional)</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="guest@event.com" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <FormField
-                          control={form.control}
-                          name="mediaUrl"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Media URL</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="https://example.com/your-image.jpg or https://youtube.com/embed/your-video-id" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Share an image link or YouTube video URL. The system will automatically detect the media type.
-                              </p>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="caption"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Caption (Optional)</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Add a caption to your memory..." 
-                                  className="resize-none" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <Button type="submit" className="w-full" disabled={isPending}>
-                          {isPending ? "Submitting..." : "Share Memory via URL"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </TabsContent>
-                  
-                  <TabsContent value="file" className="mt-6">
-                    <form onSubmit={handleFileUpload} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label htmlFor="name" className="text-sm font-medium">
-                            Your Name (Optional)
-                          </label>
-                          <Input 
-                            id="name" 
-                            name="name" 
-                            placeholder="Anonymous" 
-                            defaultValue="Anonymous"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label htmlFor="email" className="text-sm font-medium">
-                            Email (Optional)
-                          </label>
-                          <Input 
-                            id="email" 
-                            name="email" 
-                            type="email" 
-                            placeholder="guest@event.com" 
-                            defaultValue="guest@event.com"
-                          />
-                        </div>
-                      </div>
+
+                  {/* Google Drive Upload Interface */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <Input
+                        placeholder="Your name (optional)"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        className="max-w-sm"
+                      />
+                    </div>
+
+                    {/* Drag and Drop Area */}
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+                        dragActive 
+                          ? "border-rose-400 bg-rose-50 scale-[1.02]" 
+                          : "border-gray-300 hover:border-rose-300 hover:bg-gray-50"
+                      }`}
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,video/*"
+                        onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                        className="hidden"
+                      />
                       
-                      <div className="space-y-2">
-                        <label htmlFor="file" className="text-sm font-medium">
-                          Upload File
-                        </label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:bg-gray-50"
-                          onClick={() => fileInputRef.current?.click()}>
-                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                          <p className="mt-2 text-sm text-gray-600">
-                            Click to select a file, or drag and drop
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Images (JPG, PNG, GIF) or Videos (MP4) up to 10MB
-                          </p>
-                          <input
-                            id="file"
-                            name="file"
-                            type="file"
-                            className="hidden"
-                            accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime"
-                            ref={fileInputRef}
-                            required
-                            onChange={handleFileChange}
-                          />
-                        </div>
-                        {selectedFile && (
-                          <p className="text-sm text-green-600">
-                            File selected: {selectedFile}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label htmlFor="caption" className="text-sm font-medium">
-                          Caption (Optional)
-                        </label>
-                        <Textarea 
-                          id="caption" 
-                          name="caption" 
-                          placeholder="Add a caption to your memory..." 
-                          className="resize-none" 
-                        />
-                      </div>
-                      
-                      <Button type="submit" className="w-full" disabled={uploading}>
-                        {uploading ? (
-                          <span className="flex items-center gap-2">
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-opacity-20 border-t-white"></span>
-                            Uploading...
-                          </span>
+                      <AnimatePresence mode="wait">
+                        {selectedFiles.length > 0 ? (
+                          <motion.div
+                            key="files-selected"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                          >
+                            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                            <p className="text-lg font-medium text-gray-900">
+                              {selectedFiles.length} photo{selectedFiles.length !== 1 ? 's' : ''} ready to share
+                            </p>
+                            <div className="mt-2 space-y-1">
+                              {selectedFiles.slice(0, 3).map((file, index) => (
+                                <p key={index} className="text-sm text-gray-600">
+                                  {file.name}
+                                </p>
+                              ))}
+                              {selectedFiles.length > 3 && (
+                                <p className="text-sm text-gray-600">
+                                  ...and {selectedFiles.length - 3} more
+                                </p>
+                              )}
+                            </div>
+                          </motion.div>
                         ) : (
-                          <span className="flex items-center gap-2">
-                            <Upload className="h-4 w-4" />
-                            Upload Memory
-                          </span>
+                          <motion.div
+                            key="empty-state"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                          >
+                            <Cloud className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-lg font-medium text-gray-900 mb-2">
+                              Drop your photos here
+                            </p>
+                            <p className="text-sm text-gray-600 mb-4">
+                              or click to browse from your device
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              Choose Photos
+                            </Button>
+                          </motion.div>
                         )}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Upload Button */}
+                    <AnimatePresence>
+                      {selectedFiles.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="flex justify-center"
+                        >
+                          <Button
+                            onClick={handleGoogleDriveUpload}
+                            disabled={uploading}
+                            size="lg"
+                            className="gap-2 bg-rose-500 hover:bg-rose-600"
+                          >
+                            {uploading ? (
+                              <>
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </motion.div>
+                                Sharing Photos...
+                              </>
+                            ) : (
+                              <>
+                                <Heart className="h-4 w-4" />
+                                Share {selectedFiles.length} Photo{selectedFiles.length !== 1 ? 's' : ''}
+                              </>
+                            )}
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Simple note */}
+                  <div className="mt-6 p-4 bg-rose-50 rounded-lg border border-rose-200">
+                    <p className="text-sm text-rose-800 text-center">
+                      Photos uploaded here are instantly shared to the wedding memories gallery!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </TabsContent>
         </Tabs>
       </div>
