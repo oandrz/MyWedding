@@ -5,8 +5,10 @@ Main entry point for the wedding e-invitation Flask application.
 This file initializes the Flask app and registers all routes.
 """
 
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+import subprocess
+import os
 from app_modules.routes import (
     register_rsvp_routes,
     register_message_routes,
@@ -26,6 +28,14 @@ def create_app() -> Flask:
     # Configure CORS to allow requests from the frontend
     CORS(app)
     
+    # Add caching headers middleware
+    @app.after_request
+    def add_cache_headers(response):
+        # Cache static responses for 5 minutes
+        if request.method == 'GET' and response.status_code == 200:
+            response.headers['Cache-Control'] = 'public, max-age=300'
+        return response
+
     # Register route handlers
     register_rsvp_routes(app)
     register_message_routes(app)

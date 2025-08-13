@@ -1,86 +1,50 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  // Add admin key to requests if it's an admin route and admin key exists
-  const isAdminRoute = url.startsWith('/api/admin');
-  const adminKey = localStorage.getItem('adminKey');
-  
-  let headers: Record<string, string> = {};
-  
-  if (data) {
-    headers['Content-Type'] = 'application/json';
-  }
-  
-  // For admin routes, add the admin key as a query parameter
-  let requestUrl = url;
-  if (isAdminRoute && adminKey) {
-    const separator = url.includes('?') ? '&' : '?';
-    requestUrl = `${url}${separator}adminKey=${adminKey}`;
-  }
-  
-  const res = await fetch(requestUrl, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
-
-  await throwIfResNotOk(res);
-  return res;
-}
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const url = queryKey[0] as string;
-    // Add admin key to requests if it's an admin route and admin key exists
-    const isAdminRoute = url.startsWith('/api/admin');
-    const adminKey = localStorage.getItem('adminKey');
-    
-    // For admin routes, add the admin key as a query parameter
-    let requestUrl = url;
-    if (isAdminRoute && adminKey) {
-      const separator = url.includes('?') ? '&' : '?';
-      requestUrl = `${url}${separator}adminKey=${adminKey}`;
-    }
-    
-    const res = await fetch(requestUrl, {
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
-
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
-
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      // Cache data for 5 minutes
+      staleTime: 5 * 60 * 1000,
+      // Keep cache for 10 minutes  
+      gcTime: 10 * 60 * 1000,
+      // Retry failed requests once
+      retry: 1,
+      // Refetch on window focus only if data is stale
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      // Don't refetch on reconnect unless data is stale
+      refetchOnReconnect: 'always',
     },
     mutations: {
-      retry: false,
+      // Retry failed mutations once
+      retry: 1,
     },
   },
 });
+
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+
+export async function apiRequest(
+  method: HttpMethod,
+  url: string,
+  data?: any
+) {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(data ? { body: JSON.stringify(data) } : {}),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || response.statusText);
+  }
+
+  return response;
+}
+
+export const defaultQueryFn: QueryFunction = async ({ queryKey }) => {
+  const response = await apiRequest("GET", queryKey[0] as string);
+  return response.json();
+};
