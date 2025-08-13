@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { insertMediaSchema } from "../../../shared/schema";
 import NavBar from "@/components/NavBar";
 import { Upload } from "lucide-react";
+import { Suspense, lazy, memo } from "react";
 
 // Extend the schema for form validation
 const formSchema = insertMediaSchema.extend({
@@ -41,6 +42,63 @@ interface Media {
   createdAt: string;
 }
 
+// Memoized gallery item component for better performance
+const GalleryItem = memo(({ item }: { item: Media }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <CardContent className="p-0">
+        {item.mediaType === "image" ? (
+          <div className="relative aspect-square bg-gray-100">
+            {!imageLoaded && !imageError && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            )}
+            {imageError ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                <p className="text-gray-500 text-sm">Failed to load image</p>
+              </div>
+            ) : (
+              <img
+                src={item.mediaUrl}
+                alt={item.caption || "Gallery image"}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+                loading="lazy"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageError(true)}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="relative aspect-square bg-black">
+            <video
+              src={item.mediaUrl}
+              controls
+              className="w-full h-full object-contain"
+              preload="metadata"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
+        {item.caption && (
+          <div className="p-4">
+            <p className="text-sm text-muted-foreground">{item.caption}</p>
+            <p className="text-xs text-muted-foreground mt-2">- {item.name}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+});
+
+GalleryItem.displayName = 'GalleryItem';
+
 const Gallery = () => {
   const [activeTab, setActiveTab] = useState("view");
   const [uploadTab, setUploadTab] = useState<"link" | "file">("link");
@@ -65,6 +123,10 @@ const Gallery = () => {
   const { data, isLoading, error } = useQuery<{ media: Media[] }>({
     queryKey: ["/api/media"],
     enabled: activeTab === "view",
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/media");
+      return response.json();
+    },
   });
 
   // Mutation for submitting new media
@@ -241,26 +303,15 @@ const Gallery = () => {
                 Failed to load memories. Please try again later.
               </div>
             ) : data && data.media && data.media.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {data && data.media && data.media.map((item: Media) => (
-                  <Card key={item.id} className="overflow-hidden h-full">
-                    <CardContent className="p-4">
-                      {renderMedia(item)}
-                      <h3 className="font-semibold text-lg">{item.name}</h3>
-                      {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
-                      <p className="text-xs text-gray-400 mt-2">
-                        Shared on {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {data && data.media.map((item) => (
+                  <GalleryItem key={item.id} item={item} />
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500">No memories have been shared yet.</p>
-                <p className="mt-2">
-                  Be the first to share your special memory by clicking on "Share Your Memory"!
-                </p>
+                <p className="text-muted-foreground mb-4">No memories shared yet. Be the first!</p>
+                <Button onClick={() => setActiveTab("share")}>Share a Memory</Button>
               </div>
             )}
           </TabsContent>

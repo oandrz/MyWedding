@@ -44,6 +44,7 @@ class MemStorage:
     def __init__(self):
         self.users: Dict[int, User] = {}
         self.rsvps: Dict[int, Rsvp] = {}
+        self.rsvps_by_email: Dict[str, int] = {}  # Email index for faster lookups
         self.current_user_id = 1
         self.current_rsvp_id = 1
     
@@ -51,6 +52,7 @@ class MemStorage:
         return self.users.get(id)
     
     def get_user_by_username(self, username: str) -> Optional[User]:
+        # TODO: Add username index for O(1) lookup
         for user in self.users.values():
             if user.username == username:
                 return user
@@ -68,21 +70,32 @@ class MemStorage:
         self.current_rsvp_id += 1
         rsvp = Rsvp(id=id, **insert_rsvp.model_dump())
         self.rsvps[id] = rsvp
+        # Update email index
+        self.rsvps_by_email[rsvp.email.lower()] = id
         return rsvp
     
     def update_rsvp(self, id: int, insert_rsvp: InsertRsvp) -> Rsvp:
         """Update an existing RSVP while keeping its ID"""
+        # Remove old email index if email changed
+        old_rsvp = self.rsvps.get(id)
+        if old_rsvp and old_rsvp.email.lower() != insert_rsvp.email.lower():
+            self.rsvps_by_email.pop(old_rsvp.email.lower(), None)
+        
         rsvp = Rsvp(id=id, **insert_rsvp.model_dump())
         self.rsvps[id] = rsvp
+        # Update email index
+        self.rsvps_by_email[rsvp.email.lower()] = id
         return rsvp
     
     def get_rsvps(self) -> List[Rsvp]:
-        return list(self.rsvps.values())
+        # Return sorted by ID for consistent ordering
+        return sorted(self.rsvps.values(), key=lambda x: x.id, reverse=True)
     
     def get_rsvp_by_email(self, email: str) -> Optional[Rsvp]:
-        for rsvp in self.rsvps.values():
-            if rsvp.email.lower() == email.lower():
-                return rsvp
+        # O(1) lookup using email index
+        rsvp_id = self.rsvps_by_email.get(email.lower())
+        if rsvp_id:
+            return self.rsvps.get(rsvp_id)
         return None
 
 # Initialize storage
@@ -177,6 +190,7 @@ class MessageBoard:
     def __init__(self):
         self.messages: Dict[int, Message] = {}
         self.current_message_id = 1
+        self._sorted_message_ids: List[int] = []  # Cache sorted IDs
     
     def add_message(self, insert_message: InsertMessage) -> Message:
         id = self.current_message_id
@@ -190,15 +204,21 @@ class MessageBoard:
             created_at=created_at
         )
         self.messages[id] = message
+        # Insert at beginning for newest first
+        self._sorted_message_ids.insert(0, id)
         return message
     
-    def get_messages(self) -> List[Message]:
-        # Return messages sorted by newest first
-        return sorted(
-            list(self.messages.values()),
-            key=lambda x: x.created_at,
-            reverse=True
-        )
+    def get_messages(self, limit: Optional[int] = None, offset: int = 0) -> List[Message]:
+        # Use cached sorted IDs for efficient pagination
+        if limit:
+            message_ids = self._sorted_message_ids[offset:offset + limit]
+        else:
+            message_ids = self._sorted_message_ids[offset:]
+        
+        return [self.messages[id] for id in message_ids if id in self.messages]
+    
+    def get_message_count(self) -> int:
+        return len(self.messages)
 
 # Initialize message board
 message_board = MessageBoard()
@@ -223,11 +243,16 @@ def create_message():
 @app.route('/api/messages', methods=['GET'])
 def get_messages():
     try:
-        messages = message_board.get_messages()
+        # Support pagination parameters
+        limit = request.args.get('limit', type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        messages = message_board.get_messages(limit=limit, offset=offset)
         messages_dict = [message.model_dump() for message in messages]
         
         return jsonify({
-            "messages": messages_dict
+            "messages": messages_dict,
+            "total": message_board.get_message_count()
         }), 200
     
     except Exception as e:
