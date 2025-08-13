@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, templates, type Template, type InsertTemplate } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 
@@ -31,13 +31,6 @@ export interface IStorage {
   getConfigImage(imageKey: string): Promise<ConfigImage | undefined>;
   getConfigImagesByType(imageType: string): Promise<ConfigImage[]>;
   getAllConfigImages(): Promise<ConfigImage[]>;
-  
-  // Template methods
-  createTemplate(templateData: InsertTemplate): Promise<Template>;
-  getAllTemplates(): Promise<Template[]>;
-  getActiveTemplate(): Promise<Template | undefined>;
-  setActiveTemplate(templateId: number): Promise<Template | undefined>;
-  getTemplateById(id: number): Promise<Template | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -45,28 +38,23 @@ export class MemStorage implements IStorage {
   private rsvps: Map<number, Rsvp>;
   private medias: Map<number, Media>;
   private configImages: Map<string, ConfigImage>;
-  private templates: Map<number, Template>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
   currentConfigImageId: number;
-  currentTemplateId: number;
 
   constructor() {
     this.users = new Map();
     this.rsvps = new Map();
     this.medias = new Map();
     this.configImages = new Map();
-    this.templates = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
     this.currentConfigImageId = 1;
-    this.currentTemplateId = 1;
 
-    // Initialize default images and templates
+    // Initialize default images
     this.initializeDefaultImages();
-    this.initializeDefaultTemplates();
   }
 
   private initializeDefaultImages() {
@@ -110,34 +98,6 @@ export class MemStorage implements IStorage {
     });
   }
 
-  private initializeDefaultTemplates() {
-    // Initialize with Classic Rose template as default
-    const defaultTemplate: Template = {
-      id: this.currentTemplateId++,
-      name: 'Classic Rose',
-      description: 'Romantic pink and rose tones with elegant typography',
-      colorScheme: JSON.stringify({
-        background: '30 33% 97%',
-        foreground: '20 10% 29%',
-        primary: '0 41% 76%',
-        primaryForeground: '0 0% 100%',
-        secondary: '142 13% 75%',
-        secondaryForeground: '0 0% 100%',
-        accent: '45 70% 52%',
-        accentForeground: '0 0% 100%',
-        muted: '30 4% 90%',
-        mutedForeground: '20 10% 40%',
-        border: '30 10% 85%',
-        ring: '35 91% 65%'
-      }),
-      fontFamily: 'Inter',
-      isActive: true,
-      isDefault: true,
-      createdAt: new Date().toISOString()
-    };
-    this.templates.set(1, defaultTemplate);
-  }
-
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -161,7 +121,9 @@ export class MemStorage implements IStorage {
     const rsvpEntry: Rsvp = { 
       ...insertRsvp, 
       id,
-      guestCount: insertRsvp.guestCount ?? null
+      message: insertRsvp.message ?? null,
+      guestCount: insertRsvp.guestCount ?? null,
+      dietaryRestrictions: insertRsvp.dietaryRestrictions ?? null
     };
     this.rsvps.set(id, rsvpEntry);
     return rsvpEntry;
@@ -176,7 +138,9 @@ export class MemStorage implements IStorage {
     const rsvpEntry: Rsvp = { 
       ...insertRsvp, 
       id,
-      guestCount: insertRsvp.guestCount ?? null
+      message: insertRsvp.message ?? null,
+      guestCount: insertRsvp.guestCount ?? null,
+      dietaryRestrictions: insertRsvp.dietaryRestrictions ?? null
     };
     this.rsvps.set(id, rsvpEntry);
     return rsvpEntry;
@@ -195,7 +159,6 @@ export class MemStorage implements IStorage {
     const mediaEntry: Media = {
       ...insertMedia,
       id,
-      mediaType: insertMedia.mediaType || 'image', // Ensure mediaType is always set
       caption: insertMedia.caption ?? null,
       approved: false,
       createdAt: now.toISOString()
@@ -281,50 +244,6 @@ export class MemStorage implements IStorage {
   async deleteConfigImage(imageKey: string): Promise<boolean> {
     return this.configImages.delete(imageKey);
   }
-
-  // Template methods for MemStorage
-  async createTemplate(insertTemplate: InsertTemplate): Promise<Template> {
-    const id = this.currentTemplateId++;
-    const now = new Date();
-    const templateEntry: Template = {
-      ...insertTemplate,
-      id,
-      fontFamily: insertTemplate.fontFamily || 'Inter',
-      isActive: insertTemplate.isActive || false,
-      isDefault: insertTemplate.isDefault || false,
-      createdAt: now.toISOString()
-    };
-    this.templates.set(id, templateEntry);
-    return templateEntry;
-  }
-
-  async getAllTemplates(): Promise<Template[]> {
-    return Array.from(this.templates.values())
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }
-
-  async getActiveTemplate(): Promise<Template | undefined> {
-    return Array.from(this.templates.values()).find(template => template.isActive);
-  }
-
-  async setActiveTemplate(templateId: number): Promise<Template | undefined> {
-    // Deactivate all templates first
-    this.templates.forEach(template => {
-      template.isActive = false;
-    });
-    
-    // Activate the selected template
-    const template = this.templates.get(templateId);
-    if (template) {
-      template.isActive = true;
-      this.templates.set(templateId, template);
-    }
-    return template;
-  }
-
-  async getTemplateById(id: number): Promise<Template | undefined> {
-    return this.templates.get(id);
-  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -377,13 +296,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
-    const mediaData = {
-      ...insertMedia,
-      mediaType: insertMedia.mediaType || 'image' // Ensure mediaType is always set
-    };
     const [mediaEntry] = await db
       .insert(media)
-      .values(mediaData)
+      .values(insertMedia)
       .returning();
     return mediaEntry;
   }
@@ -475,29 +390,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(configImages)
       .where(eq(configImages.imageKey, imageKey));
-    return (result.rowCount ?? 0) > 0;
-  }
-
-  // Template methods for DatabaseStorage (placeholder implementation)
-  async createTemplate(insertTemplate: InsertTemplate): Promise<Template> {
-    // This would be implemented with actual database operations
-    throw new Error('Database template operations not implemented');
-  }
-
-  async getAllTemplates(): Promise<Template[]> {
-    return [];
-  }
-
-  async getActiveTemplate(): Promise<Template | undefined> {
-    return undefined;
-  }
-
-  async setActiveTemplate(templateId: number): Promise<Template | undefined> {
-    return undefined;
-  }
-
-  async getTemplateById(id: number): Promise<Template | undefined> {
-    return undefined;
+    return result.rowCount > 0;
   }
 }
 
