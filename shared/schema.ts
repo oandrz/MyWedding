@@ -50,6 +50,17 @@ export const configImages = pgTable("config_images", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
 });
 
+export const templates = pgTable("templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  colorScheme: text("color_scheme").notNull(), // JSON string of CSS variables
+  fontFamily: text("font_family").default("Inter"),
+  isActive: boolean("is_active").default(false),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull()
+});
+
 export const insertMediaSchema = createInsertSchema(media).pick({
   name: true,
   email: true,
@@ -69,6 +80,15 @@ export const insertConfigImageSchema = createInsertSchema(configImages).pick({
   isActive: true
 });
 
+export const insertTemplateSchema = createInsertSchema(templates).pick({
+  name: true,
+  description: true,
+  colorScheme: true,
+  fontFamily: true,
+  isActive: true,
+  isDefault: true
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
@@ -77,3 +97,5 @@ export type InsertMedia = z.infer<typeof insertMediaSchema>;
 export type Media = typeof media.$inferSelect;
 export type InsertConfigImage = z.infer<typeof insertConfigImageSchema>;
 export type ConfigImage = typeof configImages.$inferSelect;
+export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+export type Template = typeof templates.$inferSelect;

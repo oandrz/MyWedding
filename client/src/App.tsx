@@ -11,6 +11,7 @@ import GoogleDriveSetup from "@/pages/GoogleDriveSetup";
 import GoogleDriveInstructions from "@/pages/GoogleDriveInstructions";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
+import Templates from "@/pages/Templates";
 import NotFound from "@/pages/not-found";
 import AudioPlayer from "@/components/AudioPlayer";
 
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
       <Route path="/admin-login" component={AdminLogin} />
+      <Route path="/templates" component={Templates} />
       <Route component={NotFound} />
     </Switch>
   );

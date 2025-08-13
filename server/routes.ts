@@ -1,7 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertTemplateSchema } from "@shared/schema";
+import { weddingTemplates, getTemplateById, getDefaultTemplate } from "@shared/templates";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -437,6 +438,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Failed to generate authentication URL',
         error: (error as Error).message
       });
+    }
+  });
+
+  // Template routes
+  app.get('/api/templates', async (req: Request, res: Response) => {
+    try {
+      const templates = await storage.getAllTemplates();
+      res.status(200).json({ templates });
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      res.status(500).json({ message: 'Failed to fetch templates' });
+    }
+  });
+
+  app.get('/api/templates/active', async (req: Request, res: Response) => {
+    try {
+      const activeTemplate = await storage.getActiveTemplate();
+      if (activeTemplate) {
+        res.status(200).json(activeTemplate);
+      } else {
+        // Return default template if none is active
+        const defaultTemplate = getDefaultTemplate();
+        res.status(200).json(defaultTemplate);
+      }
+    } catch (error) {
+      console.error('Error fetching active template:', error);
+      res.status(500).json({ message: 'Failed to fetch active template' });
+    }
+  });
+
+  app.post('/api/templates/activate', async (req: Request, res: Response) => {
+    try {
+      const { templateId } = req.body;
+      
+      if (!templateId) {
+        return res.status(400).json({ message: 'Template ID is required' });
+      }
+
+      // Find the template from predefined templates
+      const templateData = getTemplateById(templateId);
+      if (!templateData) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+
+      // Create or update the template in storage
+      const existingTemplate = await storage.getActiveTemplate();
+      
+      let template;
+      if (existingTemplate) {
+        // Update existing template
+        template = await storage.setActiveTemplate(existingTemplate.id);
+      } else {
+        // Create new template entry
+        const newTemplate = await storage.createTemplate({
+          name: templateData.name,
+          description: templateData.description,
+          colorScheme: JSON.stringify(templateData.colors),
+          fontFamily: templateData.fontFamily,
+          isActive: true,
+          isDefault: templateId === 'classic-rose'
+        });
+        template = newTemplate;
+      }
+
+      res.status(200).json({
+        message: `Template ${templateData.name} activated successfully`,
+        template: {
+          ...template,
+          ...templateData
+        }
+      });
+    } catch (error) {
+      console.error('Error activating template:', error);
+      res.status(500).json({ message: 'Failed to activate template' });
+    }
+  });
+
+  app.get('/api/templates/predefined', async (req: Request, res: Response) => {
+    try {
+      res.status(200).json({ templates: weddingTemplates });
+    } catch (error) {
+      console.error('Error fetching predefined templates:', error);
+      res.status(500).json({ message: 'Failed to fetch predefined templates' });
     }
   });
 
