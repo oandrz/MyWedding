@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Start Flask server in background with error handling
 nohup python3 app_flask.py > flask.log 2>&1 &
 FLASK_PID=$!

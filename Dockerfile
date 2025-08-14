@@ -14,8 +14,8 @@ COPY pyproject.toml poetry.lock* ./
 # Install Node.js dependencies
 RUN npm ci --only=production
 
-# Install Python dependencies
-RUN pip3 install flask flask-cors pydantic
+# Install Python dependencies with --break-system-packages flag for Alpine Linux
+RUN pip3 install --break-system-packages flask flask-cors pydantic
 
 # Development stage
 FROM base AS development
