@@ -43,6 +43,7 @@ class InsertUser(BaseModel):
 class MemStorage:
     def __init__(self):
         self.users: Dict[int, User] = {}
+        self.users_by_username: Dict[str, int] = {}  # Username index for faster lookups
         self.rsvps: Dict[int, Rsvp] = {}
         self.rsvps_by_email: Dict[str, int] = {}  # Email index for faster lookups
         self.current_user_id = 1
@@ -52,10 +53,10 @@ class MemStorage:
         return self.users.get(id)
     
     def get_user_by_username(self, username: str) -> Optional[User]:
-        # TODO: Add username index for O(1) lookup
-        for user in self.users.values():
-            if user.username == username:
-                return user
+        # O(1) lookup using username index
+        user_id = self.users_by_username.get(username)
+        if user_id:
+            return self.users.get(user_id)
         return None
     
     def create_user(self, insert_user: InsertUser) -> User:
@@ -63,6 +64,8 @@ class MemStorage:
         self.current_user_id += 1
         user = User(id=id, **insert_user.model_dump())
         self.users[id] = user
+        # Update username index
+        self.users_by_username[user.username] = id
         return user
     
     def create_rsvp(self, insert_rsvp: InsertRsvp) -> Rsvp:
