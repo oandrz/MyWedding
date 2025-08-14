@@ -1,0 +1,27 @@
+# Optional Docker setup for local development
+# Run with: docker-compose -f docker-compose.local.yml up
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: wedding_invitation_db
+      POSTGRES_USER: wedding_user
+      POSTGRES_PASSWORD: wedding_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # Redis (optional - for session storage)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
