@@ -1,12 +1,35 @@
-# Optional Docker setup for local development
+# Complete Docker setup for Wedding E-Invitation Platform
 # Run with: docker-compose -f docker-compose.local.yml up
 
 version: '3.8'
 
 services:
+  # Main Application (Express + Flask)
+  app:
+    build:
+      context: .
+      target: development
+    ports:
+      - "5000:5000"    # Express server
+      - "5001:5001"    # Flask server
+      - "3000:3000"    # Vite dev server (if needed)
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://wedding_user:wedding_password@postgres:5432/wedding_invitation_db
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./public/uploads:/app/public/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - wedding-network
+
   # PostgreSQL Database
   postgres:
-    image: postgres:14
+    image: postgres:14-alpine
     environment:
       POSTGRES_DB: wedding_invitation_db
       POSTGRES_USER: wedding_user
@@ -15,13 +38,45 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - wedding-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wedding_user -d wedding_invitation_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Redis (optional - for session storage)
+  # Redis (for session storage)
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - wedding-network
+    command: redis-server --appendonly yes
+
+  # Database Admin (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@wedding.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - wedding-network
+    profiles:
+      - admin
 
 volumes:
   postgres_data:
+  redis_data:
+
+networks:
+  wedding-network:
+    driver: bridge
