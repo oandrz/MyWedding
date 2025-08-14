@@ -35,17 +35,29 @@ print_error() {
 # Check if Docker is installed
 check_docker() {
     if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed. Please install Docker Desktop first."
-        echo "Visit: https://www.docker.com/products/docker-desktop/"
+        print_error "Docker is not installed."
+        echo "Install options:"
+        echo "  Colima (recommended): brew install colima docker docker-compose"
+        echo "  Docker Desktop: https://www.docker.com/products/docker-desktop/"
         exit 1
     fi
 
     if ! command -v docker-compose &> /dev/null; then
         print_error "Docker Compose is not installed."
+        echo "Install with: brew install docker-compose"
         exit 1
     fi
 
-    print_success "Docker and Docker Compose are installed!"
+    # Check if Docker daemon is running
+    if ! docker info >/dev/null 2>&1; then
+        print_error "Docker daemon is not running."
+        echo "Start Docker daemon:"
+        echo "  Colima: colima start"
+        echo "  Docker Desktop: Open Docker Desktop app"
+        exit 1
+    fi
+
+    print_success "Docker and Docker Compose are ready!"
 }
 
 # Setup environment file

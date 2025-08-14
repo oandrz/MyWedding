@@ -5,6 +5,17 @@ Docker provides the easiest way to run your wedding platform locally with zero c
 ## Quick Start (Super Simple!)
 
 ### 1. Install Docker
+
+#### Option A: Colima (Recommended for macOS)
+```bash
+# Install with Homebrew
+brew install colima docker docker-compose
+
+# Start Colima
+colima start
+```
+
+#### Option B: Docker Desktop
 - **macOS/Windows**: Download [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - **Linux**: Install Docker and Docker Compose via your package manager
 
@@ -148,6 +159,22 @@ docker system prune -a
 # Reset everything
 docker-compose -f docker-compose.local.yml down -v
 docker-compose -f docker-compose.local.yml up --build
+```
+
+### Colima-Specific Troubleshooting
+```bash
+# Check Colima status
+colima status
+
+# Restart Colima
+colima stop
+colima start
+
+# Restart with more resources (if needed)
+colima start --cpu 4 --memory 8
+
+# Check Colima logs
+colima logs
 ```
 
 ### Database Issues
