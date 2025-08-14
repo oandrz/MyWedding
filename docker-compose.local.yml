@@ -1,8 +1,6 @@
 # Complete Docker setup for Wedding E-Invitation Platform
 # Run with: docker-compose -f docker-compose.local.yml up
 
-version: '3.8'
-
 services:
   # Main Application (Express + Flask)
   app:

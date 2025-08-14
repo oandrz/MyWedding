@@ -157,6 +157,17 @@ case "${1:-}" in
         print_status "Setting up Docker environment..."
         check_docker
         setup_env
+        
+        # Fix Docker credential issues for Colima
+        if [ -f ~/.docker/config.json ]; then
+            print_status "Fixing Docker credentials for Colima..."
+            # Backup original config
+            cp ~/.docker/config.json ~/.docker/config.json.backup
+            # Remove Docker Desktop credential helpers
+            sed -i '' '/docker-credential-desktop/d' ~/.docker/config.json 2>/dev/null || true
+            print_success "Docker credentials fixed"
+        fi
+        
         print_success "Setup complete! Run './docker-run.sh start' to begin"
         ;;
     

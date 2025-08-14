@@ -140,6 +140,17 @@ colima start
 docker network ls
 ```
 
+### Credential Helper Errors
+```bash
+# Fix "docker-credential-desktop not found" error
+cp ~/.docker/config.json ~/.docker/config.json.backup
+sed -i '' '/docker-credential-desktop/d' ~/.docker/config.json
+
+# Or remove Docker config entirely and start fresh
+rm ~/.docker/config.json
+docker login  # if you need to login to registries
+```
+
 ### Port Conflicts
 ```bash
 # Check what's using ports
@@ -169,10 +180,13 @@ colima start
 ./docker-run.sh start
 ```
 
-### 4. Optional: Uninstall Docker Desktop
-- Delete Docker Desktop from Applications
-- Clean up remaining files (optional):
+### 4. Clean Up Docker Desktop Config
 ```bash
+# Fix credential helper conflicts
+cp ~/.docker/config.json ~/.docker/config.json.backup
+sed -i '' '/docker-credential-desktop/d' ~/.docker/config.json
+
+# Optional: Completely remove Docker Desktop files
 rm -rf ~/Library/Group\ Containers/group.com.docker
 rm -rf ~/Library/Containers/com.docker.docker
 ```
