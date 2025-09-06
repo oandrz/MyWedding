@@ -70,6 +70,58 @@ export async function registerRoutesClean(app: Express): Promise<Server> {
   app.post('/api/media/upload', upload.single('media'), (req, res) => 
     mediaController.createMedia(req, res)
   );
+  
+  // Legacy upload route for compatibility with ImageUploadModal
+  app.post('/api/upload', upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      
+      // Create a URL for the uploaded file
+      const fileUrl = `/uploads/${req.file.filename}`;
+      
+      // Auto-detect media type from file MIME type
+      let mediaType: string;
+      if (req.file.mimetype.startsWith('image/')) {
+        mediaType = 'image';
+      } else if (req.file.mimetype.startsWith('video/')) {
+        mediaType = 'video';
+      } else {
+        return res.status(400).json({ message: 'Unsupported file type' });
+      }
+      
+      // Parse form data
+      const { name, email, caption } = req.body;
+      
+      if (!name || !email) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Create media entry with the file URL
+      // Admin uploads are auto-approved, guest uploads need approval
+      const isAdminUpload = email === 'admin@wedding.com';
+      const mediaData = {
+        name,
+        email,
+        mediaType,
+        mediaUrl: fileUrl,
+        caption: caption || undefined,
+        approved: isAdminUpload // Auto-approve only admin uploads
+      };
+      
+      // Use the media controller to create the media entry
+      req.body = mediaData;
+      req.file.mimetype = `${mediaType}/*`; // Set appropriate mimetype for controller
+      
+      // Store the media entry using the controller
+      await mediaController.createMedia(req, res);
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ message: 'Failed to upload file' });
+    }
+  });
+  
   app.get('/api/media', (req, res) => mediaController.getApprovedMedia(req, res));
   app.get('/api/admin/media', adminAuth, (req, res) => mediaController.getAllMedia(req, res));
   app.patch('/api/admin/media/:id/approve', adminAuth, (req, res) => 
