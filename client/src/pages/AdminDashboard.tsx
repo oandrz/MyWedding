@@ -47,13 +47,6 @@ export default function AdminDashboard() {
   } = useQuery<{ media: Media[] }>({
     queryKey: ["/api/admin/media"],
     enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
-    onError: (error: any) => {
-      // Additional check - if query fails with auth error, redirect to login
-      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-        localStorage.removeItem('adminKey');
-        navigate('/admin-login');
-      }
-    }
   });
 
   // Fetch all RSVPs
