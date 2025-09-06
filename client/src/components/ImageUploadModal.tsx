@@ -122,13 +122,15 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
       formData.append("title", data.title || "");
       formData.append("description", data.description || "");
 
-      // Use the new config images upload endpoint
-      const uploadResponse = await fetch("/api/admin/config-images-upload", {
+      // Use the new config images upload endpoint with admin key authentication
+      const adminKey = localStorage.getItem('adminKey');
+      const uploadUrl = adminKey 
+        ? `/api/admin/config-images-upload?adminKey=${adminKey}`
+        : `/api/admin/config-images-upload`;
+        
+      const uploadResponse = await fetch(uploadUrl, {
         method: "POST",
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
-        }
+        body: formData
       });
       
       if (!uploadResponse.ok) {
