@@ -21,6 +21,7 @@ import { CreateConfigImageUseCase } from '../application/useCases/configImage/Cr
 import { UpdateConfigImageUseCase } from '../application/useCases/configImage/UpdateConfigImageUseCase';
 import { GetConfigImagesByTypeUseCase } from '../application/useCases/configImage/GetConfigImagesByTypeUseCase';
 import { GetAllConfigImagesUseCase } from '../application/useCases/configImage/GetAllConfigImagesUseCase';
+import { DeleteConfigImageUseCase } from '../application/useCases/configImage/DeleteConfigImageUseCase';
 
 import { RsvpController } from '../presentation/controllers/RsvpController';
 import { FeatureFlagController } from '../presentation/controllers/FeatureFlagController';
@@ -123,6 +124,10 @@ export class DIContainer {
     return new GetAllConfigImagesUseCase(this.getConfigImageRepository());
   }
   
+  deleteConfigImageUseCase(): DeleteConfigImageUseCase {
+    return new DeleteConfigImageUseCase(this.getConfigImageRepository());
+  }
+  
   // Controller factories
   createRsvpController(): RsvpController {
     return new RsvpController(
@@ -152,7 +157,8 @@ export class DIContainer {
       this.createConfigImageUseCase(),
       this.updateConfigImageUseCase(),
       this.getConfigImagesByTypeUseCase(),
-      this.getAllConfigImagesUseCase()
+      this.getAllConfigImagesUseCase(),
+      this.deleteConfigImageUseCase()
     );
   }
 }

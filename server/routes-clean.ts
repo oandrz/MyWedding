@@ -83,6 +83,9 @@ export async function registerRoutesClean(app: Express): Promise<Server> {
   app.get('/api/config-images/:imageType', (req, res) => 
     configImageController.getConfigImagesByType(req, res)
   );
+  app.delete('/api/admin/config-images/:imageKey', adminAuth, (req, res) => 
+    configImageController.deleteConfigImage(req, res)
+  );
   app.post('/api/admin/config-images', adminAuth, upload.single('image'), async (req, res) => {
     try {
       // Handle both file upload and URL

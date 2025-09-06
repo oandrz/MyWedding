@@ -3,13 +3,15 @@ import { CreateConfigImageUseCase } from '../../application/useCases/configImage
 import { UpdateConfigImageUseCase } from '../../application/useCases/configImage/UpdateConfigImageUseCase';
 import { GetConfigImagesByTypeUseCase } from '../../application/useCases/configImage/GetConfigImagesByTypeUseCase';
 import { GetAllConfigImagesUseCase } from '../../application/useCases/configImage/GetAllConfigImagesUseCase';
+import { DeleteConfigImageUseCase } from '../../application/useCases/configImage/DeleteConfigImageUseCase';
 
 export class ConfigImageController {
   constructor(
     private readonly createConfigImageUseCase: CreateConfigImageUseCase,
     private readonly updateConfigImageUseCase: UpdateConfigImageUseCase,
     private readonly getConfigImagesByTypeUseCase: GetConfigImagesByTypeUseCase,
-    private readonly getAllConfigImagesUseCase: GetAllConfigImagesUseCase
+    private readonly getAllConfigImagesUseCase: GetAllConfigImagesUseCase,
+    private readonly deleteConfigImageUseCase: DeleteConfigImageUseCase
   ) {}
 
   async createOrUpdateConfigImage(req: Request, res: Response): Promise<void> {
@@ -71,6 +73,30 @@ export class ConfigImageController {
     } catch (error) {
       console.error('Error fetching all config images:', error);
       res.status(500).json({ error: 'Failed to fetch all config images' });
+    }
+  }
+
+  async deleteConfigImage(req: Request, res: Response): Promise<void> {
+    try {
+      const { imageKey } = req.params;
+      
+      if (!imageKey) {
+        res.status(400).json({ error: 'Image key is required' });
+        return;
+      }
+      
+      await this.deleteConfigImageUseCase.execute(imageKey);
+      
+      res.json({
+        message: `Config image '${imageKey}' deleted successfully`
+      });
+    } catch (error: any) {
+      console.error('Error deleting config image:', error);
+      if (error.message?.includes('not found')) {
+        res.status(404).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Failed to delete config image' });
+      }
     }
   }
 
