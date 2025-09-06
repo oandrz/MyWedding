@@ -124,7 +124,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
 
       // Use the new config images upload endpoint with admin key authentication
       const adminKey = localStorage.getItem('adminKey');
-      console.log('Upload Debug - adminKey exists:', !!adminKey);
+      console.log('Upload Debug - adminKey:', adminKey);
       const uploadUrl = adminKey 
         ? `/api/admin/config-images-upload?adminKey=${adminKey}`
         : `/api/admin/config-images-upload`;
