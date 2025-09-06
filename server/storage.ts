@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 
@@ -31,6 +31,12 @@ export interface IStorage {
   getConfigImage(imageKey: string): Promise<ConfigImage | undefined>;
   getConfigImagesByType(imageType: string): Promise<ConfigImage[]>;
   getAllConfigImages(): Promise<ConfigImage[]>;
+  
+  // Feature flag methods
+  createFeatureFlag(featureFlagData: InsertFeatureFlag): Promise<FeatureFlag>;
+  updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined>;
+  getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined>;
+  getAllFeatureFlags(): Promise<FeatureFlag[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -38,23 +44,28 @@ export class MemStorage implements IStorage {
   private rsvps: Map<number, Rsvp>;
   private medias: Map<number, Media>;
   private configImages: Map<string, ConfigImage>;
+  private featureFlags: Map<string, FeatureFlag>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
   currentConfigImageId: number;
+  currentFeatureFlagId: number;
 
   constructor() {
     this.users = new Map();
     this.rsvps = new Map();
     this.medias = new Map();
     this.configImages = new Map();
+    this.featureFlags = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
     this.currentConfigImageId = 1;
+    this.currentFeatureFlagId = 1;
 
-    // Initialize default images
+    // Initialize default images and feature flags
     this.initializeDefaultImages();
+    this.initializeDefaultFeatureFlags();
   }
 
   private initializeDefaultImages() {
@@ -244,6 +255,86 @@ export class MemStorage implements IStorage {
   async deleteConfigImage(imageKey: string): Promise<boolean> {
     return this.configImages.delete(imageKey);
   }
+
+  private initializeDefaultFeatureFlags() {
+    const defaultFeatures = [
+      {
+        featureKey: 'rsvp',
+        featureName: 'RSVP Form',
+        description: 'Allow guests to submit their attendance confirmation',
+        enabled: true
+      },
+      {
+        featureKey: 'messages',
+        featureName: 'Message Board',
+        description: 'Allow guests to leave congratulatory messages',
+        enabled: true
+      },
+      {
+        featureKey: 'gallery',
+        featureName: 'Photo Gallery',
+        description: 'Display wedding memories and allow photo uploads',
+        enabled: true
+      },
+      {
+        featureKey: 'music',
+        featureName: 'Background Music',
+        description: 'Play background music on the invitation page',
+        enabled: true
+      },
+      {
+        featureKey: 'countdown',
+        featureName: 'Wedding Countdown',
+        description: 'Show countdown timer to wedding date',
+        enabled: true
+      }
+    ];
+
+    defaultFeatures.forEach(feature => {
+      const featureFlag: FeatureFlag = {
+        id: this.currentFeatureFlagId++,
+        ...feature,
+        updatedAt: new Date().toISOString()
+      };
+      this.featureFlags.set(feature.featureKey, featureFlag);
+    });
+  }
+
+  // Feature flag methods
+  async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
+    const id = this.currentFeatureFlagId++;
+    const now = new Date();
+    const featureFlag: FeatureFlag = {
+      ...insertFeatureFlag,
+      id,
+      enabled: insertFeatureFlag.enabled ?? true,
+      updatedAt: now.toISOString()
+    };
+    this.featureFlags.set(featureFlag.featureKey, featureFlag);
+    return featureFlag;
+  }
+
+  async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
+    const existing = this.featureFlags.get(featureKey);
+    if (!existing) return undefined;
+
+    const updatedFeatureFlag: FeatureFlag = {
+      ...existing,
+      enabled,
+      updatedAt: new Date().toISOString()
+    };
+    this.featureFlags.set(featureKey, updatedFeatureFlag);
+    return updatedFeatureFlag;
+  }
+
+  async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
+    return this.featureFlags.get(featureKey);
+  }
+
+  async getAllFeatureFlags(): Promise<FeatureFlag[]> {
+    return Array.from(this.featureFlags.values())
+      .sort((a, b) => a.featureName.localeCompare(b.featureName));
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -391,6 +482,39 @@ export class DatabaseStorage implements IStorage {
       .delete(configImages)
       .where(eq(configImages.imageKey, imageKey));
     return result.rowCount > 0;
+  }
+
+  // Feature flag methods
+  async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
+    const [featureFlag] = await db
+      .insert(featureFlags)
+      .values(insertFeatureFlag)
+      .returning();
+    return featureFlag;
+  }
+
+  async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
+    const [featureFlag] = await db
+      .update(featureFlags)
+      .set({ enabled, updatedAt: sql`now()` })
+      .where(eq(featureFlags.featureKey, featureKey))
+      .returning();
+    return featureFlag || undefined;
+  }
+
+  async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
+    const [featureFlag] = await db
+      .select()
+      .from(featureFlags)
+      .where(eq(featureFlags.featureKey, featureKey));
+    return featureFlag || undefined;
+  }
+
+  async getAllFeatureFlags(): Promise<FeatureFlag[]> {
+    return db
+      .select()
+      .from(featureFlags)
+      .orderBy(featureFlags.featureName);
   }
 }
 

@@ -69,6 +69,22 @@ export const insertConfigImageSchema = createInsertSchema(configImages).pick({
   isActive: true
 });
 
+export const featureFlags = pgTable("feature_flags", {
+  id: serial("id").primaryKey(),
+  featureKey: text("feature_key").notNull().unique(), // "rsvp", "messages", "gallery", etc.
+  featureName: text("feature_name").notNull(), // "RSVP Form", "Message Board", etc.
+  description: text("description").notNull(),
+  enabled: boolean("enabled").default(true),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
+});
+
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).pick({
+  featureKey: true,
+  featureName: true,
+  description: true,
+  enabled: true
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
@@ -77,3 +93,5 @@ export type InsertMedia = z.infer<typeof insertMediaSchema>;
 export type Media = typeof media.$inferSelect;
 export type InsertConfigImage = z.infer<typeof insertConfigImageSchema>;
 export type ConfigImage = typeof configImages.$inferSelect;
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+export type FeatureFlag = typeof featureFlags.$inferSelect;
