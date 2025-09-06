@@ -12,10 +12,6 @@ const AudioPlayer = () => {
   
   // Hide audio player on admin pages
   const isAdminPage = location.includes('/admin');
-  
-  if (isAdminPage || !isMusicEnabled) {
-    return null;
-  }
 
   useEffect(() => {
     // Preload the audio when the component mounts
@@ -49,6 +45,11 @@ const AudioPlayer = () => {
       console.error("Error toggling audio:", error);
     }
   };
+
+  // Don't render anything if on admin page or music is disabled
+  if (isAdminPage || !isMusicEnabled) {
+    return null;
+  }
 
   return (
     <>
