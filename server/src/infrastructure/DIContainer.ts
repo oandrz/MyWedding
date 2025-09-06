@@ -20,6 +20,7 @@ import { GetApprovedMediaUseCase } from '../application/useCases/media/GetApprov
 import { CreateConfigImageUseCase } from '../application/useCases/configImage/CreateConfigImageUseCase';
 import { UpdateConfigImageUseCase } from '../application/useCases/configImage/UpdateConfigImageUseCase';
 import { GetConfigImagesByTypeUseCase } from '../application/useCases/configImage/GetConfigImagesByTypeUseCase';
+import { GetAllConfigImagesUseCase } from '../application/useCases/configImage/GetAllConfigImagesUseCase';
 
 import { RsvpController } from '../presentation/controllers/RsvpController';
 import { FeatureFlagController } from '../presentation/controllers/FeatureFlagController';
@@ -118,6 +119,10 @@ export class DIContainer {
     return new GetConfigImagesByTypeUseCase(this.getConfigImageRepository());
   }
   
+  getAllConfigImagesUseCase(): GetAllConfigImagesUseCase {
+    return new GetAllConfigImagesUseCase(this.getConfigImageRepository());
+  }
+  
   // Controller factories
   createRsvpController(): RsvpController {
     return new RsvpController(
@@ -146,7 +151,8 @@ export class DIContainer {
     return new ConfigImageController(
       this.createConfigImageUseCase(),
       this.updateConfigImageUseCase(),
-      this.getConfigImagesByTypeUseCase()
+      this.getConfigImagesByTypeUseCase(),
+      this.getAllConfigImagesUseCase()
     );
   }
 }

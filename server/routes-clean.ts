@@ -77,6 +77,9 @@ export async function registerRoutesClean(app: Express): Promise<Server> {
   );
   
   // Config Image Routes
+  app.get('/api/config-images', (req, res) => 
+    configImageController.getAllConfigImages(req, res)
+  );
   app.get('/api/config-images/:imageType', (req, res) => 
     configImageController.getConfigImagesByType(req, res)
   );

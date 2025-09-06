@@ -2,12 +2,14 @@ import { Request, Response } from 'express';
 import { CreateConfigImageUseCase } from '../../application/useCases/configImage/CreateConfigImageUseCase';
 import { UpdateConfigImageUseCase } from '../../application/useCases/configImage/UpdateConfigImageUseCase';
 import { GetConfigImagesByTypeUseCase } from '../../application/useCases/configImage/GetConfigImagesByTypeUseCase';
+import { GetAllConfigImagesUseCase } from '../../application/useCases/configImage/GetAllConfigImagesUseCase';
 
 export class ConfigImageController {
   constructor(
     private readonly createConfigImageUseCase: CreateConfigImageUseCase,
     private readonly updateConfigImageUseCase: UpdateConfigImageUseCase,
-    private readonly getConfigImagesByTypeUseCase: GetConfigImagesByTypeUseCase
+    private readonly getConfigImagesByTypeUseCase: GetConfigImagesByTypeUseCase,
+    private readonly getAllConfigImagesUseCase: GetAllConfigImagesUseCase
   ) {}
 
   async createOrUpdateConfigImage(req: Request, res: Response): Promise<void> {
@@ -56,6 +58,19 @@ export class ConfigImageController {
     } catch (error) {
       console.error('Error fetching config images:', error);
       res.status(500).json({ error: 'Failed to fetch config images' });
+    }
+  }
+
+  async getAllConfigImages(req: Request, res: Response): Promise<void> {
+    try {
+      const images = await this.getAllConfigImagesUseCase.execute();
+      
+      res.json({
+        images: images.map(img => this.mapConfigImageToResponse(img))
+      });
+    } catch (error) {
+      console.error('Error fetching all config images:', error);
+      res.status(500).json({ error: 'Failed to fetch all config images' });
     }
   }
 
