@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { useMusicEnabled } from '@/hooks/useFeatureFlags';
 
 const AudioPlayer = () => {
+  const isMusicEnabled = useMusicEnabled();
   const [isPlaying, setIsPlaying] = useState(false);
   const audioEl = useRef<HTMLAudioElement>(null);
   const [location] = useLocation();
@@ -11,7 +13,7 @@ const AudioPlayer = () => {
   // Hide audio player on admin pages
   const isAdminPage = location.includes('/admin');
   
-  if (isAdminPage) {
+  if (isAdminPage || !isMusicEnabled) {
     return null;
   }
 
