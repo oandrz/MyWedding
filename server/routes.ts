@@ -12,26 +12,18 @@ import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { adminAuthMiddleware } from "./middleware/auth";
 import { googleDriveService } from "./googleDriveService";
+import { weddingObjectStorage, ObjectNotFoundError } from "./objectStorage";
 
 const FLASK_API_URL = "http://localhost:5001";
 
-// Ensure uploads directory exists
+// Keep uploads directory for backward compatibility (existing files)
 const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Set up multer storage for file uploads
-const storage_config = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (_req, file, cb) => {
-    // Generate a unique filename with original extension
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
+// Set up multer storage for file uploads - using memory storage for App Storage
+const storage_config = multer.memoryStorage();
 
 // Create multer upload middleware
 const upload = multer({
@@ -279,15 +271,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // File upload endpoint for media
+  // File upload endpoint for media - now uses App Storage
   app.post('/api/upload', upload.single('file'), async (req: Request, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
-      
-      // Create a URL for the uploaded file
-      const fileUrl = `/uploads/${req.file.filename}`;
       
       // Auto-detect media type from file MIME type
       let mediaType: string;
@@ -306,9 +295,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Missing required fields' });
       }
       
-      // Create media entry with the file URL
-      // Admin uploads are auto-approved, guest uploads need approval
+      // Generate unique filename to prevent conflicts
+      const fileExtension = req.file.originalname.split('.').pop() || '';
+      const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+      
+      // Upload file to App Storage
       const isAdminUpload = email === 'admin@wedding.com';
+      let fileUrl: string;
+      
+      if (isAdminUpload) {
+        // Admin uploads go to admin directory
+        const imageType = mediaType === 'image' ? 'gallery' : 'gallery'; // Default to gallery for admin uploads
+        fileUrl = await weddingObjectStorage.uploadAdminImage(
+          req.file.buffer, 
+          uniqueFilename, 
+          req.file.mimetype,
+          imageType as "banner" | "gallery"
+        );
+      } else {
+        // Guest uploads go to regular uploads directory
+        fileUrl = await weddingObjectStorage.uploadFile(
+          req.file.buffer,
+          uniqueFilename,
+          req.file.mimetype,
+          'uploads'
+        );
+      }
+      
+      // Create media entry with the App Storage URL
       const mediaData = {
         name,
         email,
@@ -558,6 +572,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload and create configurable image from file (admin only)
+  app.post("/api/admin/config-images-upload", adminAuthMiddleware, upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Validate file type
+      if (!req.file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: 'Only images are allowed for config images' });
+      }
+
+      // Parse form data
+      const { imageKey, imageType, title, description } = req.body;
+      
+      if (!imageKey || !imageType) {
+        return res.status(400).json({ message: 'Image key and type are required' });
+      }
+
+      // Generate unique filename
+      const fileExtension = req.file.originalname.split('.').pop() || 'jpg';
+      const uniqueFilename = `${imageKey}-${Date.now()}.${fileExtension}`;
+
+      // Upload to App Storage
+      const imageUrl = await weddingObjectStorage.uploadAdminImage(
+        req.file.buffer,
+        uniqueFilename,
+        req.file.mimetype,
+        imageType as "banner" | "gallery"
+      );
+
+      // Create config image data
+      const configImageData = {
+        imageKey,
+        imageUrl,
+        imageType,
+        title: title || undefined,
+        description: description || undefined,
+        isActive: true
+      };
+
+      // Check if image key already exists and update or create
+      const existingImage = await storage.getConfigImage(imageKey);
+      let image;
+      
+      if (existingImage) {
+        image = await storage.updateConfigImage(imageKey, configImageData);
+      } else {
+        image = await storage.createConfigImage(configImageData);
+      }
+
+      res.status(201).json({
+        message: "Config image uploaded successfully",
+        image
+      });
+    } catch (error) {
+      console.error("Config image upload error:", error);
+      res.status(500).json({ message: "Failed to upload config image" });
+    }
+  });
+
   // Update or create configurable image (admin only)
   app.post("/api/admin/config-images", adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
@@ -790,6 +865,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: "Admin credentials are valid",
       valid: true 
     });
+  });
+
+  // Serve files from App Storage (for backward compatibility and direct access)
+  app.get('/storage/:directory/:filename', async (req: Request, res: Response) => {
+    try {
+      const { directory, filename } = req.params;
+      const objectPath = `${directory}/${filename}`;
+      
+      await weddingObjectStorage.downloadFile(objectPath, res);
+    } catch (error) {
+      console.error('Error serving file from App Storage:', error);
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: 'File not found' });
+      } else {
+        res.status(500).json({ error: 'Error serving file' });
+      }
+    }
   });
 
   const httpServer = createServer(app);

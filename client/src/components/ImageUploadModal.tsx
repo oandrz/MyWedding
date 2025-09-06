@@ -107,63 +107,36 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
     }
   });
 
-  // File upload mutation
+  // File upload mutation for config images - now uses App Storage directly
   const fileMutation = useMutation({
     mutationFn: async (data: FileUploadForm) => {
       const formData = new FormData();
       formData.append("file", data.file);
-      formData.append("name", "Admin");
-      formData.append("email", "admin@wedding.com");
-      formData.append("caption", data.title || "");
       
-      // First upload the file
-      const uploadResponse = await fetch("/api/upload", {
+      // Generate a unique image key for this upload
+      const timestamp = Date.now();
+      const imageKey = editingImage?.imageKey || (imageType === "banner" ? "banner" : `gallery_${timestamp}`);
+      
+      formData.append("imageKey", imageKey);
+      formData.append("imageType", imageType);
+      formData.append("title", data.title || "");
+      formData.append("description", data.description || "");
+
+      // Use the new config images upload endpoint
+      const uploadResponse = await fetch("/api/admin/config-images-upload", {
         method: "POST",
-        body: formData
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+        }
       });
       
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json();
-        throw new Error(errorData.message || "Failed to upload file");
+        throw new Error(errorData.message || "Failed to upload config image");
       }
       
-      const uploadResult = await uploadResponse.json();
-      console.log("Upload result:", uploadResult);
-      
-      // The upload API returns a media object with mediaUrl field
-      const imageUrl = uploadResult.media?.mediaUrl;
-      
-      if (!imageUrl || typeof imageUrl !== 'string') {
-        console.error("Invalid URL from upload:", imageUrl);
-        throw new Error("No valid image URL returned from upload");
-      }
-      
-      // Ensure the URL is absolute for display
-      const fullImageUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
-      
-      // Then create or update the config image record
-      if (editingImage) {
-        // Update existing image
-        return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, {
-          imageKey: editingImage.imageKey,
-          imageUrl: fullImageUrl,
-          imageType,
-          title: data.title,
-          description: data.description,
-          isActive: true
-        });
-      } else {
-        // Create new image
-        const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
-        return apiRequest("POST", "/api/admin/config-images", {
-          imageKey,
-          imageUrl: fullImageUrl,
-          imageType,
-          title: data.title,
-          description: data.description,
-          isActive: true
-        });
-      }
+      return uploadResponse.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
