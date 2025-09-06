@@ -63,14 +63,11 @@ export default function ThemeSuggester() {
   // Generate themes mutation
   const generateThemesMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('/api/themes/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences)
-      });
-      return response.themes;
+      const response = await apiRequest('POST', '/api/themes/generate', preferences);
+      return await response.json();
     },
-    onSuccess: (themes) => {
+    onSuccess: (data) => {
+      const themes = data?.themes || [];
       setGeneratedThemes(themes);
       toast({
         title: 'Themes Generated!',

@@ -91,7 +91,16 @@ export class WeddingTheme {
     return score;
   }
 
-  static create(params: Omit<WeddingTheme, 'id' | 'createdAt'> & { 
+  static create(params: {
+    name: string;
+    description: string;
+    season: 'spring' | 'summer' | 'fall' | 'winter' | 'any';
+    colors: ThemeColors;
+    style: ThemeStyle;
+    keywords: string[];
+    suggestedVenue: string[];
+    flowerSuggestions: string[];
+    musicStyle: string[];
     id?: number; 
     createdAt?: Date 
   }): WeddingTheme {

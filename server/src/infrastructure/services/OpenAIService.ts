@@ -18,9 +18,9 @@ export class OpenAIService {
     try {
       const prompt = this.buildThemePrompt(preferences);
       
-      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      // Using GPT-4 for reliable theme generation
       const response = await this.openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -32,8 +32,8 @@ export class OpenAIService {
           }
         ],
         response_format: { type: "json_object" },
-        // GPT-5 only supports default temperature value
-        max_completion_tokens: 2000
+        temperature: 0.8,
+        max_tokens: 2000
       });
 
       const content = response.choices[0]?.message?.content;
@@ -100,9 +100,9 @@ export class OpenAIService {
 
   async generateThemeDescription(themeName: string): Promise<string> {
     try {
-      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      // Using GPT-4 for reliable theme generation
       const response = await this.openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -113,8 +113,8 @@ export class OpenAIService {
             content: `Provide a detailed, romantic description for a wedding theme called "${themeName}". Include specific decoration ideas, atmosphere, and implementation tips. Keep it to 3-4 sentences.`
           }
         ],
-        // GPT-5 only supports default temperature value
-        max_completion_tokens: 200
+        temperature: 0.7,
+        max_tokens: 200
       });
 
       return response.choices[0].message.content || 'A beautiful wedding theme perfect for your special day.';

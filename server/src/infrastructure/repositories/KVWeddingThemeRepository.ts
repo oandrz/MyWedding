@@ -109,8 +109,13 @@ export class KVWeddingThemeRepository implements IWeddingThemeRepository {
   }
 
   private async getThemeList(): Promise<any[]> {
-    const list = await this.db.get(this.THEME_LIST_KEY);
-    return list || [];
+    try {
+      const list = await this.db.get(this.THEME_LIST_KEY);
+      return Array.isArray(list) ? list : [];
+    } catch (error) {
+      console.error('Error getting theme list:', error);
+      return [];
+    }
   }
 
   private deserializeTheme(data: any): WeddingTheme {
