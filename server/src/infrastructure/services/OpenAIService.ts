@@ -32,20 +32,28 @@ export class OpenAIService {
           }
         ],
         response_format: { type: "json_object" },
-        temperature: 0.8,
+        // GPT-5 only supports default temperature value
         max_completion_tokens: 2000
       });
 
-      const content = response.choices[0].message.content;
+      const content = response.choices[0]?.message?.content;
+      console.log('OpenAI response:', content ? 'Received content' : 'No content');
+      
       if (!content) {
+        console.error('No content in OpenAI response');
         throw new Error('No response from AI');
       }
 
       const result = JSON.parse(content);
+      console.log('Parsed themes count:', result.themes?.length || 0);
       return result.themes || [];
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating wedding themes:', error);
-      throw new Error('Failed to generate wedding themes');
+      console.error('Error details:', error.message);
+      if (error.response) {
+        console.error('API Response:', error.response);
+      }
+      throw new Error(`Failed to generate wedding themes: ${error.message}`);
     }
   }
 
@@ -105,7 +113,7 @@ export class OpenAIService {
             content: `Provide a detailed, romantic description for a wedding theme called "${themeName}". Include specific decoration ideas, atmosphere, and implementation tips. Keep it to 3-4 sentences.`
           }
         ],
-        temperature: 0.7,
+        // GPT-5 only supports default temperature value
         max_completion_tokens: 200
       });
 
