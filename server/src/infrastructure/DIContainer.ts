@@ -3,14 +3,11 @@ import { IRsvpRepository } from '../domain/repositories/IRsvpRepository';
 import { IMediaRepository } from '../domain/repositories/IMediaRepository';
 import { IFeatureFlagRepository } from '../domain/repositories/IFeatureFlagRepository';
 import { IConfigImageRepository } from '../domain/repositories/IConfigImageRepository';
-import { IWeddingThemeRepository } from '../domain/repositories/IWeddingThemeRepository';
 
 import { KVRsvpRepository } from './repositories/KVRsvpRepository';
 import { KVMediaRepository } from './repositories/KVMediaRepository';
 import { KVFeatureFlagRepository } from './repositories/KVFeatureFlagRepository';
 import { KVConfigImageRepository } from './repositories/KVConfigImageRepository';
-import { KVWeddingThemeRepository } from './repositories/KVWeddingThemeRepository';
-import { OpenAIService } from './services/OpenAIService';
 
 import { CreateRsvpUseCase } from '../application/useCases/rsvp/CreateRsvpUseCase';
 import { GetAllRsvpsUseCase } from '../application/useCases/rsvp/GetAllRsvpsUseCase';
@@ -23,14 +20,11 @@ import { GetApprovedMediaUseCase } from '../application/useCases/media/GetApprov
 import { CreateConfigImageUseCase } from '../application/useCases/configImage/CreateConfigImageUseCase';
 import { UpdateConfigImageUseCase } from '../application/useCases/configImage/UpdateConfigImageUseCase';
 import { GetConfigImagesByTypeUseCase } from '../application/useCases/configImage/GetConfigImagesByTypeUseCase';
-import { GenerateThemeSuggestionsUseCase } from '../application/useCases/weddingTheme/GenerateThemeSuggestionsUseCase';
-import { GetRecentThemesUseCase } from '../application/useCases/weddingTheme/GetRecentThemesUseCase';
 
 import { RsvpController } from '../presentation/controllers/RsvpController';
 import { FeatureFlagController } from '../presentation/controllers/FeatureFlagController';
 import { MediaController } from '../presentation/controllers/MediaController';
 import { ConfigImageController } from '../presentation/controllers/ConfigImageController';
-import { WeddingThemeController } from '../presentation/controllers/WeddingThemeController';
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -40,8 +34,6 @@ export class DIContainer {
   private mediaRepository?: IMediaRepository;
   private featureFlagRepository?: IFeatureFlagRepository;
   private configImageRepository?: IConfigImageRepository;
-  private weddingThemeRepository?: IWeddingThemeRepository;
-  private openAIService?: OpenAIService;
   
   private constructor() {}
   
@@ -79,20 +71,6 @@ export class DIContainer {
       this.configImageRepository = new KVConfigImageRepository();
     }
     return this.configImageRepository;
-  }
-  
-  getWeddingThemeRepository(): IWeddingThemeRepository {
-    if (!this.weddingThemeRepository) {
-      this.weddingThemeRepository = new KVWeddingThemeRepository();
-    }
-    return this.weddingThemeRepository;
-  }
-  
-  getOpenAIService(): OpenAIService {
-    if (!this.openAIService) {
-      this.openAIService = new OpenAIService();
-    }
-    return this.openAIService;
   }
   
   // Use Case factories
@@ -140,17 +118,6 @@ export class DIContainer {
     return new GetConfigImagesByTypeUseCase(this.getConfigImageRepository());
   }
   
-  generateThemeSuggestionsUseCase(): GenerateThemeSuggestionsUseCase {
-    return new GenerateThemeSuggestionsUseCase(
-      this.getWeddingThemeRepository(),
-      this.getOpenAIService()
-    );
-  }
-  
-  getRecentThemesUseCase(): GetRecentThemesUseCase {
-    return new GetRecentThemesUseCase(this.getWeddingThemeRepository());
-  }
-  
   // Controller factories
   createRsvpController(): RsvpController {
     return new RsvpController(
@@ -180,13 +147,6 @@ export class DIContainer {
       this.createConfigImageUseCase(),
       this.updateConfigImageUseCase(),
       this.getConfigImagesByTypeUseCase()
-    );
-  }
-  
-  createWeddingThemeController(): WeddingThemeController {
-    return new WeddingThemeController(
-      this.generateThemeSuggestionsUseCase(),
-      this.getRecentThemesUseCase()
     );
   }
 }
