@@ -12,6 +12,7 @@ const rsvpController = container.createRsvpController();
 const featureFlagController = container.createFeatureFlagController();
 const mediaController = container.createMediaController();
 const configImageController = container.createConfigImageController();
+const weddingThemeController = container.createWeddingThemeController();
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'public', 'uploads');
@@ -101,6 +102,14 @@ export async function registerRoutesClean(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to process config image' });
     }
   });
+  
+  // Wedding Theme Routes
+  app.post('/api/themes/generate', (req, res) => 
+    weddingThemeController.generateThemes(req, res)
+  );
+  app.get('/api/themes/recent', (req, res) => 
+    weddingThemeController.getRecentThemes(req, res)
+  );
   
   // Admin authentication endpoint
   app.post('/api/admin/auth', (req, res) => {
