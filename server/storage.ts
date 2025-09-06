@@ -1,6 +1,7 @@
 import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
+import Database from "@replit/database";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -512,8 +513,332 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use database storage since schema is pushed
-export const storage = new MemStorage();
+export class KeyValueStorage implements IStorage {
+  private kv: Database;
+  private currentUserId: number = 1;
+  private currentRsvpId: number = 1;
+  private currentMediaId: number = 1;
+  private currentConfigImageId: number = 1;
+  private currentFeatureFlagId: number = 1;
+
+  constructor() {
+    this.kv = new Database();
+    this.initializeDefaults();
+  }
+
+  private async initializeDefaults() {
+    // Initialize default feature flags if they don't exist
+    const existingFlags = await this.getAllFeatureFlags();
+    if (existingFlags.length === 0) {
+      await this.initializeDefaultFeatureFlags();
+    }
+
+    // Initialize default images if they don't exist
+    const existingImages = await this.getAllConfigImages();
+    if (existingImages.length === 0) {
+      await this.initializeDefaultImages();
+    }
+  }
+
+  private async initializeDefaultFeatureFlags() {
+    const defaultFeatures = [
+      {
+        featureKey: 'rsvp',
+        featureName: 'RSVP Form',
+        description: 'Allow guests to submit their attendance confirmation',
+        enabled: true
+      },
+      {
+        featureKey: 'messages',
+        featureName: 'Message Board',
+        description: 'Allow guests to leave congratulatory messages',
+        enabled: false
+      },
+      {
+        featureKey: 'gallery',
+        featureName: 'Photo Gallery',
+        description: 'Display wedding memories and allow photo uploads',
+        enabled: true
+      },
+      {
+        featureKey: 'music',
+        featureName: 'Background Music',
+        description: 'Play background music on the invitation page',
+        enabled: false
+      },
+      {
+        featureKey: 'countdown',
+        featureName: 'Wedding Countdown',
+        description: 'Show countdown timer to wedding date',
+        enabled: false
+      }
+    ];
+
+    for (const feature of defaultFeatures) {
+      const featureFlag: FeatureFlag = {
+        id: this.currentFeatureFlagId++,
+        ...feature,
+        updatedAt: new Date().toISOString()
+      };
+      await this.kv.set(`feature_flag:${feature.featureKey}`, featureFlag);
+    }
+  }
+
+  private async initializeDefaultImages() {
+    // Default banner image
+    const bannerImage: ConfigImage = {
+      id: this.currentConfigImageId++,
+      imageKey: 'banner',
+      imageUrl: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+      imageType: 'banner',
+      title: 'Main Banner',
+      description: 'Hero section background image',
+      isActive: true,
+      updatedAt: new Date().toISOString()
+    };
+    await this.kv.set(`config_image:banner`, bannerImage);
+
+    // Default gallery images
+    const defaultGalleryImages = [
+      "https://images.unsplash.com/photo-1522673607200-164d1b3ce475?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+      "https://images.unsplash.com/photo-1494774157365-9e04c6720e47?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80"
+    ];
+
+    for (let i = 0; i < defaultGalleryImages.length; i++) {
+      const galleryImage: ConfigImage = {
+        id: this.currentConfigImageId++,
+        imageKey: `gallery_default_${i + 1}`,
+        imageUrl: defaultGalleryImages[i],
+        imageType: 'gallery',
+        title: `Gallery Image ${i + 1}`,
+        description: `Default gallery image ${i + 1}`,
+        isActive: true,
+        updatedAt: new Date().toISOString()
+      };
+      await this.kv.set(`config_image:gallery_default_${i + 1}`, galleryImage);
+    }
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    return await this.kv.get(`user:${id}`);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    // Note: This is less efficient with KV store - would need to iterate through all users
+    // For production, consider maintaining a username index
+    const userKeys = await this.kv.list("user:");
+    for (const key of userKeys) {
+      const user = await this.kv.get(key);
+      if (user && user.username === username) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.currentUserId++;
+    const user: User = { ...insertUser, id };
+    await this.kv.set(`user:${id}`, user);
+    return user;
+  }
+
+  // RSVP methods
+  async createRsvp(insertRsvp: InsertRsvp): Promise<Rsvp> {
+    const id = this.currentRsvpId++;
+    const rsvpEntry: Rsvp = { 
+      ...insertRsvp, 
+      id,
+      guestCount: insertRsvp.guestCount ?? null
+    };
+    await this.kv.set(`rsvp:${id}`, rsvpEntry);
+    return rsvpEntry;
+  }
+
+  async updateRsvp(id: number, insertRsvp: InsertRsvp): Promise<Rsvp> {
+    const rsvpEntry: Rsvp = { 
+      ...insertRsvp, 
+      id,
+      guestCount: insertRsvp.guestCount ?? null
+    };
+    await this.kv.set(`rsvp:${id}`, rsvpEntry);
+    return rsvpEntry;
+  }
+
+  async getRsvps(): Promise<Rsvp[]> {
+    const rsvpKeys = await this.kv.list("rsvp:");
+    const rsvps = [];
+    for (const key of rsvpKeys) {
+      const rsvp = await this.kv.get(key);
+      if (rsvp) rsvps.push(rsvp);
+    }
+    return rsvps;
+  }
+
+  async getRsvpByEmail(email: string): Promise<Rsvp | undefined> {
+    const rsvpKeys = await this.kv.list("rsvp:");
+    for (const key of rsvpKeys) {
+      const rsvp = await this.kv.get(key);
+      if (rsvp && rsvp.email.toLowerCase() === email.toLowerCase()) {
+        return rsvp;
+      }
+    }
+    return undefined;
+  }
+
+  // Media methods
+  async createMedia(insertMedia: InsertMedia): Promise<Media> {
+    const id = this.currentMediaId++;
+    const now = new Date();
+    const mediaEntry: Media = {
+      ...insertMedia,
+      id,
+      mediaType: insertMedia.mediaType || 'image',
+      caption: insertMedia.caption ?? null,
+      approved: false,
+      createdAt: now.toISOString()
+    };
+    await this.kv.set(`media:${id}`, mediaEntry);
+    return mediaEntry;
+  }
+
+  async getMediaById(id: number): Promise<Media | undefined> {
+    return await this.kv.get(`media:${id}`);
+  }
+
+  async getAllMedia(): Promise<Media[]> {
+    const mediaKeys = await this.kv.list("media:");
+    const medias = [];
+    for (const key of mediaKeys) {
+      const media = await this.kv.get(key);
+      if (media) medias.push(media);
+    }
+    return medias.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getApprovedMedia(): Promise<Media[]> {
+    const allMedia = await this.getAllMedia();
+    return allMedia.filter(media => media.approved);
+  }
+
+  async updateMediaApproval(id: number, approved: boolean): Promise<Media | undefined> {
+    const media = await this.kv.get(`media:${id}`);
+    if (!media) return undefined;
+    
+    const updatedMedia: Media = { ...media, approved };
+    await this.kv.set(`media:${id}`, updatedMedia);
+    return updatedMedia;
+  }
+
+  // Config image methods
+  async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const id = this.currentConfigImageId++;
+    const now = new Date();
+    const configImage: ConfigImage = {
+      ...insertConfigImage,
+      id,
+      title: insertConfigImage.title ?? null,
+      description: insertConfigImage.description ?? null,
+      isActive: insertConfigImage.isActive ?? true,
+      updatedAt: now.toISOString()
+    };
+    await this.kv.set(`config_image:${configImage.imageKey}`, configImage);
+    return configImage;
+  }
+
+  async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const existing = await this.kv.get(`config_image:${imageKey}`);
+    const id = existing?.id ?? this.currentConfigImageId++;
+    const now = new Date();
+    const configImage: ConfigImage = {
+      ...insertConfigImage,
+      id,
+      imageKey,
+      title: insertConfigImage.title ?? null,
+      description: insertConfigImage.description ?? null,
+      isActive: insertConfigImage.isActive ?? true,
+      updatedAt: now.toISOString()
+    };
+    await this.kv.set(`config_image:${imageKey}`, configImage);
+    return configImage;
+  }
+
+  async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
+    return await this.kv.get(`config_image:${imageKey}`);
+  }
+
+  async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
+    const imageKeys = await this.kv.list("config_image:");
+    const images = [];
+    for (const key of imageKeys) {
+      const image = await this.kv.get(key);
+      if (image && image.imageType === imageType && image.isActive) {
+        images.push(image);
+      }
+    }
+    return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
+  async getAllConfigImages(): Promise<ConfigImage[]> {
+    const imageKeys = await this.kv.list("config_image:");
+    const images = [];
+    for (const key of imageKeys) {
+      const image = await this.kv.get(key);
+      if (image) images.push(image);
+    }
+    return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
+  async deleteConfigImage(imageKey: string): Promise<boolean> {
+    await this.kv.delete(`config_image:${imageKey}`);
+    return true;
+  }
+
+  // Feature flag methods
+  async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
+    const id = this.currentFeatureFlagId++;
+    const now = new Date();
+    const featureFlag: FeatureFlag = {
+      ...insertFeatureFlag,
+      id,
+      enabled: insertFeatureFlag.enabled ?? true,
+      updatedAt: now.toISOString()
+    };
+    await this.kv.set(`feature_flag:${featureFlag.featureKey}`, featureFlag);
+    return featureFlag;
+  }
+
+  async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
+    const existing = await this.kv.get(`feature_flag:${featureKey}`);
+    if (!existing) return undefined;
+
+    const updatedFeatureFlag: FeatureFlag = {
+      ...existing,
+      enabled,
+      updatedAt: new Date().toISOString()
+    };
+    await this.kv.set(`feature_flag:${featureKey}`, updatedFeatureFlag);
+    return updatedFeatureFlag;
+  }
+
+  async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
+    return await this.kv.get(`feature_flag:${featureKey}`);
+  }
+
+  async getAllFeatureFlags(): Promise<FeatureFlag[]> {
+    const flagKeys = await this.kv.list("feature_flag:");
+    const flags = [];
+    for (const key of flagKeys) {
+      const flag = await this.kv.get(key);
+      if (flag) flags.push(flag);
+    }
+    return flags.sort((a, b) => a.featureName.localeCompare(b.featureName));
+  }
+}
+
+// Use Key-Value storage for persistence with Replit Core
+export const storage = new KeyValueStorage();
 
 // Uncomment to use MemStorage for development/testing
 // export const storage = new MemStorage();
