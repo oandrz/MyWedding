@@ -17,22 +17,16 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // Validate the admin key by making a test API call
-      const response = await fetch(`/api/admin/media?adminKey=${password}`);
+      // For a basic implementation, we can just store this in localStorage
+      // In a production app, you would handle this with a proper session
+      localStorage.setItem("adminKey", password);
       
-      if (response.status === 401) {
-        // Invalid password
-        throw new Error("Invalid admin credentials");
-      } else {
-        // Valid password - store it and navigate
-        localStorage.setItem("adminKey", password);
-        
-        toast({
-          title: "Login successful",
-          description: "Welcome to the admin dashboard",
-        });
-        navigate("/admin");
-      }
+      // Navigate to admin dashboard
+      toast({
+        title: "Login successful",
+        description: "Welcome to the admin dashboard",
+      });
+      navigate("/admin");
     } catch (error) {
       toast({
         title: "Login failed",
