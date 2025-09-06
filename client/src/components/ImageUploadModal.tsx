@@ -124,14 +124,18 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
 
       // Use the new config images upload endpoint with admin key authentication
       const adminKey = localStorage.getItem('adminKey');
+      console.log('Upload Debug - adminKey exists:', !!adminKey);
       const uploadUrl = adminKey 
         ? `/api/admin/config-images-upload?adminKey=${adminKey}`
         : `/api/admin/config-images-upload`;
+      console.log('Upload Debug - URL:', uploadUrl);
         
       const uploadResponse = await fetch(uploadUrl, {
         method: "POST",
         body: formData
       });
+      
+      console.log('Upload Debug - Response status:', uploadResponse.status);
       
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json();
