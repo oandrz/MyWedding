@@ -3,13 +3,23 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock, Flag, Check, X } from "lucide-react";
 import { Media, Rsvp } from "@shared/schema";
 import { useLocation } from "wouter";
 import ImageManager from "@/components/ImageManager";
+
+interface FeatureFlag {
+  id: number;
+  featureKey: string;
+  featureName: string;
+  description: string;
+  enabled: boolean;
+  updatedAt: string;
+}
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -47,6 +57,16 @@ export default function AdminDashboard() {
     queryKey: ["/api/rsvp"],
   });
 
+  // Fetch all feature flags
+  const { 
+    data: featureFlagsData,
+    isLoading: featureFlagsLoading,
+    error: featureFlagsError
+  } = useQuery<{ featureFlags: FeatureFlag[] }>({
+    queryKey: ["/api/feature-flags"],
+    enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
+  });
+
   // Mutation for approving/rejecting media
   const approvalMutation = useMutation({
     mutationFn: ({ id, approved }: { id: number, approved: boolean }) => {
@@ -71,6 +91,31 @@ export default function AdminDashboard() {
 
   const handleApproval = (id: number, approved: boolean) => {
     approvalMutation.mutate({ id, approved });
+  };
+
+  // Mutation for updating feature flags
+  const featureFlagMutation = useMutation({
+    mutationFn: ({ featureKey, enabled }: { featureKey: string, enabled: boolean }) => {
+      return apiRequest("PATCH", `/api/admin/feature-flags/${featureKey}`, { enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/feature-flags"] });
+      toast({
+        title: "Success",
+        description: "Feature flag updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update feature flag: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFeatureFlagToggle = (featureKey: string, enabled: boolean) => {
+    featureFlagMutation.mutate({ featureKey, enabled });
   };
 
   const handleLogout = () => {
@@ -162,20 +207,24 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="media" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-4">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="media" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Image className="h-4 w-4" />
               <span className="hidden md:inline">Media</span>
             </TabsTrigger>
-            <TabsTrigger value="images" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-4">
+            <TabsTrigger value="images" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Config</span>
             </TabsTrigger>
-            <TabsTrigger value="rsvps" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-4">
+            <TabsTrigger value="rsvps" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Users className="h-4 w-4" />
               <span className="hidden md:inline">RSVP</span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-4">
+            <TabsTrigger value="flags" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
+              <Flag className="h-4 w-4" />
+              <span className="hidden md:inline">Flags</span>
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden md:inline">Stats</span>
             </TabsTrigger>
@@ -524,6 +573,83 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Feature Flags Management Tab */}
+        <TabsContent value="flags">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Flag className="h-6 w-6 text-rose-600" />
+                <div>
+                  <CardTitle className="text-xl">Feature Flags</CardTitle>
+                  <CardDescription>Control which features are visible to your wedding guests</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {featureFlagsLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
+                  <p className="text-gray-500">Loading feature flags...</p>
+                </div>
+              ) : featureFlagsError ? (
+                <div className="text-center py-16">
+                  <p className="text-red-500">Failed to load feature flags</p>
+                </div>
+              ) : featureFlagsData?.featureFlags && featureFlagsData.featureFlags.length > 0 ? (
+                <div className="space-y-6">
+                  {featureFlagsData.featureFlags.map((flag: FeatureFlag) => (
+                    <div key={flag.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-medium text-gray-900">{flag.featureName}</h3>
+                          <Badge 
+                            variant={flag.enabled ? "default" : "secondary"}
+                            className={flag.enabled ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}
+                          >
+                            {flag.enabled ? "Enabled" : "Disabled"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">{flag.description}</p>
+                        <p className="text-xs text-gray-400">
+                          Key: <code className="bg-gray-100 px-1 rounded">{flag.featureKey}</code>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={flag.enabled}
+                          onCheckedChange={(enabled) => handleFeatureFlagToggle(flag.featureKey, enabled)}
+                          disabled={featureFlagMutation.isPending}
+                          className="data-[state=checked]:bg-rose-600"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-blue-900 mb-1">How Feature Flags Work</h4>
+                        <p className="text-sm text-blue-800">
+                          Toggle these switches to show or hide features on your wedding invitation. 
+                          Changes take effect immediately for all your guests.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <Flag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No feature flags configured</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
