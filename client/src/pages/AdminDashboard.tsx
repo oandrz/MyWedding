@@ -26,6 +26,19 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("media");
   const [, navigate] = useLocation();
   
+  // Auto-logout helper function
+  const handleAutoLogout = (error: Error) => {
+    if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+      localStorage.removeItem("adminKey");
+      toast({
+        title: "Session expired",
+        description: "Your admin session has expired. Please log in again.",
+        variant: "destructive",
+      });
+      navigate("/admin-login");
+    }
+  };
+
   // Check if user is authenticated
   useEffect(() => {
     const adminKey = localStorage.getItem("adminKey");
@@ -47,6 +60,14 @@ export default function AdminDashboard() {
   } = useQuery<{ media: Media[] }>({
     queryKey: ["/api/admin/media"],
     enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
+    retry: (failureCount, error) => {
+      // Don't retry on authentication errors
+      if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+        handleAutoLogout(error);
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   // Fetch all RSVPs
@@ -65,6 +86,14 @@ export default function AdminDashboard() {
   } = useQuery<{ featureFlags: FeatureFlag[] }>({
     queryKey: ["/api/feature-flags"],
     enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
+    retry: (failureCount, error) => {
+      // Don't retry on authentication errors
+      if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+        handleAutoLogout(error);
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   // Mutation for approving/rejecting media
@@ -81,6 +110,7 @@ export default function AdminDashboard() {
       });
     },
     onError: (error: Error) => {
+      handleAutoLogout(error);
       toast({
         title: "Error",
         description: `Failed to update approval status: ${error.message}`,
@@ -106,6 +136,7 @@ export default function AdminDashboard() {
       });
     },
     onError: (error: Error) => {
+      handleAutoLogout(error);
       toast({
         title: "Error",
         description: `Failed to update feature flag: ${error.message}`,

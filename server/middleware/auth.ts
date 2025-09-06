@@ -21,6 +21,11 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
     }
   }
   
+  // Check for adminKey in request body (for validation endpoint)
+  if (req.body?.adminKey === adminPassword) {
+    return next();
+  }
+  
   // Alternative: Allow using query parameter for development/testing
   if (req.query.adminKey === adminPassword) {
     return next();

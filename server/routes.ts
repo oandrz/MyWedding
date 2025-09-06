@@ -783,6 +783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Validate admin credentials (for login validation)
+  app.post("/api/admin/validate", adminAuthMiddleware, (req: Request, res: Response) => {
+    // If middleware passed, credentials are valid
+    res.status(200).json({ 
+      message: "Admin credentials are valid",
+      valid: true 
+    });
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

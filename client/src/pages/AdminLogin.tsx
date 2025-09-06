@@ -17,20 +17,37 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // For a basic implementation, we can just store this in localStorage
-      // In a production app, you would handle this with a proper session
-      localStorage.setItem("adminKey", password);
-      
-      // Navigate to admin dashboard
-      toast({
-        title: "Login successful",
-        description: "Welcome to the admin dashboard",
+      // Validate credentials with the server before storing
+      const response = await fetch("/api/admin/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ adminKey: password }),
       });
-      navigate("/admin");
+
+      if (response.ok) {
+        // Credentials are valid, store in localStorage
+        localStorage.setItem("adminKey", password);
+        
+        toast({
+          title: "Login successful",
+          description: "Welcome to the admin dashboard",
+        });
+        navigate("/admin");
+      } else {
+        // Invalid credentials
+        const errorData = await response.json();
+        toast({
+          title: "Login failed",
+          description: errorData.message || "Invalid admin credentials",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Login failed",
-        description: "Invalid admin credentials",
+        description: "Unable to connect to server. Please try again.",
         variant: "destructive",
       });
     } finally {
