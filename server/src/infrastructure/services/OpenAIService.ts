@@ -33,7 +33,7 @@ export class OpenAIService {
         ],
         response_format: { type: "json_object" },
         temperature: 0.8,
-        max_tokens: 2000
+        max_completion_tokens: 2000
       });
 
       const content = response.choices[0].message.content;
@@ -106,7 +106,7 @@ export class OpenAIService {
           }
         ],
         temperature: 0.7,
-        max_tokens: 200
+        max_completion_tokens: 200
       });
 
       return response.choices[0].message.content || 'A beautiful wedding theme perfect for your special day.';
