@@ -128,13 +128,10 @@ export class MemStorage implements IStorage {
   
   async createRsvp(insertRsvp: InsertRsvp): Promise<Rsvp> {
     const id = this.currentRsvpId++;
-    // Handle optional fields to match the Rsvp type
     const rsvpEntry: Rsvp = { 
       ...insertRsvp, 
       id,
-      message: insertRsvp.message ?? null,
-      guestCount: insertRsvp.guestCount ?? null,
-      dietaryRestrictions: insertRsvp.dietaryRestrictions ?? null
+      guestCount: insertRsvp.guestCount ?? null
     };
     this.rsvps.set(id, rsvpEntry);
     return rsvpEntry;
@@ -145,13 +142,10 @@ export class MemStorage implements IStorage {
   }
   
   async updateRsvp(id: number, insertRsvp: InsertRsvp): Promise<Rsvp> {
-    // Handle optional fields to match the Rsvp type
     const rsvpEntry: Rsvp = { 
       ...insertRsvp, 
       id,
-      message: insertRsvp.message ?? null,
-      guestCount: insertRsvp.guestCount ?? null,
-      dietaryRestrictions: insertRsvp.dietaryRestrictions ?? null
+      guestCount: insertRsvp.guestCount ?? null
     };
     this.rsvps.set(id, rsvpEntry);
     return rsvpEntry;
@@ -166,10 +160,10 @@ export class MemStorage implements IStorage {
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
     const id = this.currentMediaId++;
     const now = new Date();
-    // Handle optional fields to match the Media type
     const mediaEntry: Media = {
       ...insertMedia,
       id,
+      mediaType: insertMedia.mediaType || 'image',
       caption: insertMedia.caption ?? null,
       approved: false,
       createdAt: now.toISOString()
@@ -481,7 +475,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(configImages)
       .where(eq(configImages.imageKey, imageKey));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Feature flag methods

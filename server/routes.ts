@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -630,6 +630,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Config image delete error:", error);
       res.status(500).json({ message: "Failed to delete image configuration" });
+    }
+  });
+
+  // Feature Flags API Routes
+  
+  // Get all feature flags (public endpoint for frontend)
+  app.get("/api/feature-flags", async (req: Request, res: Response) => {
+    try {
+      const featureFlags = await storage.getAllFeatureFlags();
+      res.status(200).json({ featureFlags });
+    } catch (error) {
+      console.error("Error fetching feature flags:", error);
+      res.status(500).json({ message: "Failed to fetch feature flags" });
+    }
+  });
+
+  // Get specific feature flag (public endpoint)
+  app.get("/api/feature-flags/:featureKey", async (req: Request, res: Response) => {
+    try {
+      const featureKey = req.params.featureKey;
+      const featureFlag = await storage.getFeatureFlag(featureKey);
+      
+      if (!featureFlag) {
+        return res.status(404).json({ message: "Feature flag not found" });
+      }
+      
+      res.status(200).json({ featureFlag });
+    } catch (error) {
+      console.error("Error fetching feature flag:", error);
+      res.status(500).json({ message: "Failed to fetch feature flag" });
+    }
+  });
+
+  // Update feature flag (admin only)
+  app.patch("/api/admin/feature-flags/:featureKey", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const featureKey = req.params.featureKey;
+      const { enabled } = req.body;
+      
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ message: "Enabled status must be a boolean" });
+      }
+      
+      const updatedFeatureFlag = await storage.updateFeatureFlag(featureKey, enabled);
+      
+      if (!updatedFeatureFlag) {
+        return res.status(404).json({ message: "Feature flag not found" });
+      }
+      
+      res.status(200).json({ 
+        message: `Feature flag '${updatedFeatureFlag.featureName}' ${enabled ? 'enabled' : 'disabled'} successfully`,
+        featureFlag: updatedFeatureFlag 
+      });
+    } catch (error) {
+      console.error("Error updating feature flag:", error);
+      res.status(500).json({ message: "Failed to update feature flag" });
+    }
+  });
+
+  // Create new feature flag (admin only)
+  app.post("/api/admin/feature-flags", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertFeatureFlagSchema.parse(req.body);
+      
+      // Check if feature flag already exists
+      const existingFeatureFlag = await storage.getFeatureFlag(validatedData.featureKey);
+      
+      if (existingFeatureFlag) {
+        return res.status(409).json({ message: "Feature flag already exists" });
+      }
+      
+      const featureFlag = await storage.createFeatureFlag(validatedData);
+      
+      res.status(201).json({ 
+        message: "Feature flag created successfully",
+        featureFlag 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ message: validationError.message });
+      } else {
+        console.error("Feature flag creation error:", error);
+        res.status(500).json({ message: "Failed to create feature flag" });
+      }
     }
   });
 
