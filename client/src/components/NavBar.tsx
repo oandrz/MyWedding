@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 const NavBar = () => {
+  const { isFeatureEnabled } = useFeatureFlags();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [location] = useLocation();
@@ -108,38 +110,46 @@ const NavBar = () => {
               >
                 Wedding Details
               </a>
-              <a 
-                href="#gallery" 
-                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const element = document.getElementById('gallery');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                  setActiveSection('gallery');
-                }}
-              >
-                Gallery
-              </a>
-              <a 
-                href="#rsvp" 
-                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const element = document.getElementById('rsvp');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                  setActiveSection('rsvp');
-                }}
-              >
-                RSVP
-              </a>
+              {isFeatureEnabled('gallery') && (
+                <a 
+                  href="#gallery" 
+                  className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('gallery');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    setActiveSection('gallery');
+                  }}
+                >
+                  Gallery
+                </a>
+              )}
+              {isFeatureEnabled('rsvp') && (
+                <a 
+                  href="#rsvp" 
+                  className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('rsvp');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    setActiveSection('rsvp');
+                  }}
+                >
+                  RSVP
+                </a>
+              )}
             </>
           )}
-          <Link href="/messages" className={`nav-link hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}>Messages</Link>
-          <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
+          {isFeatureEnabled('messages') && (
+            <Link href="/messages" className={`nav-link hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}>Messages</Link>
+          )}
+          {isFeatureEnabled('gallery') && (
+            <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
+          )}
         </div>
       </div>
       

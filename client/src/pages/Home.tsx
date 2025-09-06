@@ -6,21 +6,26 @@ import DetailsSection from "@/components/DetailsSection";
 import GallerySection from "@/components/GallerySection";
 import RsvpSection from "@/components/RsvpSection";
 import Footer from "@/components/Footer";
+import { useCountdownEnabled, useGalleryEnabled, useRsvpEnabled } from "@/hooks/useFeatureFlags";
 
 export default function Home() {
+  const isCountdownEnabled = useCountdownEnabled();
+  const isGalleryEnabled = useGalleryEnabled();
+  const isRsvpEnabled = useRsvpEnabled();
+
   return (
     <div className="overflow-hidden">
       <NavBar />
       <HeroSection />
-      <CountdownSection />
+      {isCountdownEnabled && <CountdownSection />}
       <CoupleSection />
       {/* Floral Divider */}
       <div className="floral-divider w-full"></div>
       <DetailsSection />
       {/* Floral Divider */}
       <div className="floral-divider w-full"></div>
-      <GallerySection />
-      <RsvpSection />
+      {isGalleryEnabled && <GallerySection />}
+      {isRsvpEnabled && <RsvpSection />}
       <Footer />
     </div>
   );

@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle, Heart, Send, Users, Sparkles } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
+import { useMessagesEnabled } from '@/hooks/useFeatureFlags';
 
 // Animation variants
 const staggerContainer = {
@@ -81,8 +82,28 @@ const getInitials = (name: string) => {
 };
 
 const Messages = () => {
+  const isMessagesEnabled = useMessagesEnabled();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState<'messages' | 'form'>('messages');
+
+  // If messages feature is disabled, show a message
+  if (!isMessagesEnabled) {
+    return (
+      <div className="min-h-screen bg-background">
+        <NavBar />
+        <div className="container mx-auto px-4 py-32">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-cormorant text-foreground mb-4">
+              Messages Currently Unavailable
+            </h1>
+            <p className="text-muted-foreground font-montserrat">
+              The message board feature is temporarily disabled.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   const headerRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
