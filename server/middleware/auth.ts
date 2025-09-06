@@ -3,6 +3,11 @@ import { Request, Response, NextFunction } from "express";
 // Simple admin authentication middleware
 // In a production environment, you would use a more secure approach
 export function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Debug logging
+  console.log('Auth Debug - URL:', req.url);
+  console.log('Auth Debug - Query:', req.query);
+  console.log('Auth Debug - Body keys:', Object.keys(req.body || {}));
+  
   // Check for admin credentials in headers (basic auth) or query params for testing
   const authHeader = req.headers.authorization;
   const adminPassword = process.env.ADMIN_PASSWORD || 'wedding-admin'; // Default password for testing
