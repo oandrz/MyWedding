@@ -2,6 +2,14 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    // Handle 401 Unauthorized for admin routes
+    if (res.status === 401 && res.url.includes('/api/admin')) {
+      // Clear invalid admin key and redirect to login
+      localStorage.removeItem('adminKey');
+      window.location.href = '/admin-login';
+      throw new Error(`${res.status}: Unauthorized - redirecting to login`);
+    }
+    
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
@@ -64,6 +72,14 @@ export const getQueryFn: <T>(options: {
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
+    }
+
+    // Handle 401 Unauthorized for admin routes in queries
+    if (res.status === 401 && requestUrl.includes('/api/admin')) {
+      // Clear invalid admin key and redirect to login
+      localStorage.removeItem('adminKey');
+      window.location.href = '/admin-login';
+      throw new Error(`${res.status}: Unauthorized - redirecting to login`);
     }
 
     await throwIfResNotOk(res);
