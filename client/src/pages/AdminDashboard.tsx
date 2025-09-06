@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock, Flag, Check, X } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock, Flag, Check, X, Sparkles } from "lucide-react";
 import { Media, Rsvp } from "@shared/schema";
 import { useLocation } from "wouter";
 import ImageManager from "@/components/ImageManager";
@@ -207,7 +207,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="media" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Image className="h-4 w-4" />
               <span className="hidden md:inline">Media</span>
@@ -223,6 +223,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="flags" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Flag className="h-4 w-4" />
               <span className="hidden md:inline">Flags</span>
+            </TabsTrigger>
+            <TabsTrigger value="themes" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden md:inline">Themes</span>
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <BarChart3 className="h-4 w-4" />
@@ -650,6 +654,97 @@ export default function AdminDashboard() {
                   <p className="text-gray-500">No feature flags configured</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Theme Suggester Tab */}
+        <TabsContent value="themes">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-6 w-6 text-rose-600" />
+                <div>
+                  <CardTitle className="text-xl">AI Wedding Theme Suggester</CardTitle>
+                  <CardDescription>Generate personalized wedding themes for couples</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-6 bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg border border-rose-200">
+                  <h3 className="font-medium text-gray-900 mb-3">How to Use the Theme Suggester</h3>
+                  <ol className="space-y-2 text-sm text-gray-600">
+                    <li className="flex gap-2">
+                      <span className="font-medium text-rose-600">1.</span>
+                      Share the theme suggester link with couples planning their wedding
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-rose-600">2.</span>
+                      They'll answer questions about their preferences (season, style, budget, etc.)
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-rose-600">3.</span>
+                      AI generates 3 unique, personalized wedding themes instantly
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-rose-600">4.</span>
+                      Each theme includes colors, venues, flowers, and music suggestions
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    onClick={() => window.open('/themes', '_blank')}
+                    className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Open Theme Suggester
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const url = `${window.location.origin}/themes`;
+                      navigator.clipboard.writeText(url);
+                      toast({
+                        title: "Link Copied!",
+                        description: "Theme suggester link copied to clipboard",
+                      });
+                    }}
+                    className="flex-1"
+                  >
+                    Copy Link to Share
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  <div className="p-4 bg-white border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-5 w-5 text-rose-500" />
+                      <h4 className="font-medium">Seasonal Themes</h4>
+                    </div>
+                    <p className="text-sm text-gray-600">Spring, Summer, Fall, Winter</p>
+                  </div>
+                  
+                  <div className="p-4 bg-white border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-5 w-5 text-rose-500" />
+                      <h4 className="font-medium">Style Options</h4>
+                    </div>
+                    <p className="text-sm text-gray-600">Casual to Black Tie</p>
+                  </div>
+                  
+                  <div className="p-4 bg-white border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare className="h-5 w-5 text-rose-500" />
+                      <h4 className="font-medium">AI Powered</h4>
+                    </div>
+                    <p className="text-sm text-gray-600">GPT-5 Technology</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
