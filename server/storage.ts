@@ -621,17 +621,20 @@ export class KeyValueStorage implements IStorage {
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return await this.kv.get(`user:${id}`);
+    const result = await this.kv.get(`user:${id}`);
+    return result.ok ? result.value : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     // Note: This is less efficient with KV store - would need to iterate through all users
     // For production, consider maintaining a username index
-    const userKeys = await this.kv.list("user:");
-    for (const key of userKeys) {
-      const user = await this.kv.get(key);
-      if (user && user.username === username) {
-        return user;
+    const keysResult = await this.kv.list("user:");
+    if (!keysResult.ok) return undefined;
+    
+    for (const key of keysResult.value) {
+      const userResult = await this.kv.get(key);
+      if (userResult.ok && userResult.value && userResult.value.username === username) {
+        return userResult.value;
       }
     }
     return undefined;
@@ -667,21 +670,25 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getRsvps(): Promise<Rsvp[]> {
-    const rsvpKeys = await this.kv.list("rsvp:");
+    const keysResult = await this.kv.list("rsvp:");
+    if (!keysResult.ok) return [];
+    
     const rsvps = [];
-    for (const key of rsvpKeys) {
-      const rsvp = await this.kv.get(key);
-      if (rsvp) rsvps.push(rsvp);
+    for (const key of keysResult.value) {
+      const rsvpResult = await this.kv.get(key);
+      if (rsvpResult.ok && rsvpResult.value) rsvps.push(rsvpResult.value);
     }
     return rsvps;
   }
 
   async getRsvpByEmail(email: string): Promise<Rsvp | undefined> {
-    const rsvpKeys = await this.kv.list("rsvp:");
-    for (const key of rsvpKeys) {
-      const rsvp = await this.kv.get(key);
-      if (rsvp && rsvp.email.toLowerCase() === email.toLowerCase()) {
-        return rsvp;
+    const keysResult = await this.kv.list("rsvp:");
+    if (!keysResult.ok) return undefined;
+    
+    for (const key of keysResult.value) {
+      const rsvpResult = await this.kv.get(key);
+      if (rsvpResult.ok && rsvpResult.value && rsvpResult.value.email.toLowerCase() === email.toLowerCase()) {
+        return rsvpResult.value;
       }
     }
     return undefined;
@@ -704,15 +711,18 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getMediaById(id: number): Promise<Media | undefined> {
-    return await this.kv.get(`media:${id}`);
+    const result = await this.kv.get(`media:${id}`);
+    return result.ok ? result.value : undefined;
   }
 
   async getAllMedia(): Promise<Media[]> {
-    const mediaKeys = await this.kv.list("media:");
+    const keysResult = await this.kv.list("media:");
+    if (!keysResult.ok) return [];
+    
     const medias = [];
-    for (const key of mediaKeys) {
-      const media = await this.kv.get(key);
-      if (media) medias.push(media);
+    for (const key of keysResult.value) {
+      const mediaResult = await this.kv.get(key);
+      if (mediaResult.ok && mediaResult.value) medias.push(mediaResult.value);
     }
     return medias.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
@@ -723,10 +733,10 @@ export class KeyValueStorage implements IStorage {
   }
 
   async updateMediaApproval(id: number, approved: boolean): Promise<Media | undefined> {
-    const media = await this.kv.get(`media:${id}`);
-    if (!media) return undefined;
+    const mediaResult = await this.kv.get(`media:${id}`);
+    if (!mediaResult.ok || !mediaResult.value) return undefined;
     
-    const updatedMedia: Media = { ...media, approved };
+    const updatedMedia: Media = { ...mediaResult.value, approved };
     await this.kv.set(`media:${id}`, updatedMedia);
     return updatedMedia;
   }
@@ -748,8 +758,8 @@ export class KeyValueStorage implements IStorage {
   }
 
   async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
-    const existing = await this.kv.get(`config_image:${imageKey}`);
-    const id = existing?.id ?? this.currentConfigImageId++;
+    const existingResult = await this.kv.get(`config_image:${imageKey}`);
+    const id = (existingResult.ok && existingResult.value) ? existingResult.value.id : this.currentConfigImageId++;
     const now = new Date();
     const configImage: ConfigImage = {
       ...insertConfigImage,
@@ -765,27 +775,32 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
-    return await this.kv.get(`config_image:${imageKey}`);
+    const result = await this.kv.get(`config_image:${imageKey}`);
+    return result.ok ? result.value : undefined;
   }
 
   async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
-    const imageKeys = await this.kv.list("config_image:");
+    const keysResult = await this.kv.list("config_image:");
+    if (!keysResult.ok) return [];
+    
     const images = [];
-    for (const key of imageKeys) {
-      const image = await this.kv.get(key);
-      if (image && image.imageType === imageType && image.isActive) {
-        images.push(image);
+    for (const key of keysResult.value) {
+      const imageResult = await this.kv.get(key);
+      if (imageResult.ok && imageResult.value && imageResult.value.imageType === imageType && imageResult.value.isActive) {
+        images.push(imageResult.value);
       }
     }
     return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   async getAllConfigImages(): Promise<ConfigImage[]> {
-    const imageKeys = await this.kv.list("config_image:");
+    const keysResult = await this.kv.list("config_image:");
+    if (!keysResult.ok) return [];
+    
     const images = [];
-    for (const key of imageKeys) {
-      const image = await this.kv.get(key);
-      if (image) images.push(image);
+    for (const key of keysResult.value) {
+      const imageResult = await this.kv.get(key);
+      if (imageResult.ok && imageResult.value) images.push(imageResult.value);
     }
     return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
@@ -810,11 +825,11 @@ export class KeyValueStorage implements IStorage {
   }
 
   async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
-    const existing = await this.kv.get(`feature_flag:${featureKey}`);
-    if (!existing) return undefined;
+    const existingResult = await this.kv.get(`feature_flag:${featureKey}`);
+    if (!existingResult.ok || !existingResult.value) return undefined;
 
     const updatedFeatureFlag: FeatureFlag = {
-      ...existing,
+      ...existingResult.value,
       enabled,
       updatedAt: new Date().toISOString()
     };
@@ -823,15 +838,18 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
-    return await this.kv.get(`feature_flag:${featureKey}`);
+    const result = await this.kv.get(`feature_flag:${featureKey}`);
+    return result.ok ? result.value : undefined;
   }
 
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
-    const flagKeys = await this.kv.list("feature_flag:");
+    const keysResult = await this.kv.list("feature_flag:");
+    if (!keysResult.ok) return [];
+    
     const flags = [];
-    for (const key of flagKeys) {
-      const flag = await this.kv.get(key);
-      if (flag) flags.push(flag);
+    for (const key of keysResult.value) {
+      const flagResult = await this.kv.get(key);
+      if (flagResult.ok && flagResult.value) flags.push(flagResult.value);
     }
     return flags.sort((a, b) => a.featureName.localeCompare(b.featureName));
   }
