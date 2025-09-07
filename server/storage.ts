@@ -514,7 +514,7 @@ export class DatabaseStorage implements IStorage {
 }
 
 export class KeyValueStorage implements IStorage {
-  private kv: Database;
+  private kv: Database | null = null;
   private currentUserId: number = 1;
   private currentRsvpId: number = 1;
   private currentMediaId: number = 1;
@@ -522,8 +522,20 @@ export class KeyValueStorage implements IStorage {
   private currentFeatureFlagId: number = 1;
 
   constructor() {
-    this.kv = new Database();
-    this.initializeDefaults();
+    // Only initialize Replit Database if REPLIT_DB_URL is available
+    if (process.env.REPLIT_DB_URL) {
+      this.kv = new Database();
+      this.initializeDefaults();
+    } else {
+      console.warn('KeyValueStorage: REPLIT_DB_URL not found, storage will not be available');
+    }
+  }
+
+  private ensureKvAvailable(): Database {
+    if (!this.kv) {
+      throw new Error('KeyValueStorage: Replit Database not available. REPLIT_DB_URL environment variable is required.');
+    }
+    return this.kv;
   }
 
   private async initializeDefaults() {
@@ -621,18 +633,20 @@ export class KeyValueStorage implements IStorage {
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    const result = await this.kv.get(`user:${id}`);
+    const kv = this.ensureKvAvailable();
+    const result = await kv.get(`user:${id}`);
     return result.ok ? result.value : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     // Note: This is less efficient with KV store - would need to iterate through all users
     // For production, consider maintaining a username index
-    const keysResult = await this.kv.list("user:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("user:");
     if (!keysResult.ok) return undefined;
     
     for (const key of keysResult.value) {
-      const userResult = await this.kv.get(key);
+      const userResult = await kv.get(key);
       if (userResult.ok && userResult.value && userResult.value.username === username) {
         return userResult.value;
       }
@@ -641,9 +655,10 @@ export class KeyValueStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    const kv = this.ensureKvAvailable();
     const id = this.currentUserId++;
     const user: User = { ...insertUser, id };
-    await this.kv.set(`user:${id}`, user);
+    await kv.set(`user:${id}`, user);
     return user;
   }
 
@@ -711,17 +726,19 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getMediaById(id: number): Promise<Media | undefined> {
-    const result = await this.kv.get(`media:${id}`);
+    const kv = this.ensureKvAvailable();
+    const result = await kv.get(`media:${id}`);
     return result.ok ? result.value : undefined;
   }
 
   async getAllMedia(): Promise<Media[]> {
-    const keysResult = await this.kv.list("media:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("media:");
     if (!keysResult.ok) return [];
     
     const medias = [];
     for (const key of keysResult.value) {
-      const mediaResult = await this.kv.get(key);
+      const mediaResult = await kv.get(key);
       if (mediaResult.ok && mediaResult.value) medias.push(mediaResult.value);
     }
     return medias.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -855,8 +872,23 @@ export class KeyValueStorage implements IStorage {
   }
 }
 
-// Use Key-Value storage for persistence with Replit Core
-export const storage = new KeyValueStorage();
+// Conditional storage initialization based on environment
+function createStorage(): IStorage {
+  // Check if we're in a Replit environment (has REPLIT_DB_URL)
+  if (process.env.REPLIT_DB_URL) {
+    console.log('Using Replit Database storage');
+    return new KeyValueStorage();
+  }
+  
+  // Check if we have a PostgreSQL database URL (local development)
+  if (process.env.DATABASE_URL) {
+    console.log('Using PostgreSQL Database storage');
+    return new DatabaseStorage();
+  }
+  
+  // Fallback to in-memory storage for testing
+  console.log('Using in-memory storage (no database configured)');
+  return new MemStorage();
+}
 
-// Uncomment to use MemStorage for development/testing
-// export const storage = new MemStorage();
+export const storage = createStorage();

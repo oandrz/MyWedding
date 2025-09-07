@@ -14,6 +14,8 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://wedding_user:wedding_password@postgres:5432/wedding_invitation_db
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
     volumes:
       - .:/app

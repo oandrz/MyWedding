@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import fs from 'fs';
+import { Readable } from 'stream';
 
 // Google Drive folder ID for wedding memories
 const WEDDING_FOLDER_ID = '1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC';
@@ -83,6 +84,7 @@ export class GoogleDriveService {
 
     try {
       console.log(`Attempting real upload of ${file.originalname} for ${guestName || 'Anonymous'}`);
+      console.log(`File details: size=${file.size} bytes, mimetype=${file.mimetype}, buffer=${file.buffer ? 'present' : 'missing'}`);
       
       const fileName = guestName ? `${guestName}_${file.originalname}` : file.originalname;
       
@@ -99,7 +101,7 @@ export class GoogleDriveService {
         requestBody: fileMetadata,
         media: {
           mimeType: file.mimetype,
-          body: fs.createReadStream(file.path),
+          body: file.buffer ? Readable.from(file.buffer) : fs.createReadStream(file.path),
         },
         fields: 'id,webViewLink',
       };
