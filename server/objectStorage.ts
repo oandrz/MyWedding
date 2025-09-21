@@ -50,11 +50,11 @@ export class WeddingObjectStorageService {
       metadata: {
         contentType,
       },
-      public: true, // Make files publicly accessible
+      // Don't make public - Replit object storage handles access
     });
 
-    // Return the public URL
-    return `https://storage.googleapis.com/${this.bucketName}/${objectName}`;
+    // Return the Replit object storage URL  
+    return `/storage/${objectName}`;
   }
 
   // Upload a file for admin images
@@ -138,7 +138,7 @@ export class WeddingObjectStorageService {
 
   // Convert a public URL back to object path for internal operations
   parsePublicUrl(publicUrl: string): string | null {
-    const urlPattern = new RegExp(`https://storage\\.googleapis\\.com/${this.bucketName}/(.+)`);
+    const urlPattern = new RegExp(`/storage/(.+)`);
     const match = publicUrl.match(urlPattern);
     return match ? match[1] : null;
   }
