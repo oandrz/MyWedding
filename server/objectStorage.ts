@@ -36,8 +36,8 @@ export class WeddingObjectStorageService {
   private bucketName: string;
 
   constructor() {
-    // Use the detected bucket ID
-    this.bucketName = "repl-default-bucket-30de2592-4295-4164-8745-22a43455c0ca";
+    // Use the correct Replit object storage bucket ID
+    this.bucketName = "replit-objstore-30de2592-4295-4164-8745-22a43455c0ca";
   }
 
   // Upload a file to object storage and return the public URL

@@ -7,8 +7,6 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
   const authHeader = req.headers.authorization;
   const adminPassword = process.env.ADMIN_PASSWORD || 'wedding-admin'; // Default password for testing
   
-  console.log('Auth Debug - adminPassword:', adminPassword, 'query.adminKey:', req.query.adminKey);
-  
   if (authHeader) {
     // Basic auth header format: "Basic base64(username:password)"
     const base64Credentials = authHeader.split(' ')[1];
