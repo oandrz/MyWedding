@@ -1,7 +1,9 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideFromLeft, slideFromRight } from "@/lib/animations";
+import type { ConfigImage } from "@shared/schema";
 
 const CoupleSection = () => {
   const sectionRef = useRef(null);
@@ -15,6 +17,23 @@ const CoupleSection = () => {
   const isBrideInView = useInView(brideRef, { once: true, amount: 0.5 });
   const isGroomInView = useInView(groomRef, { once: true, amount: 0.5 });
   const isStoryInView = useInView(storyRef, { once: true, amount: 0.3 });
+
+  // Fetch bride profile image
+  const { data: brideImagesData } = useQuery<{ images: ConfigImage[] }>({
+    queryKey: ["/api/config-images/bride-profile"],
+  });
+
+  // Fetch groom profile image
+  const { data: groomImagesData } = useQuery<{ images: ConfigImage[] }>({
+    queryKey: ["/api/config-images/groom-profile"],
+  });
+
+  // Get the active profile images or fallback to default
+  const brideImage = brideImagesData?.images?.find(img => img.isActive)?.imageUrl || 
+    "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
+  
+  const groomImage = groomImagesData?.images?.find(img => img.isActive)?.imageUrl || 
+    "https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
   
   return (
     <section id="couple" className="py-20 bg-background" ref={sectionRef}>
@@ -49,7 +68,7 @@ const CoupleSection = () => {
             <div className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-lg">
               <img 
                 className="w-full h-full object-cover" 
-                src="https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80" 
+                src={brideImage} 
                 alt={BRIDE_NAME} 
               />
             </div>
@@ -70,7 +89,7 @@ const CoupleSection = () => {
             <div className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-lg">
               <img 
                 className="w-full h-full object-cover" 
-                src="https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80" 
+                src={groomImage} 
                 alt={GROOM_NAME} 
               />
             </div>

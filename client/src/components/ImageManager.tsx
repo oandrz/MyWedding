@@ -21,7 +21,7 @@ import ImageUploadModal from "./ImageUploadModal";
 const imageConfigSchema = z.object({
   imageKey: z.string().min(1, "Image key is required"),
   imageUrl: z.string().url("Must be a valid URL"),
-  imageType: z.enum(["banner", "gallery"]),
+  imageType: z.enum(["banner", "gallery", "bride-profile", "groom-profile"]),
   title: z.string().optional(),
   description: z.string().optional(),
   isActive: z.boolean().default(true)
@@ -33,7 +33,7 @@ const ImageManager = () => {
   const [activeTab, setActiveTab] = useState("banner");
   const [editingImage, setEditingImage] = useState<ConfigImage | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery">("banner");
+  const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile">("banner");
   const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -48,6 +48,8 @@ const ImageManager = () => {
   // Filter images by type
   const bannerImages = imagesData?.images?.filter(img => img.imageType === "banner") || [];
   const galleryImages = imagesData?.images?.filter(img => img.imageType === "gallery") || [];
+  const brideProfileImages = imagesData?.images?.filter(img => img.imageType === "bride-profile") || [];
+  const groomProfileImages = imagesData?.images?.filter(img => img.imageType === "groom-profile") || [];
 
   // Form setup
   const form = useForm<ImageConfigForm>({
@@ -96,7 +98,7 @@ const ImageManager = () => {
   };
 
   const handleEdit = (image: ConfigImage) => {
-    setUploadModalType(image.imageType as "banner" | "gallery");
+    setUploadModalType(image.imageType as "banner" | "gallery" | "bride-profile" | "groom-profile");
     setEditingImage(image);
     setShowUploadModal(true);
   };
@@ -125,7 +127,7 @@ const ImageManager = () => {
     }
   });
 
-  const handleNewImage = (type: "banner" | "gallery") => {
+  const handleNewImage = (type: "banner" | "gallery" | "bride-profile" | "groom-profile") => {
     setEditingImage(null); // Clear editing state for new image
     setUploadModalType(type);
     setShowUploadModal(true);
@@ -196,9 +198,11 @@ const ImageManager = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="banner">Banner Images</TabsTrigger>
-          <TabsTrigger value="gallery">Gallery Images</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="banner">Banner</TabsTrigger>
+          <TabsTrigger value="gallery">Gallery</TabsTrigger>
+          <TabsTrigger value="bride-profile">Bride</TabsTrigger>
+          <TabsTrigger value="groom-profile">Groom</TabsTrigger>
         </TabsList>
 
         <TabsContent value="banner" className="space-y-6">
@@ -271,6 +275,70 @@ const ImageManager = () => {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="bride-profile" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Bride Profile Image</h3>
+              <p className="text-sm text-gray-600">Profile photo displayed in the "Our Love Story" section</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {brideProfileImages.map((image) => (
+              <ImageCard key={image.id} image={image} />
+            ))}
+            
+            {brideProfileImages.length === 0 && (
+              <Card className="overflow-hidden border-2 border-dashed border-purple-300 hover:border-purple-400 transition-colors cursor-pointer group">
+                <div 
+                  className="relative h-48 flex items-center justify-center bg-purple-50 hover:bg-purple-100 transition-colors"
+                  onClick={() => handleNewImage("bride-profile")}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-purple-600 flex items-center justify-center group-hover:bg-purple-700 transition-colors">
+                      <Plus className="h-6 w-6 text-white" />
+                    </div>
+                    <p className="text-purple-700 font-medium">Add Bride Photo</p>
+                    <p className="text-purple-600 text-sm mt-1">Click to upload</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="groom-profile" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Groom Profile Image</h3>
+              <p className="text-sm text-gray-600">Profile photo displayed in the "Our Love Story" section</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {groomProfileImages.map((image) => (
+              <ImageCard key={image.id} image={image} />
+            ))}
+            
+            {groomProfileImages.length === 0 && (
+              <Card className="overflow-hidden border-2 border-dashed border-blue-300 hover:border-blue-400 transition-colors cursor-pointer group">
+                <div 
+                  className="relative h-48 flex items-center justify-center bg-blue-50 hover:bg-blue-100 transition-colors"
+                  onClick={() => handleNewImage("groom-profile")}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+                      <Plus className="h-6 w-6 text-white" />
+                    </div>
+                    <p className="text-blue-700 font-medium">Add Groom Photo</p>
+                    <p className="text-blue-600 text-sm mt-1">Click to upload</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Upload Modal */}
@@ -286,6 +354,8 @@ const ImageManager = () => {
           queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
           queryClient.invalidateQueries({ queryKey: ["/api/config-images/banner"] });
           queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/config-images/bride-profile"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/config-images/groom-profile"] });
         }}
       />
 

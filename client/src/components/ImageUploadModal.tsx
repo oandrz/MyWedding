@@ -32,7 +32,7 @@ type FileUploadForm = z.infer<typeof fileUploadSchema>;
 interface ImageUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  imageType: "banner" | "gallery";
+  imageType: "banner" | "gallery" | "bride-profile" | "groom-profile";
   editingImage?: any; // ConfigImage type
   onSuccess?: () => void;
 }
@@ -75,6 +75,16 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
           { width: 1920, height: 1080 },
           { width: 1600, height: 900 },
           { width: 1280, height: 720 }
+        ]
+      };
+    } else if (imageType === "bride-profile" || imageType === "groom-profile") {
+      return {
+        maxFileSize: 120 * 1024, // 120KB (smaller for profile pics)
+        recommendedRatio: 1, // Square 1:1 for circular display
+        optimalDimensions: [
+          { width: 500, height: 500 },
+          { width: 600, height: 600 },
+          { width: 800, height: 800 }
         ]
       };
     } else {

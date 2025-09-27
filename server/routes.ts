@@ -595,12 +595,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileExtension = req.file.originalname.split('.').pop() || 'jpg';
       const uniqueFilename = `${imageKey}-${Date.now()}.${fileExtension}`;
 
+      // Validate imageType
+      const validImageTypes = ["banner", "gallery", "bride-profile", "groom-profile"];
+      if (!validImageTypes.includes(imageType)) {
+        return res.status(400).json({ message: 'Invalid image type. Must be one of: ' + validImageTypes.join(', ') });
+      }
+
       // Upload to App Storage
       const imageUrl = await weddingObjectStorage.uploadAdminImage(
         req.file.buffer,
         uniqueFilename,
         req.file.mimetype,
-        imageType as "banner" | "gallery"
+        imageType as "banner" | "gallery" | "bride-profile" | "groom-profile"
       );
 
       // Create config image data
