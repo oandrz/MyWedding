@@ -868,10 +868,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve files from App Storage (for backward compatibility and direct access)
-  app.get('/storage/:directory/:filename', async (req: Request, res: Response) => {
+  app.get('/storage/*', async (req: Request, res: Response) => {
     try {
-      const { directory, filename } = req.params;
-      const objectPath = `${directory}/${filename}`;
+      // Extract the full path after /storage/
+      const objectPath = req.params[0]; // This captures everything after /storage/
       
       await weddingObjectStorage.downloadFile(objectPath, res);
     } catch (error) {
