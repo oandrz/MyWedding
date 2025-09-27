@@ -45,8 +45,11 @@ const HeroSection = () => {
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       <div 
-        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-        style={{ backgroundImage: `url('${bannerImage}')` }}
+        className={`absolute inset-0 bg-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        style={{ 
+          backgroundImage: `url('${bannerImage}')`,
+          backgroundPosition: '50% 30%'
+        }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-[#00000080] to-[#00000040]"></div>
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHZpZXdCb3g9IjAgMCA1NiA1NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjggMEMzMi43ODY5IDAgMzcuNDI3MSAxLjQ5OTYgNDEuMzMzNCA0LjMwNjA2QzQ1LjIzOTcgNy4xMTI1MiA0OC4yMTQgMTEuMTE0IDQ5Ljg1MzQgMTUuNzA3N0M1MS40OTI3IDIwLjMwMTUgNTEuNzI2OSAyNS4yODM1IDUwLjUyMDMgMzAuMDE3QzQ5LjMxMzYgMzQuNzUwNSA0Ni43MjgzIDM4Ljk4NDggNDIuOTcwNiA0Mi4yMTc4QzM5LjIxMyA0NS40NTA4IDM0LjUxOTMgNDcuNTIwMyAyOS41NjIxIDQ4LjEzMDRDMjQuNjA0OSA0OC43NDA0IDE5LjU3NjMgNDcuODYyNiAxNS4xMzY2IDQ1LjU5NDlDMTAuNjk2OSA0My4zMjcyIDcuMDgwNyAzOS43ODc1IDQuNzk3MDIgMzUuNDU5MUMyLjUxMzM0IDMxLjEzMDYgMS42NTgyOSAyNi4xMSAyLjI5MTUyIDIxLjE1MzJDMi45MjQ3NiAxNi4xOTY0IDUuMDE4MTggMTEuNTAxMSA4LjI3MTEyIDcuNzQ2NjVDMTEuNTI0MSAzLjk5MjE3IDE1Ljc3MzQgMS40MTQ2OCAyMC41MTU5IDAuMjIxNjA0QzI1LjI1ODMgLTAuOTcxNDc3IDMwLjI0NDEgLTAuNzI1Mjc5IDM0LjgzNDcgMC45MjE2MzJWMEgyOFoiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuMDMiLz48L3N2Zz4=')] opacity-20"></div>
