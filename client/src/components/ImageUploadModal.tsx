@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Link, X, FileImage, Loader2 } from "lucide-react";
+import { Upload, Link, X, FileImage, Loader2, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const urlImageSchema = z.object({
@@ -23,7 +23,7 @@ const urlImageSchema = z.object({
 const fileUploadSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
-  file: z.any().refine((file) => file instanceof File, "Please select a file"),
+  file: z.any().refine((file) => file instanceof File || file === undefined, "Please select a file"),
 });
 
 type UrlImageForm = z.infer<typeof urlImageSchema>;
@@ -61,7 +61,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
     defaultValues: {
       title: editingImage?.title || "",
       description: editingImage?.description || "",
-      file: null,
+      file: undefined,
     }
   });
 
@@ -283,7 +283,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
                           size="sm"
                           onClick={() => {
                             setUploadedFile(null);
-                            fileForm.setValue("file", null);
+                            fileForm.setValue("file", undefined);
                           }}
                           className="mt-2"
                         >
@@ -318,7 +318,59 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
                   />
                 </div>
 
-
+                {/* Image Guidelines */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-sm font-medium text-blue-800">
+                      Recommended {imageType === "banner" ? "Banner" : "Gallery"} Image Guidelines
+                    </h4>
+                  </div>
+                  
+                  {imageType === "banner" ? (
+                    <div className="space-y-2 text-sm text-blue-700">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium">Optimal Dimensions:</span>
+                          <div className="text-xs mt-1">
+                            • 1920 x 1080px (16:9 ratio)<br/>
+                            • 1600 x 900px (alternative)<br/>
+                            • 1280 x 720px (minimum)
+                          </div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Best Practices:</span>
+                          <div className="text-xs mt-1">
+                            • Keep file under 200KB<br/>
+                            • Use JPEG or WebP format<br/>
+                            • Position subjects in upper half
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-sm text-blue-700">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium">Optimal Dimensions:</span>
+                          <div className="text-xs mt-1">
+                            • 1080 x 1080px (square)<br/>
+                            • 1080 x 1350px (portrait)<br/>
+                            • 1350 x 1080px (landscape)
+                          </div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Best Practices:</span>
+                          <div className="text-xs mt-1">
+                            • Keep file under 150KB<br/>
+                            • Use JPEG or WebP format<br/>
+                            • Square format works best
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <FormField
                   control={fileForm.control}
@@ -392,7 +444,59 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
                   )}
                 />
 
-
+                {/* Image Guidelines for URL Tab */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-sm font-medium text-blue-800">
+                      Recommended {imageType === "banner" ? "Banner" : "Gallery"} Image Guidelines
+                    </h4>
+                  </div>
+                  
+                  {imageType === "banner" ? (
+                    <div className="space-y-2 text-sm text-blue-700">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium">Optimal Dimensions:</span>
+                          <div className="text-xs mt-1">
+                            • 1920 x 1080px (16:9 ratio)<br/>
+                            • 1600 x 900px (alternative)<br/>
+                            • 1280 x 720px (minimum)
+                          </div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Best Practices:</span>
+                          <div className="text-xs mt-1">
+                            • Keep file under 200KB<br/>
+                            • Use JPEG or WebP format<br/>
+                            • Position subjects in upper half
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-sm text-blue-700">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium">Optimal Dimensions:</span>
+                          <div className="text-xs mt-1">
+                            • 1080 x 1080px (square)<br/>
+                            • 1080 x 1350px (portrait)<br/>
+                            • 1350 x 1080px (landscape)
+                          </div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Best Practices:</span>
+                          <div className="text-xs mt-1">
+                            • Keep file under 150KB<br/>
+                            • Use JPEG or WebP format<br/>
+                            • Square format works best
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <FormField
                   control={urlForm.control}
