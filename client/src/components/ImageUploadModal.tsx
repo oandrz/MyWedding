@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Link, X, FileImage, Loader2, Info } from "lucide-react";
+import { Upload, Link, X, FileImage, Loader2, Info, AlertTriangle, CheckCircle, Settings } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const urlImageSchema = z.object({
@@ -37,13 +37,162 @@ interface ImageUploadModalProps {
   onSuccess?: () => void;
 }
 
+// Image processing state and types
+interface ImageAnalysis {
+  width: number;
+  height: number;
+  aspectRatio: number;
+  fileSize: number;
+  recommendedRatio: number;
+  isOptimalSize: boolean;
+  isOptimalRatio: boolean;
+  needsCompression: boolean;
+}
+
+interface ProcessedImage {
+  file: File;
+  analysis: ImageAnalysis;
+  optimized?: boolean;
+}
+
 const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess }: ImageUploadModalProps) => {
   const [activeTab, setActiveTab] = useState("upload");
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [processedImage, setProcessedImage] = useState<ProcessedImage | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Get optimization targets based on image type
+  const getOptimizationTargets = () => {
+    if (imageType === "banner") {
+      return {
+        maxFileSize: 200 * 1024, // 200KB
+        recommendedRatio: 16/9,
+        optimalDimensions: [
+          { width: 1920, height: 1080 },
+          { width: 1600, height: 900 },
+          { width: 1280, height: 720 }
+        ]
+      };
+    } else {
+      return {
+        maxFileSize: 150 * 1024, // 150KB  
+        recommendedRatio: 1, // Square 1:1
+        optimalDimensions: [
+          { width: 1080, height: 1080 },
+          { width: 1080, height: 1350 },
+          { width: 1350, height: 1080 }
+        ]
+      };
+    }
+  };
+
+  // Analyze image dimensions and properties
+  const analyzeImage = (file: File): Promise<ImageAnalysis> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        
+        const targets = getOptimizationTargets();
+        const aspectRatio = img.width / img.height;
+        const ratioTolerance = 0.1;
+        
+        const analysis: ImageAnalysis = {
+          width: img.width,
+          height: img.height,
+          aspectRatio,
+          fileSize: file.size,
+          recommendedRatio: targets.recommendedRatio,
+          isOptimalSize: file.size <= targets.maxFileSize,
+          isOptimalRatio: Math.abs(aspectRatio - targets.recommendedRatio) <= ratioTolerance,
+          needsCompression: file.size > targets.maxFileSize
+        };
+        
+        resolve(analysis);
+      };
+      
+      img.src = url;
+    });
+  };
+
+  // Compress image using canvas
+  const compressImage = (file: File, targetSizeKB: number, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        
+        // Set canvas dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw image on canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Convert to blob with compression
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg', // Convert to JPEG for better compression
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file); // Fallback to original
+          }
+        }, 'image/jpeg', quality);
+      };
+      
+      img.src = url;
+    });
+  };
+
+  // Auto-optimize image based on guidelines
+  const optimizeImage = async (file: File): Promise<ProcessedImage> => {
+    setIsProcessing(true);
+    
+    try {
+      const analysis = await analyzeImage(file);
+      let optimizedFile = file;
+      let optimized = false;
+      
+      // Compress if needed
+      if (analysis.needsCompression) {
+        const targets = getOptimizationTargets();
+        const targetSizeKB = targets.maxFileSize / 1024;
+        
+        // Try different quality levels
+        let quality = 0.8;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          optimizedFile = await compressImage(file, targetSizeKB, quality);
+          if (optimizedFile.size <= targets.maxFileSize) break;
+          quality -= 0.2;
+        }
+        
+        optimized = optimizedFile.size < file.size;
+      }
+      
+      const finalAnalysis = optimizedFile !== file ? await analyzeImage(optimizedFile) : analysis;
+      
+      return {
+        file: optimizedFile,
+        analysis: finalAnalysis,
+        optimized
+      };
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // URL form
   const urlForm = useForm<UrlImageForm>({
@@ -171,7 +320,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -179,8 +328,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith("image/")) {
-        setUploadedFile(file);
-        fileForm.setValue("file", file);
+        await handleFileProcessing(file);
       } else {
         toast({
           title: "Invalid file type",
@@ -191,9 +339,37 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      await handleFileProcessing(file);
+    }
+  };
+
+  const handleFileProcessing = async (file: File) => {
+    try {
+      setUploadedFile(file);
+      const processed = await optimizeImage(file);
+      setProcessedImage(processed);
+      fileForm.setValue("file", processed.file);
+      
+      // Show feedback to user
+      if (processed.optimized) {
+        const originalSizeKB = Math.round(file.size / 1024);
+        const newSizeKB = Math.round(processed.file.size / 1024);
+        toast({
+          title: "Image Optimized!",
+          description: `Compressed from ${originalSizeKB}KB to ${newSizeKB}KB`,
+        });
+      }
+    } catch (error) {
+      console.error("Error processing image:", error);
+      toast({
+        title: "Processing Error",
+        description: "Failed to process image, using original",
+        variant: "destructive"
+      });
+      // Fallback to original file
       setUploadedFile(file);
       fileForm.setValue("file", file);
     }
@@ -204,7 +380,8 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
   };
 
   const onFileSubmit = (data: FileUploadForm) => {
-    if (!uploadedFile) {
+    const fileToUpload = processedImage?.file || uploadedFile;
+    if (!fileToUpload) {
       toast({
         title: "No file selected",
         description: "Please select an image file to upload",
@@ -212,15 +389,27 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
       });
       return;
     }
-    fileMutation.mutate({ ...data, file: uploadedFile });
+    fileMutation.mutate({ ...data, file: fileToUpload });
   };
 
   const handleClose = () => {
     urlForm.reset();
     fileForm.reset();
     setUploadedFile(null);
+    setProcessedImage(null);
     setActiveTab("upload");
     onClose();
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number) => {
+    const kb = bytes / 1024;
+    return kb > 1024 ? `${(kb / 1024).toFixed(1)}MB` : `${Math.round(kb)}KB`;
+  };
+
+  // Helper function to format dimensions
+  const formatDimensions = (width: number, height: number) => {
+    return `${width} × ${height}px`;
   };
 
   return (
@@ -271,18 +460,70 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                 >
-                  {uploadedFile ? (
+                  {isProcessing ? (
                     <div className="space-y-3">
-                      <FileImage className="h-12 w-12 text-green-600 mx-auto" />
+                      <Settings className="h-12 w-12 text-blue-600 mx-auto animate-spin" />
                       <div>
-                        <p className="text-lg font-medium text-green-800">File Ready</p>
+                        <p className="text-lg font-medium text-blue-800">Processing Image...</p>
+                        <p className="text-sm text-blue-600">Optimizing size and format</p>
+                      </div>
+                    </div>
+                  ) : uploadedFile ? (
+                    <div className="space-y-3">
+                      {processedImage?.analysis.isOptimalSize && processedImage?.analysis.isOptimalRatio ? (
+                        <CheckCircle className="h-12 w-12 text-green-600 mx-auto" />
+                      ) : (
+                        <AlertTriangle className="h-12 w-12 text-orange-600 mx-auto" />
+                      )}
+                      <div>
+                        <p className="text-lg font-medium text-green-800">
+                          {processedImage?.optimized ? "Image Optimized!" : "File Ready"}
+                        </p>
                         <p className="text-sm text-green-600">{uploadedFile.name}</p>
+                        
+                        {/* Image Analysis Results */}
+                        {processedImage && (
+                          <div className="mt-3 p-3 bg-white rounded border text-left">
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <span className="font-medium">Dimensions:</span>
+                                <div className={processedImage.analysis.isOptimalRatio ? "text-green-600" : "text-orange-600"}>
+                                  {formatDimensions(processedImage.analysis.width, processedImage.analysis.height)}
+                                  {processedImage.analysis.isOptimalRatio ? " ✓" : " ⚠"}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="font-medium">File Size:</span>
+                                <div className={processedImage.analysis.isOptimalSize ? "text-green-600" : "text-orange-600"}>
+                                  {formatFileSize(processedImage.analysis.fileSize)}
+                                  {processedImage.analysis.isOptimalSize ? " ✓" : " ⚠"}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="font-medium">Aspect Ratio:</span>
+                                <div className={processedImage.analysis.isOptimalRatio ? "text-green-600" : "text-orange-600"}>
+                                  {processedImage.analysis.aspectRatio.toFixed(2)}:1
+                                  {imageType === "banner" && !processedImage.analysis.isOptimalRatio && " (16:9 recommended)"}
+                                  {imageType === "gallery" && !processedImage.analysis.isOptimalRatio && " (1:1 recommended)"}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="font-medium">Format:</span>
+                                <div className="text-green-600">
+                                  {processedImage.optimized ? "JPEG (optimized)" : processedImage.file.type.split('/')[1].toUpperCase()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => {
                             setUploadedFile(null);
+                            setProcessedImage(null);
                             fileForm.setValue("file", undefined);
                           }}
                           className="mt-2"
