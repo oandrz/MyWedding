@@ -78,11 +78,27 @@ export const featureFlags = pgTable("feature_flags", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
 });
 
+export const appSettings = pgTable("app_settings", {
+  id: serial("id").primaryKey(),
+  settingKey: text("setting_key").notNull().unique(), // "background_music_url", etc.
+  settingValue: text("setting_value").notNull(),
+  settingType: text("setting_type").notNull(), // "audio", "text", "number", etc.
+  description: text("description"),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
+});
+
 export const insertFeatureFlagSchema = createInsertSchema(featureFlags).pick({
   featureKey: true,
   featureName: true,
   description: true,
   enabled: true
+});
+
+export const insertAppSettingSchema = createInsertSchema(appSettings).pick({
+  settingKey: true,
+  settingValue: true,
+  settingType: true,
+  description: true
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -95,3 +111,5 @@ export type InsertConfigImage = z.infer<typeof insertConfigImageSchema>;
 export type ConfigImage = typeof configImages.$inferSelect;
 export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
+export type AppSetting = typeof appSettings.$inferSelect;

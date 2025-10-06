@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 import Database from "@replit/database";
@@ -38,6 +38,12 @@ export interface IStorage {
   updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined>;
   getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined>;
   getAllFeatureFlags(): Promise<FeatureFlag[]>;
+  
+  // App settings methods
+  createAppSetting(settingData: InsertAppSetting): Promise<AppSetting>;
+  updateAppSetting(settingKey: string, settingData: InsertAppSetting): Promise<AppSetting>;
+  getAppSetting(settingKey: string): Promise<AppSetting | undefined>;
+  getAllAppSettings(): Promise<AppSetting[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -46,11 +52,13 @@ export class MemStorage implements IStorage {
   private medias: Map<number, Media>;
   private configImages: Map<string, ConfigImage>;
   private featureFlags: Map<string, FeatureFlag>;
+  private appSettings: Map<string, AppSetting>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
   currentConfigImageId: number;
   currentFeatureFlagId: number;
+  currentAppSettingId: number;
 
   constructor() {
     this.users = new Map();
@@ -58,15 +66,18 @@ export class MemStorage implements IStorage {
     this.medias = new Map();
     this.configImages = new Map();
     this.featureFlags = new Map();
+    this.appSettings = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
     this.currentConfigImageId = 1;
     this.currentFeatureFlagId = 1;
+    this.currentAppSettingId = 1;
 
     // Initialize default images and feature flags
     this.initializeDefaultImages();
     this.initializeDefaultFeatureFlags();
+    this.initializeDefaultAppSettings();
   }
 
   private initializeDefaultImages() {
@@ -330,6 +341,55 @@ export class MemStorage implements IStorage {
     return Array.from(this.featureFlags.values())
       .sort((a, b) => a.featureName.localeCompare(b.featureName));
   }
+
+  private initializeDefaultAppSettings() {
+    const defaultMusicSetting: AppSetting = {
+      id: this.currentAppSettingId++,
+      settingKey: 'background_music_url',
+      settingValue: '/music/wedding-piano.mp3',
+      settingType: 'audio',
+      description: 'Background music file URL',
+      updatedAt: new Date().toISOString()
+    };
+    this.appSettings.set('background_music_url', defaultMusicSetting);
+  }
+
+  async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {
+    const id = this.currentAppSettingId++;
+    const now = new Date();
+    const appSetting: AppSetting = {
+      ...insertAppSetting,
+      id,
+      description: insertAppSetting.description ?? null,
+      updatedAt: now.toISOString()
+    };
+    this.appSettings.set(appSetting.settingKey, appSetting);
+    return appSetting;
+  }
+
+  async updateAppSetting(settingKey: string, insertAppSetting: InsertAppSetting): Promise<AppSetting> {
+    const existing = this.appSettings.get(settingKey);
+    const id = existing?.id ?? this.currentAppSettingId++;
+    const now = new Date();
+    const appSetting: AppSetting = {
+      ...insertAppSetting,
+      id,
+      settingKey,
+      description: insertAppSetting.description ?? null,
+      updatedAt: now.toISOString()
+    };
+    this.appSettings.set(settingKey, appSetting);
+    return appSetting;
+  }
+
+  async getAppSetting(settingKey: string): Promise<AppSetting | undefined> {
+    return this.appSettings.get(settingKey);
+  }
+
+  async getAllAppSettings(): Promise<AppSetting[]> {
+    return Array.from(this.appSettings.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -511,6 +571,46 @@ export class DatabaseStorage implements IStorage {
       .from(featureFlags)
       .orderBy(featureFlags.featureName);
   }
+
+  async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {
+    const [appSetting] = await db
+      .insert(appSettings)
+      .values(insertAppSetting)
+      .returning();
+    return appSetting;
+  }
+
+  async updateAppSetting(settingKey: string, insertAppSetting: InsertAppSetting): Promise<AppSetting> {
+    const [appSetting] = await db
+      .insert(appSettings)
+      .values({ ...insertAppSetting, settingKey })
+      .onConflictDoUpdate({
+        target: appSettings.settingKey,
+        set: {
+          settingValue: insertAppSetting.settingValue,
+          settingType: insertAppSetting.settingType,
+          description: insertAppSetting.description,
+          updatedAt: sql`now()`
+        }
+      })
+      .returning();
+    return appSetting;
+  }
+
+  async getAppSetting(settingKey: string): Promise<AppSetting | undefined> {
+    const [appSetting] = await db
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.settingKey, settingKey));
+    return appSetting || undefined;
+  }
+
+  async getAllAppSettings(): Promise<AppSetting[]> {
+    return db
+      .select()
+      .from(appSettings)
+      .orderBy(desc(appSettings.updatedAt));
+  }
 }
 
 export class KeyValueStorage implements IStorage {
@@ -520,6 +620,7 @@ export class KeyValueStorage implements IStorage {
   private currentMediaId: number = 1;
   private currentConfigImageId: number = 1;
   private currentFeatureFlagId: number = 1;
+  private currentAppSettingId: number = 1;
 
   constructor() {
     // Only initialize Replit Database if REPLIT_DB_URL is available
@@ -549,6 +650,12 @@ export class KeyValueStorage implements IStorage {
     const existingImages = await this.getAllConfigImages();
     if (existingImages.length === 0) {
       await this.initializeDefaultImages();
+    }
+
+    // Initialize default app settings if they don't exist
+    const existingSettings = await this.getAllAppSettings();
+    if (existingSettings.length === 0) {
+      await this.initializeDefaultAppSettings();
     }
   }
 
@@ -869,6 +976,68 @@ export class KeyValueStorage implements IStorage {
       if (flagResult.ok && flagResult.value) flags.push(flagResult.value);
     }
     return flags.sort((a, b) => a.featureName.localeCompare(b.featureName));
+  }
+
+  private async initializeDefaultAppSettings() {
+    const kv = this.ensureKvAvailable();
+    const defaultMusicSetting: AppSetting = {
+      id: this.currentAppSettingId++,
+      settingKey: 'background_music_url',
+      settingValue: '/music/wedding-piano.mp3',
+      settingType: 'audio',
+      description: 'Background music file URL',
+      updatedAt: new Date().toISOString()
+    };
+    await kv.set(`app_setting:background_music_url`, defaultMusicSetting);
+  }
+
+  async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {
+    const kv = this.ensureKvAvailable();
+    const id = this.currentAppSettingId++;
+    const now = new Date();
+    const appSetting: AppSetting = {
+      ...insertAppSetting,
+      id,
+      description: insertAppSetting.description ?? null,
+      updatedAt: now.toISOString()
+    };
+    await kv.set(`app_setting:${appSetting.settingKey}`, appSetting);
+    return appSetting;
+  }
+
+  async updateAppSetting(settingKey: string, insertAppSetting: InsertAppSetting): Promise<AppSetting> {
+    const kv = this.ensureKvAvailable();
+    const existingResult = await kv.get(`app_setting:${settingKey}`);
+    const id = (existingResult.ok && existingResult.value) ? existingResult.value.id : this.currentAppSettingId++;
+    const now = new Date();
+    const appSetting: AppSetting = {
+      ...insertAppSetting,
+      id,
+      settingKey,
+      description: insertAppSetting.description ?? null,
+      updatedAt: now.toISOString()
+    };
+    await kv.set(`app_setting:${settingKey}`, appSetting);
+    return appSetting;
+  }
+
+  async getAppSetting(settingKey: string): Promise<AppSetting | undefined> {
+    const kv = this.ensureKvAvailable();
+    const result = await kv.get(`app_setting:${settingKey}`);
+    return result.ok ? result.value : undefined;
+  }
+
+  async getAllAppSettings(): Promise<AppSetting[]> {
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("app_setting:");
+    if (!keysResult.ok) return [];
+    
+    const settings = [];
+    for (const key of keysResult.value) {
+      const settingResult = await kv.get(key);
+      if (settingResult.ok && settingResult.value) settings.push(settingResult.value);
+    }
+    return settings.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 }
 
