@@ -827,24 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // App Settings API Routes
   
-  // Get specific app setting (public endpoint)
-  app.get("/api/settings/:settingKey", async (req: Request, res: Response) => {
-    try {
-      const settingKey = req.params.settingKey;
-      const appSetting = await storage.getAppSetting(settingKey);
-      
-      if (!appSetting) {
-        return res.status(404).json({ message: "Setting not found" });
-      }
-      
-      res.status(200).json({ setting: appSetting });
-    } catch (error) {
-      console.error("Error fetching app setting:", error);
-      res.status(500).json({ message: "Failed to fetch app setting" });
-    }
-  });
-
-  // Get background music URL (public endpoint)
+  // Get background music URL (public endpoint) - MUST come before generic /:settingKey route
   app.get("/api/settings/music", async (req: Request, res: Response) => {
     try {
       const musicSetting = await storage.getAppSetting('background_music_url');
@@ -862,6 +845,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching music setting:", error);
       res.status(500).json({ message: "Failed to fetch music setting" });
+    }
+  });
+
+  // Get specific app setting (public endpoint) - Generic catch-all
+  app.get("/api/settings/:settingKey", async (req: Request, res: Response) => {
+    try {
+      const settingKey = req.params.settingKey;
+      const appSetting = await storage.getAppSetting(settingKey);
+      
+      if (!appSetting) {
+        return res.status(404).json({ message: "Setting not found" });
+      }
+      
+      res.status(200).json({ setting: appSetting });
+    } catch (error) {
+      console.error("Error fetching app setting:", error);
+      res.status(500).json({ message: "Failed to fetch app setting" });
     }
   });
 
