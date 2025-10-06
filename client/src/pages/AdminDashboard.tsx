@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock, Flag, Check, X } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock, Flag, Check, X, Music } from "lucide-react";
 import { Media, Rsvp } from "@shared/schema";
 import { useLocation } from "wouter";
 import ImageManager from "@/components/ImageManager";
@@ -145,6 +145,84 @@ export default function AdminDashboard() {
     },
   });
 
+  // Fetch current music setting
+  const { data: musicData } = useQuery<{ musicUrl: string }>({
+    queryKey: ['/api/settings/music'],
+    enabled: !!localStorage.getItem("adminKey"),
+  });
+
+  // Music upload state
+  const [musicUploading, setMusicUploading] = useState(false);
+
+  // Mutation for uploading music
+  const musicUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const adminKey = localStorage.getItem("adminKey");
+      const response = await fetch('/api/admin/settings/music-upload', {
+        method: 'POST',
+        headers: {
+          'X-Admin-Key': adminKey || '',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to upload music');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/settings/music'] });
+      setMusicUploading(false);
+      toast({
+        title: "Success",
+        description: "Background music uploaded successfully",
+      });
+    },
+    onError: (error: Error) => {
+      setMusicUploading(false);
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to upload music: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMusicUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      toast({
+        title: "Error",
+        description: "Please select a valid audio file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (20MB max)
+    if (file.size > 20 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 20MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setMusicUploading(true);
+    musicUploadMutation.mutate(file);
+  };
+
   const handleFeatureFlagToggle = (featureKey: string, enabled: boolean) => {
     featureFlagMutation.mutate({ featureKey, enabled });
   };
@@ -238,7 +316,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="media" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Image className="h-4 w-4" />
               <span className="hidden md:inline">Media</span>
@@ -246,6 +324,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="images" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Config</span>
+            </TabsTrigger>
+            <TabsTrigger value="music" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
+              <Music className="h-4 w-4" />
+              <span className="hidden md:inline">Music</span>
             </TabsTrigger>
             <TabsTrigger value="rsvps" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Users className="h-4 w-4" />
@@ -440,6 +522,85 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Music Management Tab */}
+        <TabsContent value="music">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <Music className="h-6 w-6 text-purple-600" />
+                <div>
+                  <CardTitle className="text-xl">Background Music</CardTitle>
+                  <CardDescription>Upload and manage background music for your wedding website</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Current Music Display */}
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <h3 className="font-semibold mb-2">Current Background Music</h3>
+                  <audio 
+                    controls 
+                    className="w-full"
+                    src={musicData?.musicUrl || '/music/wedding-piano.mp3'}
+                    data-testid="audio-preview"
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+
+                {/* Upload New Music */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <div className="space-y-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <Music className="h-12 w-12 text-gray-400" />
+                      <h3 className="font-semibold text-lg">Upload New Music</h3>
+                      <p className="text-sm text-gray-600 text-center">
+                        Supported formats: MP3, WAV, OGG (max 20MB)
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center gap-3">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        id="music-upload"
+                        className="hidden"
+                        data-testid="input-music-file"
+                        onChange={handleMusicUpload}
+                      />
+                      <Button
+                        asChild
+                        className="w-full sm:w-auto"
+                        data-testid="button-upload-music"
+                      >
+                        <label htmlFor="music-upload" className="cursor-pointer">
+                          Choose Music File
+                        </label>
+                      </Button>
+                      {musicUploading && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading music...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-sm text-blue-900 mb-2">Tips:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Choose a song that reflects your wedding theme</li>
+                    <li>Keep volume moderate for better user experience</li>
+                    <li>Consider instrumental or soft music</li>
+                    <li>Test the music on different devices</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         {/* RSVPs Tab */}
