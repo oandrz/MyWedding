@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useMusicEnabled } from '@/hooks/useFeatureFlags';
+import { useQuery } from '@tanstack/react-query';
 
 const AudioPlayer = () => {
   const isMusicEnabled = useMusicEnabled();
@@ -13,13 +14,21 @@ const AudioPlayer = () => {
   // Hide audio player on admin pages
   const isAdminPage = location.includes('/admin');
 
+  // Fetch background music URL from settings
+  const { data: musicData, isLoading: musicLoading } = useQuery<{ musicUrl: string }>({
+    queryKey: ['/api/settings/music'],
+    enabled: !isAdminPage && isMusicEnabled,
+  });
+
+  const musicUrl = musicData?.musicUrl || '/music/wedding-piano.mp3';
+
   useEffect(() => {
-    // Preload the audio when the component mounts
-    if (audioEl.current) {
+    // Preload the audio when the component mounts or when music URL changes
+    if (audioEl.current && musicUrl) {
       audioEl.current.volume = 0.3;
       audioEl.current.load(); // Force preload
     }
-  }, []);
+  }, [musicUrl]);
 
   const togglePlayPause = () => {
     if (!audioEl.current) return;
@@ -55,7 +64,7 @@ const AudioPlayer = () => {
     <>
       <audio 
         ref={audioEl} 
-        src="/music/wedding-piano.mp3" 
+        src={musicUrl} 
         loop 
         preload="auto"
       />
