@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   // Auto-logout helper function
   const handleAutoLogout = (error: Error) => {
     if (error.message.includes("401") || error.message.includes("Unauthorized")) {
-      localStorage.removeItem("adminKey");
+      sessionStorage.removeItem("csrfToken");
       toast({
         title: "Session expired",
         description: "Your admin session has expired. Please log in again.",
@@ -39,19 +39,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Check if user is authenticated
-  useEffect(() => {
-    const adminKey = localStorage.getItem("adminKey");
-    if (!adminKey) {
-      toast({
-        title: "Authentication required",
-        description: "Please login to access the admin dashboard",
-        variant: "destructive",
-      });
-      navigate("/admin-login");
-    }
-  }, [navigate, toast]);
-
   // Fetch all media regardless of approval status
   const { 
     data: allMedia,
@@ -59,7 +46,6 @@ export default function AdminDashboard() {
     error: mediaError
   } = useQuery<{ media: Media[] }>({
     queryKey: ["/api/admin/media"],
-    enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
     retry: (failureCount, error) => {
       // Don't retry on authentication errors
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
@@ -85,7 +71,6 @@ export default function AdminDashboard() {
     error: featureFlagsError
   } = useQuery<{ featureFlags: FeatureFlag[] }>({
     queryKey: ["/api/feature-flags"],
-    enabled: !!localStorage.getItem("adminKey"), // Only fetch if authenticated
     retry: (failureCount, error) => {
       // Don't retry on authentication errors
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
@@ -148,7 +133,6 @@ export default function AdminDashboard() {
   // Fetch current music setting
   const { data: musicData } = useQuery<{ musicUrl: string }>({
     queryKey: ['/api/settings/music'],
-    enabled: !!localStorage.getItem("adminKey"),
   });
 
   // Music upload state
@@ -160,20 +144,7 @@ export default function AdminDashboard() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const adminKey = localStorage.getItem("adminKey");
-      const response = await fetch('/api/admin/settings/music-upload', {
-        method: 'POST',
-        headers: {
-          'X-Admin-Key': adminKey || '',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to upload music');
-      }
-
+      const response = await apiRequest('POST', '/api/admin/settings/music-upload', formData);
       return response.json();
     },
     onSuccess: () => {
@@ -227,13 +198,19 @@ export default function AdminDashboard() {
     featureFlagMutation.mutate({ featureKey, enabled });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminKey");
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully",
-    });
-    navigate("/admin-login");
+  const handleLogout = async () => {
+    try {
+      await apiRequest('POST', '/api/admin/logout');
+      sessionStorage.removeItem("csrfToken");
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+      navigate("/admin-login");
+    } catch (error) {
+      sessionStorage.removeItem("csrfToken");
+      navigate("/admin-login");
+    }
   };
 
   // Helper function to count attending guests from RSVPs
