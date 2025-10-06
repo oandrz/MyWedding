@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -47,6 +47,30 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Invalid file type. Only images and videos are allowed.') as any);
+    }
+  }
+});
+
+// Create multer upload middleware for audio files
+const audioUpload = multer({
+  storage: storage_config,
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB max file size for audio
+  },
+  fileFilter: (_req, file, cb) => {
+    // Allow only audio files
+    const allowedMimeTypes = [
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/wav',
+      'audio/ogg',
+      'audio/webm'
+    ];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only audio files are allowed.') as any);
     }
   }
 });
@@ -796,6 +820,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Feature flag creation error:", error);
         res.status(500).json({ message: "Failed to create feature flag" });
       }
+    }
+  });
+
+  // App Settings API Routes
+  
+  // Get specific app setting (public endpoint)
+  app.get("/api/settings/:settingKey", async (req: Request, res: Response) => {
+    try {
+      const settingKey = req.params.settingKey;
+      const appSetting = await storage.getAppSetting(settingKey);
+      
+      if (!appSetting) {
+        return res.status(404).json({ message: "Setting not found" });
+      }
+      
+      res.status(200).json({ setting: appSetting });
+    } catch (error) {
+      console.error("Error fetching app setting:", error);
+      res.status(500).json({ message: "Failed to fetch app setting" });
+    }
+  });
+
+  // Get background music URL (public endpoint)
+  app.get("/api/settings/music", async (req: Request, res: Response) => {
+    try {
+      const musicSetting = await storage.getAppSetting('background_music_url');
+      
+      if (!musicSetting) {
+        // Return default music URL if not configured
+        return res.status(200).json({ 
+          musicUrl: '/music/wedding-piano.mp3'
+        });
+      }
+      
+      res.status(200).json({ 
+        musicUrl: musicSetting.settingValue 
+      });
+    } catch (error) {
+      console.error("Error fetching music setting:", error);
+      res.status(500).json({ message: "Failed to fetch music setting" });
+    }
+  });
+
+  // Upload background music (admin only)
+  app.post("/api/admin/settings/music-upload", adminAuthMiddleware, audioUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Validate file type
+      if (!req.file.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: 'Only audio files are allowed' });
+      }
+
+      // Generate unique filename
+      const fileExtension = req.file.originalname.split('.').pop() || 'mp3';
+      const uniqueFilename = `background-music-${Date.now()}.${fileExtension}`;
+
+      // Upload to App Storage in music directory
+      const musicUrl = await weddingObjectStorage.uploadFile(
+        req.file.buffer,
+        uniqueFilename,
+        req.file.mimetype,
+        'admin/music'
+      );
+
+      // Create or update app setting
+      const settingData = {
+        settingKey: 'background_music_url',
+        settingValue: musicUrl,
+        settingType: 'audio',
+        description: 'Background music file URL'
+      };
+
+      const existingSetting = await storage.getAppSetting('background_music_url');
+      let setting;
+      
+      if (existingSetting) {
+        setting = await storage.updateAppSetting('background_music_url', settingData);
+      } else {
+        setting = await storage.createAppSetting(settingData);
+      }
+
+      res.status(201).json({
+        message: "Background music uploaded successfully",
+        setting,
+        musicUrl
+      });
+    } catch (error) {
+      console.error("Music upload error:", error);
+      res.status(500).json({ message: "Failed to upload music file" });
     }
   });
 
