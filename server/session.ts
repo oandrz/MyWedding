@@ -53,7 +53,8 @@ class SessionStore {
 
   private cleanupExpiredSessions(): void {
     const now = new Date().getTime();
-    for (const [sessionId, session] of this.sessions.entries()) {
+    const entries = Array.from(this.sessions.entries());
+    for (const [sessionId, session] of entries) {
       const lastAccessed = session.lastAccessedAt.getTime();
       if (now - lastAccessed > this.sessionDuration) {
         this.sessions.delete(sessionId);
