@@ -10,9 +10,11 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
-import { adminAuthMiddleware } from "./middleware/auth";
+import { adminAuthMiddleware, RequestWithSession } from "./middleware/auth";
 import { googleDriveService } from "./googleDriveService";
 import { weddingObjectStorage, ObjectNotFoundError } from "./objectStorage";
+import { sessionStore } from "./session";
+import { generateCSRFToken, deleteCSRFToken } from "./middleware/csrf";
 
 const FLASK_API_URL = "http://localhost:5001";
 
@@ -980,11 +982,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Validate admin credentials (for login validation)
+  // Admin login endpoint - creates session and sets HttpOnly cookie
+  app.post("/api/admin/login", (req: Request, res: Response) => {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    const adminPassword = process.env.ADMIN_PASSWORD || 'wedding-admin';
+    
+    if (password !== adminPassword) {
+      return res.status(401).json({ message: "Invalid admin password" });
+    }
+
+    const ip = req.ip || req.socket.remoteAddress;
+    const session = sessionStore.createSession(ip);
+    const csrfToken = generateCSRFToken(session.sessionId);
+
+    res.cookie('admin_session', session.sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 60 * 1000, // 30 minutes
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      csrfToken,
+    });
+  });
+
+  // Admin logout endpoint - destroys session
+  app.post("/api/admin/logout", adminAuthMiddleware, (req: RequestWithSession, res: Response) => {
+    const sessionId = req.sessionId;
+    
+    if (sessionId) {
+      sessionStore.deleteSession(sessionId);
+      deleteCSRFToken(sessionId);
+    }
+
+    res.clearCookie('admin_session');
+    res.status(200).json({ message: "Logout successful" });
+  });
+
+  // Validate admin credentials (for checking if session is valid)
   app.post("/api/admin/validate", adminAuthMiddleware, (req: Request, res: Response) => {
-    // If middleware passed, credentials are valid
+    // If middleware passed, session is valid
     res.status(200).json({ 
-      message: "Admin credentials are valid",
+      message: "Admin session is valid",
       valid: true 
     });
   });
