@@ -17,18 +17,21 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // Validate credentials with the server before storing
-      const response = await fetch("/api/admin/validate", {
+      const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ adminKey: password }),
+        body: JSON.stringify({ password }),
+        credentials: "include",
       });
 
       if (response.ok) {
-        // Credentials are valid, store in localStorage
-        localStorage.setItem("adminKey", password);
+        const data = await response.json();
+        
+        if (data.csrfToken) {
+          sessionStorage.setItem("csrfToken", data.csrfToken);
+        }
         
         toast({
           title: "Login successful",
@@ -36,7 +39,6 @@ export default function AdminLogin() {
         });
         navigate("/admin");
       } else {
-        // Invalid credentials
         const errorData = await response.json();
         toast({
           title: "Login failed",
@@ -74,11 +76,12 @@ export default function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                data-testid="input-admin-password"
               />
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
               {loading ? (
                 <div className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
