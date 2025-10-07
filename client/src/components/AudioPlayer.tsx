@@ -84,7 +84,7 @@ const AudioPlayer = () => {
           <VolumeX size={24} className="text-white/70" />
         )}
         <span className="ml-2 text-sm text-white font-montserrat hidden md:inline">
-          {isPlaying ? "Wedding Music" : "Play Music"}
+          {isPlaying ? "Stop Music" : "Play Music"}
         </span>
       </motion.div>
     </>
