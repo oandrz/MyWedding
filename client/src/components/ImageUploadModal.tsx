@@ -289,7 +289,8 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
         
       const uploadResponse = await fetch(uploadUrl, {
         method: "POST",
-        body: formData
+        body: formData,
+        credentials: "include"
       });
       
       if (!uploadResponse.ok) {
