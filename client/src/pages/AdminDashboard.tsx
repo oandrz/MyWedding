@@ -7,10 +7,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Users, Image, MessageSquare, BarChart3, LogOut, Settings, Calendar, Clock, Flag, Check, X, Music } from "lucide-react";
-import { Media, Rsvp } from "@shared/schema";
+import { Loader2, CheckCircle, XCircle, Users, BarChart3, LogOut, Settings, Calendar, Flag, Music } from "lucide-react";
+import { Rsvp } from "@shared/schema";
 import { useLocation } from "wouter";
 import ImageManager from "@/components/ImageManager";
+import MusicManager from "@/components/MusicManager";
 
 interface FeatureFlag {
   id: number;
@@ -23,7 +24,7 @@ interface FeatureFlag {
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("media");
+  const [activeTab, setActiveTab] = useState("rsvps");
   const [, navigate] = useLocation();
   
   // Auto-logout helper function
@@ -39,22 +40,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch all media regardless of approval status
-  const { 
-    data: allMedia,
-    isLoading: mediaLoading,
-    error: mediaError
-  } = useQuery<{ media: Media[] }>({
-    queryKey: ["/api/admin/media"],
-    retry: (failureCount, error) => {
-      // Don't retry on authentication errors
-      if (error.message.includes("401") || error.message.includes("Unauthorized")) {
-        handleAutoLogout(error);
-        return false;
-      }
-      return failureCount < 3;
-    },
-  });
 
   // Fetch all RSVPs
   const {
@@ -81,32 +66,6 @@ export default function AdminDashboard() {
     },
   });
 
-  // Mutation for approving/rejecting media
-  const approvalMutation = useMutation({
-    mutationFn: ({ id, approved }: { id: number, approved: boolean }) => {
-      return apiRequest("PATCH", `/api/admin/media/${id}`, { approved });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/media"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
-      toast({
-        title: "Success",
-        description: "Media approval status updated",
-      });
-    },
-    onError: (error: Error) => {
-      handleAutoLogout(error);
-      toast({
-        title: "Error",
-        description: `Failed to update approval status: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleApproval = (id: number, approved: boolean) => {
-    approvalMutation.mutate({ id, approved });
-  };
 
   // Mutation for updating feature flags
   const featureFlagMutation = useMutation({
@@ -130,69 +89,6 @@ export default function AdminDashboard() {
     },
   });
 
-  // Fetch current music setting
-  const { data: musicData } = useQuery<{ musicUrl: string }>({
-    queryKey: ['/api/settings/music'],
-  });
-
-  // Music upload state
-  const [musicUploading, setMusicUploading] = useState(false);
-
-  // Mutation for uploading music
-  const musicUploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await apiRequest('POST', '/api/admin/settings/music-upload', formData);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/settings/music'] });
-      setMusicUploading(false);
-      toast({
-        title: "Success",
-        description: "Background music uploaded successfully",
-      });
-    },
-    onError: (error: Error) => {
-      setMusicUploading(false);
-      handleAutoLogout(error);
-      toast({
-        title: "Error",
-        description: `Failed to upload music: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleMusicUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('audio/')) {
-      toast({
-        title: "Error",
-        description: "Please select a valid audio file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate file size (20MB max)
-    if (file.size > 20 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "File size must be less than 20MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setMusicUploading(true);
-    musicUploadMutation.mutate(file);
-  };
 
   const handleFeatureFlagToggle = (featureKey: string, enabled: boolean) => {
     featureFlagMutation.mutate({ featureKey, enabled });
@@ -254,7 +150,7 @@ export default function AdminDashboard() {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Quick Stats Overview */}
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
           <Card className="bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-lg">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -278,33 +174,13 @@ export default function AdminDashboard() {
               </div>
             </CardHeader>
           </Card>
-          
-          <Card className="bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl font-bold text-white">{allMedia?.media?.length || 0}</CardTitle>
-                  <CardDescription className="text-rose-100">Media Submissions</CardDescription>
-                </div>
-                <Image className="h-8 w-8 text-rose-200" />
-              </div>
-            </CardHeader>
-          </Card>
         </div>
 
-        <Tabs defaultValue="media" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 mb-6">
-            <TabsTrigger value="media" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
-              <Image className="h-4 w-4" />
-              <span className="hidden md:inline">Media</span>
-            </TabsTrigger>
-            <TabsTrigger value="images" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
+        <Tabs defaultValue="rsvps" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="config" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Settings className="h-4 w-4" />
-              <span className="hidden md:inline">Config</span>
-            </TabsTrigger>
-            <TabsTrigger value="music" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
-              <Music className="h-4 w-4" />
-              <span className="hidden md:inline">Music</span>
+              <span className="hidden md:inline">Configuration</span>
             </TabsTrigger>
             <TabsTrigger value="rsvps" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Users className="h-4 w-4" />
@@ -320,136 +196,8 @@ export default function AdminDashboard() {
             </TabsTrigger>
           </TabsList>
         
-        {/* Media Management Tab */}
-        <TabsContent value="media">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <Image className="h-6 w-6 text-rose-600" />
-                <div>
-                  <CardTitle className="text-xl">Media Management</CardTitle>
-                  <CardDescription>Review and approve guest photo submissions</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {mediaLoading ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
-                  <p className="text-gray-500">Loading media submissions...</p>
-                </div>
-              ) : allMedia?.media ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {allMedia.media.map((media: Media) => (
-                    <Card key={media.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                      <div className="aspect-video relative overflow-hidden bg-gray-100">
-                        {media.mediaType === "video" ? (
-                          <iframe 
-                            src={media.mediaUrl} 
-                            className="absolute inset-0 w-full h-full object-cover"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
-                        ) : (
-                          <img 
-                            src={media.mediaUrl} 
-                            alt={media.caption || "User uploaded media"} 
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                        )}
-                        <Badge 
-                          className={`absolute top-3 right-3 ${
-                            media.approved 
-                              ? "bg-green-100 text-green-800 border-green-200" 
-                              : "bg-yellow-100 text-yellow-800 border-yellow-200"
-                          }`}
-                          variant="outline"
-                        >
-                          {media.approved ? (
-                            <div className="flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3" />
-                              Approved
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Pending
-                            </div>
-                          )}
-                        </Badge>
-                      </div>
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div>
-                            <p className="font-semibold text-gray-900">{media.name}</p>
-                            <p className="text-sm text-gray-600">{media.email}</p>
-                          </div>
-                          {media.caption && (
-                            <p className="text-sm text-gray-700 italic bg-gray-50 p-2 rounded">
-                              "{media.caption}"
-                            </p>
-                          )}
-                          <div className="flex gap-2 pt-2">
-                            {!media.approved ? (
-                              <>
-                                <Button 
-                                  onClick={() => handleApproval(media.id, true)}
-                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-                                  disabled={approvalMutation.isPending}
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                  Approve
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => handleApproval(media.id, false)}
-                                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 gap-2"
-                                  disabled={approvalMutation.isPending}
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Reject
-                                </Button>
-                              </>
-                            ) : (
-                              <Button 
-                                variant="outline" 
-                                onClick={() => handleApproval(media.id, false)}
-                                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 gap-2"
-                                disabled={approvalMutation.isPending}
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Unapprove
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  
-                  {allMedia.media.length === 0 && (
-                    <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                      <Image className="h-12 w-12 text-gray-300 mb-3" />
-                      <p className="text-gray-500 text-lg">No media submissions yet</p>
-                      <p className="text-sm text-gray-400">Photos will appear here when guests upload them</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <XCircle className="h-12 w-12 text-red-300 mb-3" />
-                  <p className="text-red-600 text-lg">
-                    {mediaError ? "Error loading media" : "No media data available"}
-                  </p>
-                  <p className="text-sm text-red-400">Please check your authentication</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Image Configuration Tab */}
-        <TabsContent value="images">
+        {/* Configuration Tab */}
+        <TabsContent value="config">
           <div className="space-y-6">
             {/* Google Drive Configuration */}
             <Card>
@@ -498,86 +246,23 @@ export default function AdminDashboard() {
                 <ImageManager />
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
 
-        {/* Music Management Tab */}
-        <TabsContent value="music">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <Music className="h-6 w-6 text-purple-600" />
-                <div>
-                  <CardTitle className="text-xl">Background Music</CardTitle>
-                  <CardDescription>Upload and manage background music for your wedding website</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Current Music Display */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-semibold mb-2">Current Background Music</h3>
-                  <audio 
-                    controls 
-                    className="w-full"
-                    src={musicData?.musicUrl || '/music/wedding-piano.mp3'}
-                    data-testid="audio-preview"
-                  >
-                    Your browser does not support the audio element.
-                  </audio>
-                </div>
-
-                {/* Upload New Music */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                  <div className="space-y-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <Music className="h-12 w-12 text-gray-400" />
-                      <h3 className="font-semibold text-lg">Upload New Music</h3>
-                      <p className="text-sm text-gray-600 text-center">
-                        Supported formats: MP3, WAV, OGG (max 20MB)
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-center gap-3">
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        id="music-upload"
-                        className="hidden"
-                        data-testid="input-music-file"
-                        onChange={handleMusicUpload}
-                      />
-                      <Button
-                        asChild
-                        className="w-full sm:w-auto"
-                        data-testid="button-upload-music"
-                      >
-                        <label htmlFor="music-upload" className="cursor-pointer">
-                          Choose Music File
-                        </label>
-                      </Button>
-                      {musicUploading && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Uploading music...
-                        </div>
-                      )}
-                    </div>
+            {/* Music Configuration */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <Music className="h-6 w-6 text-purple-600" />
+                  <div>
+                    <CardTitle className="text-xl">Music Configuration</CardTitle>
+                    <CardDescription>Upload and manage background music for your wedding website</CardDescription>
                   </div>
                 </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-sm text-blue-900 mb-2">Tips:</h4>
-                  <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                    <li>Choose a song that reflects your wedding theme</li>
-                    <li>Keep volume moderate for better user experience</li>
-                    <li>Consider instrumental or soft music</li>
-                    <li>Test the music on different devices</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <MusicManager onAutoLogout={handleAutoLogout} />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
         
         {/* RSVPs Tab */}
@@ -704,24 +389,12 @@ export default function AdminDashboard() {
                     </div>
                   </CardHeader>
                 </Card>
-                
-                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-3xl font-bold text-white">{allMedia?.media?.length || 0}</CardTitle>
-                        <CardDescription className="text-purple-100">Media Uploads</CardDescription>
-                      </div>
-                      <Image className="h-8 w-8 text-purple-200" />
-                    </div>
-                  </CardHeader>
-                </Card>
               </div>
 
               {/* Response Rate Summary */}
               <div className="mt-8 p-6 bg-gray-50 rounded-lg">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Response Summary</h3>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-gray-900">
                       {stats.attending + stats.notAttending > 0 
@@ -733,12 +406,6 @@ export default function AdminDashboard() {
                   <div className="text-center">
                     <p className="text-2xl font-bold text-gray-900">{stats.attending + stats.notAttending}</p>
                     <p className="text-sm text-gray-600">Total Responses</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {allMedia?.media?.filter((m: Media) => m.approved).length || 0}
-                    </p>
-                    <p className="text-sm text-gray-600">Approved Media</p>
                   </div>
                 </div>
               </div>
