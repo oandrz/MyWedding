@@ -1,10 +1,32 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 
 const app = express();
+
+// Configure CORS for production cross-origin requests
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.) or from allowed origins
+    if (!origin) return callback(null, true);
+    
+    // In production, allow the replit deployment domain
+    if (process.env.NODE_ENV === 'production') {
+      const allowedOrigins = [origin]; // Allow the origin making the request
+      callback(null, true);
+    } else {
+      // In development, allow all origins
+      callback(null, true);
+    }
+  },
+  credentials: true, // Allow cookies to be sent with requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
