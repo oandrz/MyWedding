@@ -1022,9 +1022,14 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getAppSetting(settingKey: string): Promise<AppSetting | undefined> {
-    const kv = this.ensureKvAvailable();
-    const result = await kv.get(`app_setting:${settingKey}`);
-    return result.ok ? result.value : undefined;
+    try {
+      const kv = this.ensureKvAvailable();
+      const result = await kv.get(`app_setting:${settingKey}`);
+      return result.ok ? result.value : undefined;
+    } catch (error) {
+      console.error(`Error getting app setting ${settingKey}:`, error);
+      return undefined;
+    }
   }
 
   async getAllAppSettings(): Promise<AppSetting[]> {
