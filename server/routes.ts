@@ -868,18 +868,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload background music (admin only)
   app.post("/api/admin/settings/music-upload", adminAuthMiddleware, audioUpload.single('file'), async (req: Request, res: Response) => {
     try {
+      console.log("Music upload attempt - file present:", !!req.file);
+      
       if (!req.file) {
+        console.error("Music upload failed: No file in request");
         return res.status(400).json({ message: 'No file uploaded' });
       }
 
+      console.log("Music upload - file details:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
+
       // Validate file type
       if (!req.file.mimetype.startsWith('audio/')) {
+        console.error("Music upload failed: Invalid file type:", req.file.mimetype);
         return res.status(400).json({ message: 'Only audio files are allowed' });
       }
 
       // Generate unique filename
       const fileExtension = req.file.originalname.split('.').pop() || 'mp3';
       const uniqueFilename = `background-music-${Date.now()}.${fileExtension}`;
+      console.log("Music upload - uploading to storage:", uniqueFilename);
 
       // Upload to App Storage in music directory
       const musicUrl = await weddingObjectStorage.uploadFile(
@@ -888,6 +899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.file.mimetype,
         'admin/music'
       );
+      console.log("Music upload - storage success:", musicUrl);
 
       // Create or update app setting
       const settingData = {
@@ -901,19 +913,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let setting;
       
       if (existingSetting) {
+        console.log("Music upload - updating existing setting");
         setting = await storage.updateAppSetting('background_music_url', settingData);
       } else {
+        console.log("Music upload - creating new setting");
         setting = await storage.createAppSetting(settingData);
       }
 
+      console.log("Music upload - complete success");
       res.status(201).json({
         message: "Background music uploaded successfully",
         setting,
         musicUrl
       });
     } catch (error) {
-      console.error("Music upload error:", error);
-      res.status(500).json({ message: "Failed to upload music file" });
+      console.error("Music upload error - detailed:", error);
+      console.error("Music upload error - stack:", error instanceof Error ? error.stack : 'No stack trace');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: `Failed to upload music file: ${errorMessage}` });
     }
   });
 

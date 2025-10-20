@@ -42,19 +42,27 @@ export class WeddingObjectStorageService {
 
   // Upload a file to object storage and return the public URL
   async uploadFile(buffer: Buffer, filename: string, contentType: string, directory: string = "uploads"): Promise<string> {
-    const bucket = objectStorageClient.bucket(this.bucketName);
-    const objectName = `${directory}/${filename}`;
-    const file = bucket.file(objectName);
+    try {
+      console.log(`Uploading file to object storage: ${directory}/${filename}`);
+      const bucket = objectStorageClient.bucket(this.bucketName);
+      const objectName = `${directory}/${filename}`;
+      const file = bucket.file(objectName);
 
-    await file.save(buffer, {
-      metadata: {
-        contentType,
-      },
-      // Don't make public - Replit object storage handles access
-    });
+      await file.save(buffer, {
+        metadata: {
+          contentType,
+        },
+        // Don't make public - Replit object storage handles access
+      });
 
-    // Return the Replit object storage URL  
-    return `/storage/${objectName}`;
+      console.log(`File uploaded successfully: ${objectName}`);
+      // Return the Replit object storage URL  
+      return `/storage/${objectName}`;
+    } catch (error) {
+      console.error("Object storage upload error:", error);
+      console.error("Upload details - directory:", directory, "filename:", filename, "contentType:", contentType);
+      throw error;
+    }
   }
 
   // Upload a file for admin images
