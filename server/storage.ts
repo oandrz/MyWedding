@@ -1,16 +1,7 @@
 import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { db } from "./db";
 import Database from "@replit/database";
-
-// Lazy load db to avoid connecting to PostgreSQL unless actually using DatabaseStorage
-let _db: any = null;
-function getDb() {
-  if (!_db) {
-    const dbModule = require("./db");
-    _db = dbModule.db;
-  }
-  return _db;
-}
 
 // modify the interface with any CRUD methods
 // you might need
@@ -403,17 +394,17 @@ export class MemStorage implements IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await getDb().select().from(users).where(eq(users.id, id));
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await getDb().select().from(users).where(eq(users.username, username));
+    const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await getDb()
+    const [user] = await db
       .insert(users)
       .values(insertUser)
       .returning();
@@ -421,7 +412,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRsvp(insertRsvp: InsertRsvp): Promise<Rsvp> {
-    const [rsvpEntry] = await getDb()
+    const [rsvpEntry] = await db
       .insert(rsvp)
       .values(insertRsvp)
       .returning();
@@ -429,7 +420,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRsvp(id: number, insertRsvp: InsertRsvp): Promise<Rsvp> {
-    const [rsvpEntry] = await getDb()
+    const [rsvpEntry] = await db
       .update(rsvp)
       .set(insertRsvp)
       .where(eq(rsvp.id, id))
@@ -438,12 +429,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRsvps(): Promise<Rsvp[]> {
-    return getDb().select().from(rsvp);
+    return db.select().from(rsvp);
   }
 
   async getRsvpByEmail(email: string): Promise<Rsvp | undefined> {
     const normalizedEmail = email.toLowerCase();
-    const [rsvpEntry] = await getDb()
+    const [rsvpEntry] = await db
       .select()
       .from(rsvp)
       .where(sql`LOWER(${rsvp.email}) = ${normalizedEmail}`);
@@ -451,7 +442,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
-    const [mediaEntry] = await getDb()
+    const [mediaEntry] = await db
       .insert(media)
       .values(insertMedia)
       .returning();
@@ -459,7 +450,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMediaById(id: number): Promise<Media | undefined> {
-    const [mediaEntry] = await getDb()
+    const [mediaEntry] = await db
       .select()
       .from(media)
       .where(eq(media.id, id));
@@ -467,14 +458,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMedia(): Promise<Media[]> {
-    return getDb()
+    return db
       .select()
       .from(media)
       .orderBy(desc(media.createdAt));
   }
 
   async getApprovedMedia(): Promise<Media[]> {
-    return getDb()
+    return db
       .select()
       .from(media)
       .where(eq(media.approved, true))
@@ -482,7 +473,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMediaApproval(id: number, approved: boolean): Promise<Media | undefined> {
-    const [mediaEntry] = await getDb()
+    const [mediaEntry] = await db
       .update(media)
       .set({ approved })
       .where(eq(media.id, id))
@@ -492,7 +483,7 @@ export class DatabaseStorage implements IStorage {
 
   // Configurable images methods
   async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
-    const [configImage] = await getDb()
+    const [configImage] = await db
       .insert(configImages)
       .values(insertConfigImage)
       .returning();
@@ -500,7 +491,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
-    const [configImage] = await getDb()
+    const [configImage] = await db
       .insert(configImages)
       .values({ ...insertConfigImage, imageKey })
       .onConflictDoUpdate({
@@ -519,7 +510,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
-    const [configImage] = await getDb()
+    const [configImage] = await db
       .select()
       .from(configImages)
       .where(eq(configImages.imageKey, imageKey));
@@ -527,7 +518,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
-    return getDb()
+    return db
       .select()
       .from(configImages)
       .where(sql`${configImages.imageType} = ${imageType} AND ${configImages.isActive} = true`)
@@ -535,14 +526,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllConfigImages(): Promise<ConfigImage[]> {
-    return getDb()
+    return db
       .select()
       .from(configImages)
       .orderBy(desc(configImages.updatedAt));
   }
 
   async deleteConfigImage(imageKey: string): Promise<boolean> {
-    const result = await getDb()
+    const result = await db
       .delete(configImages)
       .where(eq(configImages.imageKey, imageKey));
     return (result.rowCount || 0) > 0;
@@ -550,7 +541,7 @@ export class DatabaseStorage implements IStorage {
 
   // Feature flag methods
   async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
-    const [featureFlag] = await getDb()
+    const [featureFlag] = await db
       .insert(featureFlags)
       .values(insertFeatureFlag)
       .returning();
@@ -558,7 +549,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
-    const [featureFlag] = await getDb()
+    const [featureFlag] = await db
       .update(featureFlags)
       .set({ enabled, updatedAt: sql`now()` })
       .where(eq(featureFlags.featureKey, featureKey))
@@ -567,7 +558,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
-    const [featureFlag] = await getDb()
+    const [featureFlag] = await db
       .select()
       .from(featureFlags)
       .where(eq(featureFlags.featureKey, featureKey));
@@ -575,14 +566,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
-    return getDb()
+    return db
       .select()
       .from(featureFlags)
       .orderBy(featureFlags.featureName);
   }
 
   async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {
-    const [appSetting] = await getDb()
+    const [appSetting] = await db
       .insert(appSettings)
       .values(insertAppSetting)
       .returning();
@@ -590,7 +581,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAppSetting(settingKey: string, insertAppSetting: InsertAppSetting): Promise<AppSetting> {
-    const [appSetting] = await getDb()
+    const [appSetting] = await db
       .insert(appSettings)
       .values({ ...insertAppSetting, settingKey })
       .onConflictDoUpdate({
@@ -607,7 +598,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAppSetting(settingKey: string): Promise<AppSetting | undefined> {
-    const [appSetting] = await getDb()
+    const [appSetting] = await db
       .select()
       .from(appSettings)
       .where(eq(appSettings.settingKey, settingKey));
@@ -615,7 +606,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAppSettings(): Promise<AppSetting[]> {
-    return getDb()
+    return db
       .select()
       .from(appSettings)
       .orderBy(desc(appSettings.updatedAt));
