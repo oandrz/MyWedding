@@ -8,6 +8,15 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 **Production Configuration Fixes:**
 
+**October 21, 2025:**
+- ✓ Fixed critical database initialization crash preventing production deployment
+- ✓ Implemented lazy-loading database connection with getDb() function
+- ✓ Decoupled DatabaseStorage from eager PostgreSQL import to prevent crashes
+- ✓ Added startup logging to show which storage backend is selected (REPLIT_DB_URL → DATABASE_URL → MemStorage)
+- ✓ App now resilient to DATABASE_URL failures and properly uses Replit Database in production
+- Root cause: Database connection was eagerly initialized at import time, causing crashes even when Replit Database was available
+- Solution: Lazy-load database connection only when DatabaseStorage is actually used, allowing proper fallback
+
 **October 7, 2025:**
 - ✓ Fixed critical production deployment issues causing all features to fail
 - ✓ Added CORS middleware configuration for cross-origin requests in production
