@@ -1,0 +1,128 @@
+025-10-21 09:01:28.08
+11fe367d
+User
+Music upload error - stack: error: The requested endpoint could not be found, or you don't have access to it. Please check the provided ID and try again.
+2025-10-21 09:01:28.08
+11fe367d
+User
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-10-21 09:01:28.08
+11fe367d
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-10-21 09:01:28.08
+11fe367d
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-10-21 09:01:28.08
+11fe367d
+User
+at async DatabaseStorage.getAppSetting (file:///home/runner/workspace/dist/index.js:576:26)
+2025-10-21 09:01:28.08
+11fe367d
+User
+at async file:///home/runner/workspace/dist/index.js:2174:31
+2025-10-21 09:01:28.09
+11fe367d
+User
+1:01:28 AM [express] POST /api/admin/settings/music-upload 500 in 614ms :: {"message":"Failed to upl…
+2025-10-21 09:01:28.83
+11fe367d
+User
+Error fetching music setting: error: The requested endpoint could not be found, or you don't have access to it. Please check the provided ID and try again.
+2025-10-21 09:01:28.83
+11fe367d
+User
+at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+2025-10-21 09:01:28.83
+11fe367d
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-10-21 09:01:28.83
+11fe367d
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-10-21 09:01:28.83
+11fe367d
+User
+at async DatabaseStorage.getAppSetting (file:///home/runner/workspace/dist/index.js:576:26)
+2025-10-21 09:01:28.83
+11fe367d
+User
+at async file:///home/runner/workspace/dist/index.js:2115:28 {
+2025-10-21 09:01:28.83
+11fe367d
+User
+length: 139,
+2025-10-21 09:01:28.83
+11fe367d
+User
+severity: 'ERROR',
+2025-10-21 09:01:28.83
+11fe367d
+User
+code: 'XX000',
+2025-10-21 09:01:28.83
+11fe367d
+User
+detail: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+hint: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+position: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+internalPosition: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+internalQuery: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+where: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+schema: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+table: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+column: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+dataType: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+constraint: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+file: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+line: undefined,
+2025-10-21 09:01:28.83
+11fe367d
+User
+routine: undefined
+2025-10-21 09:01:28.83
+11fe367d
+User
+}
+2025-10-21 09:01:28.83
+11fe367d
+User
+1:01:28 AM [express] GET /api/settings/music 500 in 91ms :: {"message":"Failed to fetch music settin…
