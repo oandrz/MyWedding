@@ -1,6 +1,6 @@
 import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
-import { db } from "./db";
+import { getDb } from "./db";
 import Database from "@replit/database";
 
 // modify the interface with any CRUD methods
@@ -394,17 +394,17 @@ export class MemStorage implements IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await getDb().select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await getDb().select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
+    const [user] = await getDb()
       .insert(users)
       .values(insertUser)
       .returning();
@@ -412,7 +412,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRsvp(insertRsvp: InsertRsvp): Promise<Rsvp> {
-    const [rsvpEntry] = await db
+    const [rsvpEntry] = await getDb()
       .insert(rsvp)
       .values(insertRsvp)
       .returning();
@@ -420,7 +420,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRsvp(id: number, insertRsvp: InsertRsvp): Promise<Rsvp> {
-    const [rsvpEntry] = await db
+    const [rsvpEntry] = await getDb()
       .update(rsvp)
       .set(insertRsvp)
       .where(eq(rsvp.id, id))
@@ -429,12 +429,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRsvps(): Promise<Rsvp[]> {
-    return db.select().from(rsvp);
+    return getDb().select().from(rsvp);
   }
 
   async getRsvpByEmail(email: string): Promise<Rsvp | undefined> {
     const normalizedEmail = email.toLowerCase();
-    const [rsvpEntry] = await db
+    const [rsvpEntry] = await getDb()
       .select()
       .from(rsvp)
       .where(sql`LOWER(${rsvp.email}) = ${normalizedEmail}`);
@@ -442,7 +442,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
-    const [mediaEntry] = await db
+    const [mediaEntry] = await getDb()
       .insert(media)
       .values(insertMedia)
       .returning();
@@ -450,7 +450,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMediaById(id: number): Promise<Media | undefined> {
-    const [mediaEntry] = await db
+    const [mediaEntry] = await getDb()
       .select()
       .from(media)
       .where(eq(media.id, id));
@@ -458,14 +458,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMedia(): Promise<Media[]> {
-    return db
+    return getDb()
       .select()
       .from(media)
       .orderBy(desc(media.createdAt));
   }
 
   async getApprovedMedia(): Promise<Media[]> {
-    return db
+    return getDb()
       .select()
       .from(media)
       .where(eq(media.approved, true))
@@ -473,7 +473,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMediaApproval(id: number, approved: boolean): Promise<Media | undefined> {
-    const [mediaEntry] = await db
+    const [mediaEntry] = await getDb()
       .update(media)
       .set({ approved })
       .where(eq(media.id, id))
@@ -483,7 +483,7 @@ export class DatabaseStorage implements IStorage {
 
   // Configurable images methods
   async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
-    const [configImage] = await db
+    const [configImage] = await getDb()
       .insert(configImages)
       .values(insertConfigImage)
       .returning();
@@ -491,7 +491,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
-    const [configImage] = await db
+    const [configImage] = await getDb()
       .insert(configImages)
       .values({ ...insertConfigImage, imageKey })
       .onConflictDoUpdate({
@@ -510,7 +510,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
-    const [configImage] = await db
+    const [configImage] = await getDb()
       .select()
       .from(configImages)
       .where(eq(configImages.imageKey, imageKey));
@@ -518,7 +518,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
-    return db
+    return getDb()
       .select()
       .from(configImages)
       .where(sql`${configImages.imageType} = ${imageType} AND ${configImages.isActive} = true`)
@@ -526,14 +526,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllConfigImages(): Promise<ConfigImage[]> {
-    return db
+    return getDb()
       .select()
       .from(configImages)
       .orderBy(desc(configImages.updatedAt));
   }
 
   async deleteConfigImage(imageKey: string): Promise<boolean> {
-    const result = await db
+    const result = await getDb()
       .delete(configImages)
       .where(eq(configImages.imageKey, imageKey));
     return (result.rowCount || 0) > 0;
@@ -541,7 +541,7 @@ export class DatabaseStorage implements IStorage {
 
   // Feature flag methods
   async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
-    const [featureFlag] = await db
+    const [featureFlag] = await getDb()
       .insert(featureFlags)
       .values(insertFeatureFlag)
       .returning();
@@ -549,7 +549,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
-    const [featureFlag] = await db
+    const [featureFlag] = await getDb()
       .update(featureFlags)
       .set({ enabled, updatedAt: sql`now()` })
       .where(eq(featureFlags.featureKey, featureKey))
@@ -558,7 +558,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
-    const [featureFlag] = await db
+    const [featureFlag] = await getDb()
       .select()
       .from(featureFlags)
       .where(eq(featureFlags.featureKey, featureKey));
@@ -566,14 +566,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
-    return db
+    return getDb()
       .select()
       .from(featureFlags)
       .orderBy(featureFlags.featureName);
   }
 
   async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {
-    const [appSetting] = await db
+    const [appSetting] = await getDb()
       .insert(appSettings)
       .values(insertAppSetting)
       .returning();
@@ -581,7 +581,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAppSetting(settingKey: string, insertAppSetting: InsertAppSetting): Promise<AppSetting> {
-    const [appSetting] = await db
+    const [appSetting] = await getDb()
       .insert(appSettings)
       .values({ ...insertAppSetting, settingKey })
       .onConflictDoUpdate({
@@ -598,7 +598,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAppSetting(settingKey: string): Promise<AppSetting | undefined> {
-    const [appSetting] = await db
+    const [appSetting] = await getDb()
       .select()
       .from(appSettings)
       .where(eq(appSettings.settingKey, settingKey));
@@ -606,7 +606,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAppSettings(): Promise<AppSetting[]> {
-    return db
+    return getDb()
       .select()
       .from(appSettings)
       .orderBy(desc(appSettings.updatedAt));
@@ -660,6 +660,7 @@ export class KeyValueStorage implements IStorage {
   }
 
   private async initializeDefaultFeatureFlags() {
+    const kv = this.ensureKvAvailable();
     const defaultFeatures = [
       {
         featureKey: 'rsvp',
@@ -699,11 +700,12 @@ export class KeyValueStorage implements IStorage {
         ...feature,
         updatedAt: new Date().toISOString()
       };
-      await this.kv.set(`feature_flag:${feature.featureKey}`, featureFlag);
+      await kv.set(`feature_flag:${feature.featureKey}`, featureFlag);
     }
   }
 
   private async initializeDefaultImages() {
+    const kv = this.ensureKvAvailable();
     // Default banner image
     const bannerImage: ConfigImage = {
       id: this.currentConfigImageId++,
@@ -715,7 +717,7 @@ export class KeyValueStorage implements IStorage {
       isActive: true,
       updatedAt: new Date().toISOString()
     };
-    await this.kv.set(`config_image:banner`, bannerImage);
+    await kv.set(`config_image:banner`, bannerImage);
 
     // Default gallery images
     const defaultGalleryImages = [
@@ -734,7 +736,7 @@ export class KeyValueStorage implements IStorage {
         isActive: true,
         updatedAt: new Date().toISOString()
       };
-      await this.kv.set(`config_image:gallery_default_${i + 1}`, galleryImage);
+      await kv.set(`config_image:gallery_default_${i + 1}`, galleryImage);
     }
   }
 
@@ -771,44 +773,48 @@ export class KeyValueStorage implements IStorage {
 
   // RSVP methods
   async createRsvp(insertRsvp: InsertRsvp): Promise<Rsvp> {
+    const kv = this.ensureKvAvailable();
     const id = this.currentRsvpId++;
     const rsvpEntry: Rsvp = { 
       ...insertRsvp, 
       id,
       guestCount: insertRsvp.guestCount ?? null
     };
-    await this.kv.set(`rsvp:${id}`, rsvpEntry);
+    await kv.set(`rsvp:${id}`, rsvpEntry);
     return rsvpEntry;
   }
 
   async updateRsvp(id: number, insertRsvp: InsertRsvp): Promise<Rsvp> {
+    const kv = this.ensureKvAvailable();
     const rsvpEntry: Rsvp = { 
       ...insertRsvp, 
       id,
       guestCount: insertRsvp.guestCount ?? null
     };
-    await this.kv.set(`rsvp:${id}`, rsvpEntry);
+    await kv.set(`rsvp:${id}`, rsvpEntry);
     return rsvpEntry;
   }
 
   async getRsvps(): Promise<Rsvp[]> {
-    const keysResult = await this.kv.list("rsvp:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("rsvp:");
     if (!keysResult.ok) return [];
     
     const rsvps = [];
     for (const key of keysResult.value) {
-      const rsvpResult = await this.kv.get(key);
+      const rsvpResult = await kv.get(key);
       if (rsvpResult.ok && rsvpResult.value) rsvps.push(rsvpResult.value);
     }
     return rsvps;
   }
 
   async getRsvpByEmail(email: string): Promise<Rsvp | undefined> {
-    const keysResult = await this.kv.list("rsvp:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("rsvp:");
     if (!keysResult.ok) return undefined;
     
     for (const key of keysResult.value) {
-      const rsvpResult = await this.kv.get(key);
+      const rsvpResult = await kv.get(key);
       if (rsvpResult.ok && rsvpResult.value && rsvpResult.value.email.toLowerCase() === email.toLowerCase()) {
         return rsvpResult.value;
       }
@@ -818,6 +824,7 @@ export class KeyValueStorage implements IStorage {
 
   // Media methods
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
+    const kv = this.ensureKvAvailable();
     const id = this.currentMediaId++;
     const now = new Date();
     const mediaEntry: Media = {
@@ -828,7 +835,7 @@ export class KeyValueStorage implements IStorage {
       approved: false,
       createdAt: now.toISOString()
     };
-    await this.kv.set(`media:${id}`, mediaEntry);
+    await kv.set(`media:${id}`, mediaEntry);
     return mediaEntry;
   }
 
@@ -857,16 +864,18 @@ export class KeyValueStorage implements IStorage {
   }
 
   async updateMediaApproval(id: number, approved: boolean): Promise<Media | undefined> {
-    const mediaResult = await this.kv.get(`media:${id}`);
+    const kv = this.ensureKvAvailable();
+    const mediaResult = await kv.get(`media:${id}`);
     if (!mediaResult.ok || !mediaResult.value) return undefined;
     
     const updatedMedia: Media = { ...mediaResult.value, approved };
-    await this.kv.set(`media:${id}`, updatedMedia);
+    await kv.set(`media:${id}`, updatedMedia);
     return updatedMedia;
   }
 
   // Config image methods
   async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    const kv = this.ensureKvAvailable();
     const id = this.currentConfigImageId++;
     const now = new Date();
     const configImage: ConfigImage = {
@@ -877,12 +886,13 @@ export class KeyValueStorage implements IStorage {
       isActive: insertConfigImage.isActive ?? true,
       updatedAt: now.toISOString()
     };
-    await this.kv.set(`config_image:${configImage.imageKey}`, configImage);
+    await kv.set(`config_image:${configImage.imageKey}`, configImage);
     return configImage;
   }
 
   async updateConfigImage(imageKey: string, insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
-    const existingResult = await this.kv.get(`config_image:${imageKey}`);
+    const kv = this.ensureKvAvailable();
+    const existingResult = await kv.get(`config_image:${imageKey}`);
     const id = (existingResult.ok && existingResult.value) ? existingResult.value.id : this.currentConfigImageId++;
     const now = new Date();
     const configImage: ConfigImage = {
@@ -894,22 +904,24 @@ export class KeyValueStorage implements IStorage {
       isActive: insertConfigImage.isActive ?? true,
       updatedAt: now.toISOString()
     };
-    await this.kv.set(`config_image:${imageKey}`, configImage);
+    await kv.set(`config_image:${imageKey}`, configImage);
     return configImage;
   }
 
   async getConfigImage(imageKey: string): Promise<ConfigImage | undefined> {
-    const result = await this.kv.get(`config_image:${imageKey}`);
+    const kv = this.ensureKvAvailable();
+    const result = await kv.get(`config_image:${imageKey}`);
     return result.ok ? result.value : undefined;
   }
 
   async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
-    const keysResult = await this.kv.list("config_image:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("config_image:");
     if (!keysResult.ok) return [];
     
     const images = [];
     for (const key of keysResult.value) {
-      const imageResult = await this.kv.get(key);
+      const imageResult = await kv.get(key);
       if (imageResult.ok && imageResult.value && imageResult.value.imageType === imageType && imageResult.value.isActive) {
         images.push(imageResult.value);
       }
@@ -918,24 +930,27 @@ export class KeyValueStorage implements IStorage {
   }
 
   async getAllConfigImages(): Promise<ConfigImage[]> {
-    const keysResult = await this.kv.list("config_image:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("config_image:");
     if (!keysResult.ok) return [];
     
     const images = [];
     for (const key of keysResult.value) {
-      const imageResult = await this.kv.get(key);
+      const imageResult = await kv.get(key);
       if (imageResult.ok && imageResult.value) images.push(imageResult.value);
     }
     return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   async deleteConfigImage(imageKey: string): Promise<boolean> {
-    await this.kv.delete(`config_image:${imageKey}`);
+    const kv = this.ensureKvAvailable();
+    await kv.delete(`config_image:${imageKey}`);
     return true;
   }
 
   // Feature flag methods
   async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
+    const kv = this.ensureKvAvailable();
     const id = this.currentFeatureFlagId++;
     const now = new Date();
     const featureFlag: FeatureFlag = {
@@ -944,12 +959,13 @@ export class KeyValueStorage implements IStorage {
       enabled: insertFeatureFlag.enabled ?? true,
       updatedAt: now.toISOString()
     };
-    await this.kv.set(`feature_flag:${featureFlag.featureKey}`, featureFlag);
+    await kv.set(`feature_flag:${featureFlag.featureKey}`, featureFlag);
     return featureFlag;
   }
 
   async updateFeatureFlag(featureKey: string, enabled: boolean): Promise<FeatureFlag | undefined> {
-    const existingResult = await this.kv.get(`feature_flag:${featureKey}`);
+    const kv = this.ensureKvAvailable();
+    const existingResult = await kv.get(`feature_flag:${featureKey}`);
     if (!existingResult.ok || !existingResult.value) return undefined;
 
     const updatedFeatureFlag: FeatureFlag = {
@@ -957,22 +973,24 @@ export class KeyValueStorage implements IStorage {
       enabled,
       updatedAt: new Date().toISOString()
     };
-    await this.kv.set(`feature_flag:${featureKey}`, updatedFeatureFlag);
+    await kv.set(`feature_flag:${featureKey}`, updatedFeatureFlag);
     return updatedFeatureFlag;
   }
 
   async getFeatureFlag(featureKey: string): Promise<FeatureFlag | undefined> {
-    const result = await this.kv.get(`feature_flag:${featureKey}`);
+    const kv = this.ensureKvAvailable();
+    const result = await kv.get(`feature_flag:${featureKey}`);
     return result.ok ? result.value : undefined;
   }
 
   async getAllFeatureFlags(): Promise<FeatureFlag[]> {
-    const keysResult = await this.kv.list("feature_flag:");
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("feature_flag:");
     if (!keysResult.ok) return [];
     
     const flags = [];
     for (const key of keysResult.value) {
-      const flagResult = await this.kv.get(key);
+      const flagResult = await kv.get(key);
       if (flagResult.ok && flagResult.value) flags.push(flagResult.value);
     }
     return flags.sort((a, b) => a.featureName.localeCompare(b.featureName));
