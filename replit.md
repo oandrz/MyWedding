@@ -9,13 +9,16 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 **Production Configuration Fixes:**
 
 **October 21, 2025:**
+- ✓ Fixed critical production deployment issue where music uploads and other features failed with PostgreSQL errors
+- ✓ Implemented production-aware Replit Database URL detection
+- ✓ Created helper function to read REPLIT_DB_URL from /tmp/replitdb file (production) or environment variable (development)
+- ✓ Fixed storage selection to properly use Replit Database in both development and production environments
+- ✓ Added detailed logging showing database source (file vs env var) for debugging
 - ✓ Fixed critical database initialization crash preventing production deployment
 - ✓ Implemented lazy-loading database connection with getDb() function
 - ✓ Decoupled DatabaseStorage from eager PostgreSQL import to prevent crashes
-- ✓ Added startup logging to show which storage backend is selected (REPLIT_DB_URL → DATABASE_URL → MemStorage)
-- ✓ App now resilient to DATABASE_URL failures and properly uses Replit Database in production
-- Root cause: Database connection was eagerly initialized at import time, causing crashes even when Replit Database was available
-- Solution: Lazy-load database connection only when DatabaseStorage is actually used, allowing proper fallback
+- Root cause: In production, REPLIT_DB_URL is stored in /tmp/replitdb file instead of environment variable, causing app to fall through to PostgreSQL (which had no tables)
+- Solution: Check both /tmp/replitdb file and environment variable following Replit's recommended pattern
 
 **October 7, 2025:**
 - ✓ Fixed critical production deployment issues causing all features to fail
