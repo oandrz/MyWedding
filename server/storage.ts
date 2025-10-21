@@ -2,6 +2,7 @@ import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, me
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import Database from "@replit/database";
+import fs from "fs";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -623,9 +624,10 @@ export class KeyValueStorage implements IStorage {
   private currentAppSettingId: number = 1;
 
   constructor() {
-    // Only initialize Replit Database if REPLIT_DB_URL is available
-    if (process.env.REPLIT_DB_URL) {
-      this.kv = new Database();
+    // Only initialize Replit Database if REPLIT_DB_URL is available (from file or env var)
+    const replitDbUrl = getReplitDatabaseUrl();
+    if (replitDbUrl) {
+      this.kv = new Database(replitDbUrl);
       this.initializeDefaults();
     } else {
       console.warn('KeyValueStorage: REPLIT_DB_URL not found, storage will not be available');
@@ -1064,10 +1066,37 @@ export class KeyValueStorage implements IStorage {
   }
 }
 
+// Helper function to get Replit Database URL from file (production) or env var (development)
+function getReplitDatabaseUrl(): string | null {
+  // In production, Replit DB URL is stored in /tmp/replitdb file
+  const REPLIT_DB_FILE = '/tmp/replitdb';
+  
+  try {
+    if (fs.existsSync(REPLIT_DB_FILE)) {
+      const dbUrl = fs.readFileSync(REPLIT_DB_FILE, 'utf-8').trim();
+      if (dbUrl) {
+        console.log('Replit Database URL found in /tmp/replitdb (production)');
+        return dbUrl;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to read /tmp/replitdb:', error);
+  }
+  
+  // In development, check environment variable
+  if (process.env.REPLIT_DB_URL) {
+    console.log('Replit Database URL found in environment variable (development)');
+    return process.env.REPLIT_DB_URL;
+  }
+  
+  return null;
+}
+
 // Conditional storage initialization based on environment
 function createStorage(): IStorage {
   // Check if we're in a Replit environment (has REPLIT_DB_URL)
-  if (process.env.REPLIT_DB_URL) {
+  const replitDbUrl = getReplitDatabaseUrl();
+  if (replitDbUrl) {
     console.log('Using Replit Database storage');
     return new KeyValueStorage();
   }
