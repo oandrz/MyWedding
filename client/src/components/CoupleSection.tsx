@@ -60,29 +60,8 @@ const CoupleSection = () => {
         <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
           <motion.div 
             className="text-center"
-            ref={brideRef}
-            variants={slideFromLeft}
-            initial="hidden"
-            animate={isBrideInView ? "visible" : "hidden"}
-          >
-            <div className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-lg">
-              <img 
-                className="w-full h-full object-cover" 
-                src={brideImage} 
-                alt={BRIDE_NAME} 
-              />
-            </div>
-            <h3 className="text-3xl font-cormorant text-primary mb-2">{BRIDE_NAME}</h3>
-            <p className="text-foreground font-montserrat mb-6">The Bride</p>
-            <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
-              {BRIDE_NAME} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.
-            </p>
-          </motion.div>
-          
-          <motion.div 
-            className="text-center"
             ref={groomRef}
-            variants={slideFromRight}
+            variants={slideFromLeft}
             initial="hidden"
             animate={isGroomInView ? "visible" : "hidden"}
           >
@@ -97,6 +76,27 @@ const CoupleSection = () => {
             <p className="text-foreground font-montserrat mb-6">The Groom</p>
             <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
               {GROOM_NAME} is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances {BRIDE_NAME}'s energetic personality.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            className="text-center"
+            ref={brideRef}
+            variants={slideFromRight}
+            initial="hidden"
+            animate={isBrideInView ? "visible" : "hidden"}
+          >
+            <div className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-lg">
+              <img 
+                className="w-full h-full object-cover" 
+                src={brideImage} 
+                alt={BRIDE_NAME} 
+              />
+            </div>
+            <h3 className="text-3xl font-cormorant text-primary mb-2">{BRIDE_NAME}</h3>
+            <p className="text-foreground font-montserrat mb-6">The Bride</p>
+            <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
+              {BRIDE_NAME} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.
             </p>
           </motion.div>
         </div>

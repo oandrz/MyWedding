@@ -23,7 +23,7 @@ const Footer = () => {
             className="text-3xl font-cormorant mb-4"
             variants={fadeIn}
           >
-            {BRIDE_NAME} & {GROOM_NAME}
+            {GROOM_NAME} & {BRIDE_NAME}
           </motion.h2>
           
           <motion.p 
