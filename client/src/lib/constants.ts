@@ -1,5 +1,18 @@
-// Wedding Date - August 24, 2024 at 2:00 PM
-export const WEDDING_DATE = new Date('August 24, 2024 14:00:00');
+// Wedding Date - July 5, 2026 at 2:00 PM
+export const WEDDING_DATE = new Date('July 5, 2026 14:00:00');
+
+// Helper function to format the wedding date
+const formatWeddingDate = (): string => {
+  const options: Intl.DateTimeFormatOptions = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  };
+  return WEDDING_DATE.toLocaleDateString('en-US', options);
+};
+
+export const FORMATTED_WEDDING_DATE = formatWeddingDate();
 
 // Couple Info
 export const BRIDE_NAME = "Christine Natasya Serena";
@@ -33,7 +46,7 @@ export const WEDDING_SCHEDULE = [
 export const VENUES = [
   {
     title: "Ceremony",
-    date: "Saturday, August 24, 2024",
+    date: FORMATTED_WEDDING_DATE,
     time: "2:00 PM - 3:30 PM",
     location: "St. Mary's Cathedral",
     address: "123 Main Street, Anytown",
@@ -41,7 +54,7 @@ export const VENUES = [
   },
   {
     title: "Reception",
-    date: "Saturday, August 24, 2024",
+    date: FORMATTED_WEDDING_DATE,
     time: "4:30 PM - 10:00 PM",
     location: "Grand View Gardens",
     address: "456 Park Avenue, Anytown",
