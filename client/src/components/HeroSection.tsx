@@ -81,7 +81,7 @@ const HeroSection = () => {
           className="text-5xl md:text-7xl font-cormorant font-light text-white mb-8"
           variants={fadeIn}
         >
-          {BRIDE_NAME} & {GROOM_NAME}
+          {GROOM_NAME} & {BRIDE_NAME}
         </motion.h1>
         
         <motion.div 
