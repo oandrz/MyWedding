@@ -68,12 +68,12 @@ const DetailsSection = () => {
               <p className="text-muted-foreground font-montserrat text-sm mb-4">{venue.location}</p>
               <p className="text-muted-foreground font-montserrat text-sm">{venue.address}</p>
               
-              {venue.bookingCode && (
-                <p className="text-muted-foreground font-montserrat text-sm mt-4">Special room rate code: {venue.bookingCode}</p>
+              {(venue as any).bookingCode && (
+                <p className="text-muted-foreground font-montserrat text-sm mt-4">Special room rate code: {(venue as any).bookingCode}</p>
               )}
               
-              {venue.bookingUrl && (
-                <a href={venue.bookingUrl} className="text-primary font-montserrat text-sm hover:underline mt-4 inline-block">Book Your Stay</a>
+              {(venue as any).bookingUrl && (
+                <a href={(venue as any).bookingUrl} className="text-primary font-montserrat text-sm hover:underline mt-4 inline-block">Book Your Stay</a>
               )}
             </motion.div>
           ))}
@@ -102,10 +102,10 @@ const DetailsSection = () => {
               width="100%"
               height="450"
               className="w-full h-96 border-0"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.2219901290355!2d-74.00369368400567!3d40.71312937933185!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a47df06b185%3A0xc80da61da9e2a3b!2sCity%20Hall%20Park!5e0!3m2!1sen!2sus!4v1628664477739!5m2!1sen!2sus"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.0!2d106.8204341!3d-6.2594469!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f22adf2c9a27%3A0x118d6eaa20e4454b!2sCasakhasa!5e0!3m2!1sen!2sus!4v1628664477739!5m2!1sen!2sus"
               allowFullScreen
               loading="lazy"
-              title="Wedding venue location"
+              title="Wedding venue location - Casakhasa Kemang"
             ></iframe>
           </motion.div>
           
@@ -114,7 +114,7 @@ const DetailsSection = () => {
             variants={fadeIn}
           >
             <motion.a 
-              href="https://goo.gl/maps/1234" 
+              href="https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__" 
               target="_blank" 
               rel="noreferrer"
               className="custom-button inline-block px-6 py-2 bg-secondary text-white font-montserrat uppercase tracking-wider text-sm hover:bg-opacity-90 hover:shadow-md transition-all duration-300 rounded-sm"

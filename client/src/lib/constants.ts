@@ -48,26 +48,24 @@ export const VENUES = [
     title: "Ceremony",
     date: FORMATTED_WEDDING_DATE,
     time: "2:00 PM - 3:30 PM",
-    location: "St. Mary's Cathedral",
-    address: "123 Main Street, Anytown",
+    location: "Casakhasa Kemang",
+    address: "Jl. Kemang Raya, Jakarta Selatan",
     icon: "fas fa-rings-wedding"
   },
   {
     title: "Reception",
     date: FORMATTED_WEDDING_DATE,
     time: "4:30 PM - 10:00 PM",
-    location: "Grand View Gardens",
-    address: "456 Park Avenue, Anytown",
+    location: "Casakhasa Kemang",
+    address: "Jl. Kemang Raya, Jakarta Selatan",
     icon: "fas fa-glass-cheers"
   },
   {
     title: "Accommodations",
     date: null,
     time: null,
-    location: "Sunrise Hotel & Spa",
-    address: "789 River Road, Anytown",
-    bookingCode: "AC2024",
-    bookingUrl: "#",
+    location: "Nearby Hotels",
+    address: "Kemang Area, Jakarta Selatan",
     icon: "fas fa-hotel"
   }
 ];
