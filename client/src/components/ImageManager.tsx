@@ -35,6 +35,7 @@ const ImageManager = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile">("banner");
   const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -101,6 +102,64 @@ const ImageManager = () => {
     setUploadModalType(image.imageType as "banner" | "gallery" | "bride-profile" | "groom-profile");
     setEditingImage(image);
     setShowUploadModal(true);
+  };
+
+  // Banner replacement mutation
+  const replaceBannerMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Use custom fetch with CSRF token for file upload
+      // apiRequest doesn't handle FormData, so we need to manually add CSRF token
+      const csrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrf_token='))
+        ?.split('=')[1];
+      
+      const response = await fetch('/api/admin/replace-banner', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+        headers: csrfToken ? {
+          'X-CSRF-Token': csrfToken
+        } : {}
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to replace banner');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Banner image replaced successfully!"
+      });
+      setBannerFile(null);
+      // Force reload the banner image by adding cache buster
+      const bannerImg = document.querySelector('img[src*="/images/banner.jpg"]') as HTMLImageElement;
+      if (bannerImg) {
+        bannerImg.src = `/images/banner.jpg?t=${Date.now()}`;
+      }
+      // Reload the page to see the new banner
+      window.location.reload();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to replace banner",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleBannerUpload = () => {
+    if (bannerFile) {
+      replaceBannerMutation.mutate(bannerFile);
+    }
   };
 
   // Delete mutation
@@ -208,35 +267,57 @@ const ImageManager = () => {
         <TabsContent value="banner" className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-lg font-semibold">Banner Images</h3>
-              <p className="text-sm text-gray-600">Hero section background image</p>
+              <h3 className="text-lg font-semibold">Banner Image</h3>
+              <p className="text-sm text-gray-600">Hero section background image (loaded from project files)</p>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {bannerImages.map((image) => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-            
-
-            
-            {bannerImages.length === 0 && (
-              <Card className="overflow-hidden border-2 border-dashed border-rose-300 hover:border-rose-400 transition-colors cursor-pointer group">
-                <div 
-                  className="relative h-48 flex items-center justify-center bg-rose-50 hover:bg-rose-100 transition-colors"
-                  onClick={() => handleNewImage("banner")}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-600 flex items-center justify-center group-hover:bg-rose-700 transition-colors">
-                      <Plus className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="text-rose-700 font-medium">Add Banner Image</p>
-                    <p className="text-rose-600 text-sm mt-1">Click to upload</p>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-md">Current Banner</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="relative w-full h-64 rounded-lg overflow-hidden bg-gray-100">
+                <img 
+                  src="/images/banner.jpg" 
+                  alt="Current banner" 
+                  className="w-full h-full object-cover"
+                  data-testid="current-banner-preview"
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="banner-upload" className="text-sm font-medium">Replace Banner Image</Label>
+                  <p className="text-xs text-gray-500 mt-1">Upload a new JPEG image to replace the current banner (max 10MB)</p>
                 </div>
-              </Card>
-            )}
-          </div>
+                
+                <Input 
+                  id="banner-upload"
+                  type="file" 
+                  accept="image/jpeg,image/jpg"
+                  onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                  data-testid="banner-file-input"
+                />
+                
+                {bannerFile && (
+                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                    <p><span className="font-medium">Selected:</span> {bannerFile.name}</p>
+                    <p><span className="font-medium">Size:</span> {(bannerFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                )}
+                
+                <Button 
+                  onClick={handleBannerUpload}
+                  disabled={!bannerFile || replaceBannerMutation.isPending}
+                  className="w-full bg-rose-600 hover:bg-rose-700"
+                  data-testid="button-upload-banner"
+                >
+                  {replaceBannerMutation.isPending ? "Uploading..." : "Replace Banner"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="gallery" className="space-y-6">

@@ -934,6 +934,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Replace banner image (admin only)
+  app.post("/api/admin/replace-banner", adminAuthMiddleware, upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Validate file type strictly - JPEG only to match .jpg extension
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: 'Only JPEG images are allowed' });
+      }
+
+      // Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (req.file.size > maxSize) {
+        return res.status(400).json({ message: 'File size must be less than 10MB' });
+      }
+
+      // Validate file extension
+      const allowedExtensions = ['.jpg', '.jpeg'];
+      const fileExtension = path.extname(req.file.originalname).toLowerCase();
+      if (!allowedExtensions.includes(fileExtension)) {
+        return res.status(400).json({ message: 'Invalid file extension. Only JPEG files are allowed.' });
+      }
+
+      // Path to banner image in public directory
+      const bannerPath = path.join(process.cwd(), 'public', 'images', 'banner.jpg');
+      
+      // Ensure directory exists
+      const bannerDir = path.dirname(bannerPath);
+      if (!fs.existsSync(bannerDir)) {
+        fs.mkdirSync(bannerDir, { recursive: true });
+      }
+
+      // Write the file directly to public/images/banner.jpg
+      fs.writeFileSync(bannerPath, req.file.buffer);
+
+      console.log("Banner image replaced successfully:", bannerPath);
+      res.status(200).json({
+        message: "Banner image replaced successfully",
+        bannerUrl: "/images/banner.jpg"
+      });
+    } catch (error) {
+      console.error("Banner replacement error:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: `Failed to replace banner: ${errorMessage}` });
+    }
+  });
+
   // Fallback API handlers for RSVP submission (used if Flask server is not available)
   async function handleRsvpSubmission(req: Request, res: Response) {
     try {
