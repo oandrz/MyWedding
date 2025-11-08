@@ -25,7 +25,7 @@ const GallerySection = () => {
   });
 
   // Use configurable images if available, otherwise fallback to constants
-  const galleryImages = galleryData?.images?.length 
+  const galleryImages = galleryData?.images && galleryData.images.length > 0
     ? galleryData.images.map(img => ({
         src: img.imageUrl,
         alt: img.title || img.description || "Gallery image"
@@ -33,7 +33,7 @@ const GallerySection = () => {
     : GALLERY_PHOTOS;
 
   // Hide gallery section if no images are configured
-  const hasConfiguredImages = galleryData?.images?.length > 0;
+  const hasConfiguredImages = (galleryData?.images?.length ?? 0) > 0;
   const shouldShowGallery = hasConfiguredImages || (!galleryData && GALLERY_PHOTOS.length > 0);
 
   // Keyboard navigation
