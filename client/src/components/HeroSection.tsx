@@ -1,13 +1,41 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 
+const BANNER_CACHE_KEY = "wedding_banner_cache";
+const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface BannerCache {
+  url: string;
+  timestamp: number;
+}
+
+// Helper: Save banner to localStorage cache
+const setCachedBanner = (url: string): void => {
+  try {
+    const data: BannerCache = {
+      url,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(BANNER_CACHE_KEY, JSON.stringify(data));
+  } catch (error) {
+    // Silently fail if localStorage is unavailable
+  }
+};
+
+type HeroStatus = 'idle' | 'cached' | 'loading' | 'ready';
+
+interface HeroState {
+  status: HeroStatus;
+  url?: string;
+}
+
 const HeroSection = () => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [preloadedImage, setPreloadedImage] = useState<string | null>(null);
+  const [heroState, setHeroState] = useState<HeroState>({ status: 'idle' });
+  const activeUrlRef = useRef<string | null>(null);
   
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -27,45 +55,93 @@ const HeroSection = () => {
   const bannerImageUrl = bannerData?.images?.[0]?.imageUrl || 
     "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80";
 
-  // Preload the image to avoid glitches
+  // Effect 1: Mount-only cache hydration
   useEffect(() => {
-    // Reset loading state when URL changes
-    setImageLoaded(false);
-    setPreloadedImage(null);
+    try {
+      const cached = localStorage.getItem(BANNER_CACHE_KEY);
+      if (!cached) return;
+      
+      const data: BannerCache = JSON.parse(cached);
+      const age = Date.now() - data.timestamp;
+      
+      // Check if cache is still valid
+      if (age < CACHE_EXPIRY_MS) {
+        // Preload cached image
+        const img = new Image();
+        img.onload = () => {
+          // Only set ref and state if image successfully loads
+          activeUrlRef.current = data.url;
+          setHeroState({ status: 'cached', url: data.url });
+        };
+        img.onerror = () => {
+          // Clear failed cache so fallback can load
+          localStorage.removeItem(BANNER_CACHE_KEY);
+          activeUrlRef.current = null;
+        };
+        img.src = data.url;
+      } else {
+        // Clear expired cache
+        localStorage.removeItem(BANNER_CACHE_KEY);
+      }
+    } catch (error) {
+      // Clear malformed cache
+      localStorage.removeItem(BANNER_CACHE_KEY);
+    }
+  }, []); // Run once on mount
+
+  // Detect if API returned a different URL than what's cached/active
+  const pendingUrl = useMemo(() => {
+    const apiUrl = bannerImageUrl;
     
-    let isCurrent = true;
-    
-    if (bannerImageUrl) {
-      const img = new Image();
-      img.onload = () => {
-        // Only update state if this effect instance is still current
-        if (isCurrent) {
-          setPreloadedImage(bannerImageUrl);
-          setImageLoaded(true);
-        }
-      };
-      img.onerror = () => {
-        // Keep loading state consistent if image fails to load
-        if (isCurrent) {
-          setImageLoaded(false);
-        }
-      };
-      img.src = bannerImageUrl;
+    // If this URL is different from active, it's pending
+    if (apiUrl && apiUrl !== activeUrlRef.current) {
+      return apiUrl;
     }
     
-    // Cleanup: mark this effect instance as stale
+    return null;
+  }, [bannerImageUrl]);
+
+  // Effect 2: Preload pipeline when new URL detected
+  useEffect(() => {
+    if (!pendingUrl) return;
+    
+    // Start loading new image
+    setHeroState(prev => ({ ...prev, status: 'loading' }));
+    
+    let isCurrent = true;
+    const img = new Image();
+    
+    img.onload = () => {
+      if (isCurrent) {
+        activeUrlRef.current = pendingUrl;
+        setHeroState({ status: 'ready', url: pendingUrl });
+        setCachedBanner(pendingUrl);
+      }
+    };
+    
+    img.onerror = () => {
+      if (isCurrent) {
+        // Keep current state on error
+        setHeroState(prev => ({ ...prev, status: 'ready' }));
+      }
+    };
+    
+    img.src = pendingUrl;
+    
     return () => {
       isCurrent = false;
     };
-  }, [bannerImageUrl]);
+  }, [pendingUrl]);
   
-  // Only use preloaded image (never show unloaded URL)
-  const bannerImage = preloadedImage || "";
+  // Determine which image to show
+  const bannerImage = heroState.url || "";
+  // Keep banner visible during loading to prevent flash
+  const showBanner = heroState.status === 'cached' || heroState.status === 'loading' || heroState.status === 'ready';
   
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       <div 
-        className={`absolute inset-0 bg-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 bg-cover transition-opacity duration-500 ${showBanner ? 'opacity-100' : 'opacity-0'}`}
         style={{ 
           backgroundImage: `url('${bannerImage}')`,
           backgroundPosition: '50% 30%'
@@ -76,7 +152,7 @@ const HeroSection = () => {
       </div>
       
       {/* Fallback loading background */}
-      {!imageLoaded && (
+      {!showBanner && (
         <div className="absolute inset-0 bg-gray-800">
           <div className="absolute inset-0 bg-gradient-to-b from-[#00000080] to-[#00000040]"></div>
         </div>
