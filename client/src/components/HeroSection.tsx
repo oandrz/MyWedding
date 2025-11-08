@@ -51,9 +51,11 @@ const HeroSection = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Get the banner image URL or fallback to default
-  const bannerImageUrl = bannerData?.images?.[0]?.imageUrl || 
-    "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80";
+  // Extract API image URL (null if no custom banner uploaded)
+  const apiImageUrl = bannerData?.images?.[0]?.imageUrl ?? null;
+  
+  // Fallback URL - only used if API returns no custom banner
+  const FALLBACK_URL = "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80";
 
   // Effect 1: Mount-only cache hydration
   useEffect(() => {
@@ -91,15 +93,13 @@ const HeroSection = () => {
 
   // Detect if API returned a different URL than what's cached/active
   const pendingUrl = useMemo(() => {
-    const apiUrl = bannerImageUrl;
-    
-    // If this URL is different from active, it's pending
-    if (apiUrl && apiUrl !== activeUrlRef.current) {
-      return apiUrl;
+    // Only process custom banners from API (not fallback)
+    if (apiImageUrl && apiImageUrl !== activeUrlRef.current) {
+      return apiImageUrl;
     }
     
     return null;
-  }, [bannerImageUrl]);
+  }, [apiImageUrl]);
 
   // Effect 2: Preload pipeline when new URL detected
   useEffect(() => {
@@ -134,9 +134,10 @@ const HeroSection = () => {
   }, [pendingUrl]);
   
   // Determine which image to show
-  const bannerImage = heroState.url || "";
-  // Keep banner visible during loading to prevent flash
-  const showBanner = heroState.status === 'cached' || heroState.status === 'loading' || heroState.status === 'ready';
+  // Priority: cached/loaded custom banner > fallback (only if API returned no images)
+  const bannerImage = heroState.url || (bannerData && !apiImageUrl ? FALLBACK_URL : "");
+  // Show banner if: we have a cached/loaded URL, OR if API returned no custom banner (show fallback)
+  const showBanner = heroState.url || (bannerData && !apiImageUrl);
   
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
