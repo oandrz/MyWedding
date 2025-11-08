@@ -4,7 +4,8 @@ import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, scaleOnHover } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 const GallerySection = () => {
@@ -153,21 +154,27 @@ const GallerySection = () => {
 
       {/* Image Viewer Modal */}
       <Dialog open={selectedImageIndex !== null} onOpenChange={(open) => !open && setSelectedImageIndex(null)}>
-        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none">
+        <DialogContent className="max-w-[100vw] max-h-[100vh] w-full h-full p-0 bg-black/95 border-none overflow-hidden">
+          <VisuallyHidden>
+            <DialogTitle>Image Viewer</DialogTitle>
+            <DialogDescription>
+              Viewing image {selectedImageIndex !== null ? selectedImageIndex + 1 : 0} of {galleryImages.length}. Use arrow keys or navigation buttons to browse.
+            </DialogDescription>
+          </VisuallyHidden>
           {selectedImageIndex !== null && (
-            <div className="relative w-full h-full flex items-center justify-center">
+            <div className="relative w-full h-full flex items-center justify-center p-4 md:p-8">
               {/* Close button */}
               <button
                 onClick={() => setSelectedImageIndex(null)}
-                className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                className="fixed top-2 right-2 md:top-4 md:right-4 z-[60] p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors touch-manipulation"
                 data-testid="close-image-viewer"
                 aria-label="Close image viewer"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
 
               {/* Image counter */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-black/50 rounded-full text-white font-montserrat text-sm">
+              <div className="fixed top-2 left-1/2 -translate-x-1/2 md:top-4 z-[60] px-3 py-1.5 md:px-4 md:py-2 bg-black/50 rounded-full text-white font-montserrat text-xs md:text-sm">
                 {selectedImageIndex + 1} / {galleryImages.length}
               </div>
 
@@ -175,31 +182,33 @@ const GallerySection = () => {
               {galleryImages.length > 1 && (
                 <button
                   onClick={handlePrevious}
-                  className="absolute left-4 z-50 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                  className="fixed left-2 top-1/2 -translate-y-1/2 md:left-4 z-[60] p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors touch-manipulation"
                   data-testid="previous-image"
                   aria-label="Previous image"
                 >
-                  <ChevronLeft className="w-8 h-8" />
+                  <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
                 </button>
               )}
 
-              {/* Full-size image */}
-              <img
-                src={galleryImages[selectedImageIndex].src}
-                alt={galleryImages[selectedImageIndex].alt}
-                className="max-w-full max-h-full object-contain"
-                data-testid="fullsize-image"
-              />
+              {/* Full-size image - responsive sizing to prevent cropping */}
+              <div className="flex items-center justify-center w-full h-full">
+                <img
+                  src={galleryImages[selectedImageIndex].src}
+                  alt={galleryImages[selectedImageIndex].alt}
+                  className="max-w-[calc(100vw-80px)] max-h-[calc(100vh-80px)] md:max-w-[calc(100vw-120px)] md:max-h-[calc(100vh-120px)] w-auto h-auto object-contain"
+                  data-testid="fullsize-image"
+                />
+              </div>
 
               {/* Next button */}
               {galleryImages.length > 1 && (
                 <button
                   onClick={handleNext}
-                  className="absolute right-4 z-50 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                  className="fixed right-2 top-1/2 -translate-y-1/2 md:right-4 z-[60] p-2 md:p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors touch-manipulation"
                   data-testid="next-image"
                   aria-label="Next image"
                 >
-                  <ChevronRight className="w-8 h-8" />
+                  <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
                 </button>
               )}
             </div>
