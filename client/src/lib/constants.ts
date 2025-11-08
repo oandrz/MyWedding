@@ -49,7 +49,7 @@ export const VENUES = [
     date: FORMATTED_WEDDING_DATE,
     time: "2:00 PM - 3:30 PM",
     location: "Casakhasa Kemang",
-    address: "Jl. Kemang Raya, Jakarta Selatan",
+    address: "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia",
     icon: "fas fa-rings-wedding"
   },
   {
@@ -57,7 +57,7 @@ export const VENUES = [
     date: FORMATTED_WEDDING_DATE,
     time: "4:30 PM - 10:00 PM",
     location: "Casakhasa Kemang",
-    address: "Jl. Kemang Raya, Jakarta Selatan",
+    address: "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia",
     icon: "fas fa-glass-cheers"
   }
 ];
