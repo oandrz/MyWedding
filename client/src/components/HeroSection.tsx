@@ -29,18 +29,38 @@ const HeroSection = () => {
 
   // Preload the image to avoid glitches
   useEffect(() => {
-    if (bannerImageUrl && bannerImageUrl !== preloadedImage) {
+    // Reset loading state when URL changes
+    setImageLoaded(false);
+    setPreloadedImage(null);
+    
+    let isCurrent = true;
+    
+    if (bannerImageUrl) {
       const img = new Image();
       img.onload = () => {
-        setPreloadedImage(bannerImageUrl);
-        setImageLoaded(true);
+        // Only update state if this effect instance is still current
+        if (isCurrent) {
+          setPreloadedImage(bannerImageUrl);
+          setImageLoaded(true);
+        }
+      };
+      img.onerror = () => {
+        // Keep loading state consistent if image fails to load
+        if (isCurrent) {
+          setImageLoaded(false);
+        }
       };
       img.src = bannerImageUrl;
     }
-  }, [bannerImageUrl, preloadedImage]);
+    
+    // Cleanup: mark this effect instance as stale
+    return () => {
+      isCurrent = false;
+    };
+  }, [bannerImageUrl]);
   
-  // Use preloaded image or fallback
-  const bannerImage = preloadedImage || bannerImageUrl;
+  // Only use preloaded image (never show unloaded URL)
+  const bannerImage = preloadedImage || "";
   
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
