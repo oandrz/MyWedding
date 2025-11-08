@@ -59,14 +59,6 @@ export const VENUES = [
     location: "Casakhasa Kemang",
     address: "Jl. Kemang Raya, Jakarta Selatan",
     icon: "fas fa-glass-cheers"
-  },
-  {
-    title: "Accommodations",
-    date: null,
-    time: null,
-    location: "Nearby Hotels",
-    address: "Kemang Area, Jakarta Selatan",
-    icon: "fas fa-hotel"
   }
 ];
 
