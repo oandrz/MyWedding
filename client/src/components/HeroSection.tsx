@@ -2,9 +2,12 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
+import { useQuery } from "@tanstack/react-query";
+import type { ConfigImage } from "@shared/schema";
 
 const HeroSection = () => {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [preloadedImage, setPreloadedImage] = useState<string | null>(null);
   
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -13,23 +16,51 @@ const HeroSection = () => {
     year: 'numeric'
   }).format(WEDDING_DATE);
 
-  // Banner image from project static files
-  const bannerImageUrl = "/images/banner.jpg";
+  // Fetch banner image from API - force fresh data
+  const { data: bannerData } = useQuery<{ images: ConfigImage[] }>({
+    queryKey: ["/api/config-images/banner"],
+    staleTime: 0, // No cache - always fetch fresh data
+    refetchOnWindowFocus: true,
+  });
 
-  // Preload the banner image to avoid glitches
+  // Get the banner image URL or fallback to default
+  const bannerImageUrl = bannerData?.images?.[0]?.imageUrl || 
+    "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80";
+
+  // Preload the image to avoid glitches
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setImageLoaded(true);
+    // Reset loading state when URL changes
+    setImageLoaded(false);
+    setPreloadedImage(null);
+    
+    let isCurrent = true;
+    
+    if (bannerImageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        // Only update state if this effect instance is still current
+        if (isCurrent) {
+          setPreloadedImage(bannerImageUrl);
+          setImageLoaded(true);
+        }
+      };
+      img.onerror = () => {
+        // Keep loading state consistent if image fails to load
+        if (isCurrent) {
+          setImageLoaded(false);
+        }
+      };
+      img.src = bannerImageUrl;
+    }
+    
+    // Cleanup: mark this effect instance as stale
+    return () => {
+      isCurrent = false;
     };
-    img.onerror = () => {
-      setImageLoaded(false);
-    };
-    img.src = bannerImageUrl;
   }, [bannerImageUrl]);
   
-  // Use static banner path
-  const bannerImage = imageLoaded ? bannerImageUrl : "";
+  // Only use preloaded image (never show unloaded URL)
+  const bannerImage = preloadedImage || "";
   
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
