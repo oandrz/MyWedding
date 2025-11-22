@@ -5,6 +5,13 @@ import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 
+type TimeLeft = {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+};
+
 // Custom hook for parallax scrolling effect
 const useParallax = (speed: number = 0.5) => {
   const [offset, setOffset] = useState(0);
@@ -54,12 +61,49 @@ const HeroSection = () => {
   const activeUrlRef = useRef<string | null>(null);
   const parallaxOffset = useParallax(0.5); // Parallax speed factor
   
+  // Countdown state
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
+  
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
   }).format(WEDDING_DATE);
+  
+  // Calculate and update the countdown
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const difference = WEDDING_DATE.getTime() - now;
+      
+      if (difference > 0) {
+        setTimeLeft({
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((difference % (1000 * 60)) / 1000)
+        });
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      }
+    };
+    
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Format time with leading zeros
+  const formatTime = (time: number): string => {
+    return time.toString().padStart(2, '0');
+  };
 
   // Fetch banner image from API - force fresh data
   const { data: bannerData } = useQuery<{ images: ConfigImage[] }>({
@@ -231,6 +275,54 @@ const HeroSection = () => {
             <span className="text-xs">♥</span>
           </span>
         </motion.a>
+      </motion.div>
+      
+      {/* Integrated Countdown */}
+      <motion.div 
+        className="absolute bottom-24 left-0 right-0 z-10 px-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.8 }}
+      >
+        <div className="max-w-2xl mx-auto glass-card rounded-xl p-4 md:p-6 border border-white/30">
+          <div className="flex justify-center text-center divide-x divide-white/20">
+            <div className="px-3 md:px-6">
+              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+                {formatTime(timeLeft.days)}
+              </div>
+              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+                Days
+              </div>
+            </div>
+            
+            <div className="px-3 md:px-6">
+              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+                {formatTime(timeLeft.hours)}
+              </div>
+              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+                Hours
+              </div>
+            </div>
+            
+            <div className="px-3 md:px-6">
+              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+                {formatTime(timeLeft.minutes)}
+              </div>
+              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+                Minutes
+              </div>
+            </div>
+            
+            <div className="px-3 md:px-6">
+              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+                {formatTime(timeLeft.seconds)}
+              </div>
+              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+                Seconds
+              </div>
+            </div>
+          </div>
+        </div>
       </motion.div>
       
       <motion.div 
