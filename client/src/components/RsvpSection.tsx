@@ -240,7 +240,7 @@ const RsvpSection = () => {
               <div className="text-center pt-4">
                 <motion.button 
                   type="submit" 
-                  className="gradient-button px-10 py-4 text-white font-montserrat uppercase tracking-wider text-sm rounded-lg disabled:opacity-70"
+                  className="bg-primary px-10 py-4 text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300 disabled:opacity-70"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   disabled={isPending}
