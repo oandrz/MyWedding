@@ -80,14 +80,14 @@ const WelcomeOverlay = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
-            className="text-center px-6 max-w-2xl"
+            className="text-center px-6 max-w-2xl py-8 sm:py-0"
           >
             {/* Main Heading */}
             <motion.h1
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.8 }}
-              className="font-cormorant text-5xl md:text-6xl lg:text-7xl text-foreground mb-8"
+              className="font-cormorant text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-foreground mb-4 sm:mb-8"
             >
               {welcomeScreen.headingText}
             </motion.h1>
@@ -97,7 +97,7 @@ const WelcomeOverlay = () => {
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ delay: 0.6, duration: 0.6, ease: "easeOut" }}
-              className="w-24 h-0.5 metallic-rose mx-auto mb-12"
+              className="w-24 h-0.5 metallic-rose mx-auto mb-6 sm:mb-12"
             />
 
             {/* Delivery Label */}
@@ -105,7 +105,7 @@ const WelcomeOverlay = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.6 }}
-              className="font-montserrat text-xs md:text-sm uppercase tracking-[0.3em] text-muted-foreground mb-4"
+              className="font-montserrat text-[10px] sm:text-xs md:text-sm uppercase tracking-[0.3em] text-muted-foreground mb-3 sm:mb-4"
             >
               {welcomeScreen.deliveryLabel}
             </motion.p>
@@ -115,7 +115,7 @@ const WelcomeOverlay = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}
-              className="font-cormorant text-4xl md:text-5xl italic text-primary mb-16"
+              className="font-cormorant text-3xl sm:text-4xl md:text-5xl italic text-primary mb-8 sm:mb-16"
             >
               {guestName}
             </motion.h2>
@@ -128,7 +128,7 @@ const WelcomeOverlay = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleOpen}
-              className="bg-primary text-white font-montserrat text-sm md:text-base uppercase tracking-wide px-10 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-primary text-white font-montserrat text-xs sm:text-sm md:text-base uppercase tracking-wide px-8 sm:px-10 py-3 sm:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
               data-testid="button-open-invitation"
             >
               Open Invitation
