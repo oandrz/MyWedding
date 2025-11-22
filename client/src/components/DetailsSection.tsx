@@ -66,7 +66,7 @@ const DetailsSection = () => {
               <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-2">
                 Date
               </div>
-              <div className="text-3xl md:text-4xl font-cormorant font-bold text-foreground">
+              <div className="text-3xl md:text-4xl font-cormorant font-bold text-primary">
                 {formattedDate}
               </div>
             </div>
