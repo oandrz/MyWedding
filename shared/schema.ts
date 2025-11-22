@@ -101,6 +101,22 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).pick({
   description: true
 });
 
+export const welcomeScreen = pgTable("welcome_screen", {
+  id: serial("id").primaryKey(),
+  headingText: text("heading_text").notNull().default("The Wedding of Andreas & Christine"),
+  deliveryLabel: text("delivery_label").notNull().default("Kindly Delivered to"),
+  fallbackName: text("fallback_name").notNull().default("Our Dearest Guest"),
+  enabled: boolean("enabled").default(true),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
+});
+
+export const insertWelcomeScreenSchema = createInsertSchema(welcomeScreen).pick({
+  headingText: true,
+  deliveryLabel: true,
+  fallbackName: true,
+  enabled: true
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
@@ -113,3 +129,5 @@ export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
 export type FeatureFlag = typeof featureFlags.$inferSelect;
 export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
+export type InsertWelcomeScreen = z.infer<typeof insertWelcomeScreenSchema>;
+export type WelcomeScreen = typeof welcomeScreen.$inferSelect;

@@ -13,6 +13,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import NotFound from "@/pages/not-found";
 import AudioPlayer from "@/components/AudioPlayer";
+import WelcomeOverlay from "@/components/WelcomeOverlay";
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <WelcomeOverlay />
       <Router />
       <AudioPlayer />
       <Toaster />

@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import Database from "@replit/database";
@@ -45,6 +45,10 @@ export interface IStorage {
   updateAppSetting(settingKey: string, settingData: InsertAppSetting): Promise<AppSetting>;
   getAppSetting(settingKey: string): Promise<AppSetting | undefined>;
   getAllAppSettings(): Promise<AppSetting[]>;
+  
+  // Welcome screen methods
+  getWelcomeScreen(): Promise<WelcomeScreen>;
+  updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen>;
 }
 
 export class MemStorage implements IStorage {
@@ -54,6 +58,7 @@ export class MemStorage implements IStorage {
   private configImages: Map<string, ConfigImage>;
   private featureFlags: Map<string, FeatureFlag>;
   private appSettings: Map<string, AppSetting>;
+  private welcomeScreenData: WelcomeScreen | null;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
@@ -68,6 +73,7 @@ export class MemStorage implements IStorage {
     this.configImages = new Map();
     this.featureFlags = new Map();
     this.appSettings = new Map();
+    this.welcomeScreenData = null;
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
@@ -79,6 +85,18 @@ export class MemStorage implements IStorage {
     this.initializeDefaultImages();
     this.initializeDefaultFeatureFlags();
     this.initializeDefaultAppSettings();
+    this.initializeDefaultWelcomeScreen();
+  }
+  
+  private initializeDefaultWelcomeScreen() {
+    this.welcomeScreenData = {
+      id: 1,
+      headingText: "The Wedding of Andreas & Christine",
+      deliveryLabel: "Kindly Delivered to",
+      fallbackName: "Our Dearest Guest",
+      enabled: true,
+      updatedAt: new Date().toISOString()
+    };
   }
 
   private initializeDefaultImages() {
@@ -391,6 +409,27 @@ export class MemStorage implements IStorage {
     return Array.from(this.appSettings.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
+  
+  async getWelcomeScreen(): Promise<WelcomeScreen> {
+    if (!this.welcomeScreenData) {
+      this.initializeDefaultWelcomeScreen();
+    }
+    return this.welcomeScreenData!;
+  }
+  
+  async updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen> {
+    const now = new Date();
+    const existing = await this.getWelcomeScreen();
+    this.welcomeScreenData = {
+      id: 1,
+      headingText: data.headingText ?? existing.headingText,
+      deliveryLabel: data.deliveryLabel ?? existing.deliveryLabel,
+      fallbackName: data.fallbackName ?? existing.fallbackName,
+      enabled: data.enabled ?? existing.enabled,
+      updatedAt: now.toISOString()
+    };
+    return this.welcomeScreenData;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -611,6 +650,43 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(appSettings)
       .orderBy(desc(appSettings.updatedAt));
+  }
+  
+  async getWelcomeScreen(): Promise<WelcomeScreen> {
+    const [welcome] = await getDb()
+      .select()
+      .from(welcomeScreen)
+      .limit(1);
+    
+    if (!welcome) {
+      const [newWelcome] = await getDb()
+        .insert(welcomeScreen)
+        .values({
+          headingText: "The Wedding of Andreas & Christine",
+          deliveryLabel: "Kindly Delivered to",
+          fallbackName: "Our Dearest Guest",
+          enabled: true
+        })
+        .returning();
+      return newWelcome;
+    }
+    
+    return welcome;
+  }
+  
+  async updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen> {
+    const existing = await this.getWelcomeScreen();
+    
+    const [updated] = await getDb()
+      .update(welcomeScreen)
+      .set({
+        ...data,
+        updatedAt: sql`now()`
+      })
+      .where(eq(welcomeScreen.id, existing.id))
+      .returning();
+    
+    return updated;
   }
 }
 
@@ -1063,6 +1139,50 @@ export class KeyValueStorage implements IStorage {
       if (settingResult.ok && settingResult.value) settings.push(settingResult.value);
     }
     return settings.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+  
+  async getWelcomeScreen(): Promise<WelcomeScreen> {
+    try {
+      const kv = this.ensureKvAvailable();
+      const result = await kv.get('welcome_screen');
+      
+      if (result.ok && result.value) {
+        return result.value;
+      }
+      
+      const defaultWelcome: WelcomeScreen = {
+        id: 1,
+        headingText: "The Wedding of Andreas & Christine",
+        deliveryLabel: "Kindly Delivered to",
+        fallbackName: "Our Dearest Guest",
+        enabled: true,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await kv.set('welcome_screen', defaultWelcome);
+      return defaultWelcome;
+    } catch (error) {
+      console.error('Error getting welcome screen:', error);
+      throw error;
+    }
+  }
+  
+  async updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen> {
+    const kv = this.ensureKvAvailable();
+    const existing = await this.getWelcomeScreen();
+    const now = new Date();
+    
+    const updated: WelcomeScreen = {
+      id: existing.id,
+      headingText: data.headingText ?? existing.headingText,
+      deliveryLabel: data.deliveryLabel ?? existing.deliveryLabel,
+      fallbackName: data.fallbackName ?? existing.fallbackName,
+      enabled: data.enabled ?? existing.enabled,
+      updatedAt: now.toISOString()
+    };
+    
+    await kv.set('welcome_screen', updated);
+    return updated;
   }
 }
 

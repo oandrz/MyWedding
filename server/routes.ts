@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -931,6 +931,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Music upload error - stack:", error instanceof Error ? error.stack : 'No stack trace');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ message: `Failed to upload music file: ${errorMessage}` });
+    }
+  });
+
+  // Welcome screen configuration routes
+  
+  // Get welcome screen configuration (public endpoint)
+  app.get("/api/welcome-screen", async (req: Request, res: Response) => {
+    try {
+      const welcomeScreen = await storage.getWelcomeScreen();
+      res.status(200).json({ welcomeScreen });
+    } catch (error) {
+      console.error("Error fetching welcome screen:", error);
+      res.status(500).json({ message: "Failed to fetch welcome screen configuration" });
+    }
+  });
+
+  // Update welcome screen configuration (admin only)
+  app.patch("/api/admin/welcome-screen", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      // Use partial schema to allow updating individual fields
+      const validatedData = insertWelcomeScreenSchema.partial().parse(req.body);
+      const updatedWelcomeScreen = await storage.updateWelcomeScreen(validatedData);
+      
+      res.status(200).json({ 
+        message: "Welcome screen configuration updated successfully",
+        welcomeScreen: updatedWelcomeScreen 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ message: validationError.message });
+      } else {
+        console.error("Error updating welcome screen:", error);
+        res.status(500).json({ message: "Failed to update welcome screen configuration" });
+      }
     }
   });
 
