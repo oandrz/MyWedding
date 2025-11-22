@@ -89,7 +89,7 @@ const DetailsSection = () => {
               <div className="text-3xl md:text-4xl font-cormorant font-bold metallic-gold text-transparent bg-clip-text mb-3">
                 {VENUES[0].location}
               </div>
-              <div className="text-lg md:text-xl font-montserrat font-bold text-foreground mb-6 leading-relaxed">
+              <div className="font-montserrat font-bold text-xl uppercase tracking-wider text-slate-800 my-2 block">
                 {VENUES[0].address}
               </div>
               

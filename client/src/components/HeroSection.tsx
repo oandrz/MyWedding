@@ -277,50 +277,83 @@ const HeroSection = () => {
         </motion.a>
       </motion.div>
       
-      {/* Integrated Countdown */}
+      {/* Integrated Countdown - Premium */}
       <motion.div 
         className="absolute bottom-24 left-0 right-0 z-10 px-4"
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1, duration: 0.8 }}
       >
-        <div className="max-w-2xl mx-auto glass-card rounded-xl p-4 md:p-6 border border-white/30">
-          <div className="flex justify-center text-center divide-x divide-white/20">
-            <div className="px-3 md:px-6">
-              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+        <div className="max-w-3xl mx-auto glass-card rounded-xl p-6 md:p-8 border border-white/30">
+          <div className="flex justify-center items-center text-center gap-4 md:gap-8">
+            {/* Days */}
+            <motion.div 
+              className="flex-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2, duration: 0.6 }}
+            >
+              <div className="text-5xl md:text-6xl font-cormorant font-light text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                 {formatTime(timeLeft.days)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+              <div className="text-xs uppercase font-montserrat text-white/70 tracking-widest mt-2" style={{ fontVariant: 'small-caps' }}>
                 Days
               </div>
-            </div>
+            </motion.div>
             
-            <div className="px-3 md:px-6">
-              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+            {/* Separator */}
+            <div className="text-white/30 text-2xl font-light">•</div>
+            
+            {/* Hours */}
+            <motion.div 
+              className="flex-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.3, duration: 0.6 }}
+            >
+              <div className="text-5xl md:text-6xl font-cormorant font-light text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                 {formatTime(timeLeft.hours)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+              <div className="text-xs uppercase font-montserrat text-white/70 tracking-widest mt-2" style={{ fontVariant: 'small-caps' }}>
                 Hours
               </div>
-            </div>
+            </motion.div>
             
-            <div className="px-3 md:px-6">
-              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+            {/* Separator */}
+            <div className="text-white/30 text-2xl font-light">•</div>
+            
+            {/* Minutes */}
+            <motion.div 
+              className="flex-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.4, duration: 0.6 }}
+            >
+              <div className="text-5xl md:text-6xl font-cormorant font-light text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                 {formatTime(timeLeft.minutes)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+              <div className="text-xs uppercase font-montserrat text-white/70 tracking-widest mt-2" style={{ fontVariant: 'small-caps' }}>
                 Minutes
               </div>
-            </div>
+            </motion.div>
             
-            <div className="px-3 md:px-6">
-              <div className="text-3xl md:text-4xl font-cormorant font-bold text-white">
+            {/* Separator */}
+            <div className="text-white/30 text-2xl font-light">•</div>
+            
+            {/* Seconds */}
+            <motion.div 
+              className="flex-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.5, duration: 0.6 }}
+            >
+              <div className="text-5xl md:text-6xl font-cormorant font-light text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                 {formatTime(timeLeft.seconds)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider mt-1">
+              <div className="text-xs uppercase font-montserrat text-white/70 tracking-widest mt-2" style={{ fontVariant: 'small-caps' }}>
                 Seconds
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </motion.div>

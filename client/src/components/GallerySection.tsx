@@ -8,6 +8,90 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
+// Helper: Generate responsive Unsplash URLs with optimized sizing
+const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number = 75): string => {
+  if (!baseUrl.includes('unsplash.com')) return baseUrl;
+  
+  // Parse existing URL
+  const url = new URL(baseUrl);
+  url.searchParams.set('w', width.toString());
+  url.searchParams.set('q', quality.toString());
+  url.searchParams.set('auto', 'format'); // Let Unsplash choose best format (WebP when supported)
+  url.searchParams.set('fit', 'crop');
+  
+  return url.toString();
+};
+
+// Optimized Image Component with progressive blur-up loading
+const OptimizedImage = ({ src, alt, index }: { src: string; alt: string; index: number }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>('');
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  
+  // Intersection Observer for progressive loading
+  useEffect(() => {
+    if (!imgRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setShouldLoad(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: '50px' } // Start loading 50px before entering viewport
+    );
+    
+    observer.observe(imgRef.current);
+    
+    return () => observer.disconnect();
+  }, []);
+  
+  // Load images progressively when in viewport
+  useEffect(() => {
+    if (!shouldLoad) return;
+    
+    let isMounted = true;
+    
+    // Start with low-quality blur placeholder
+    const thumbnail = getResponsiveImageUrl(src, 50, 20);
+    setImageSrc(thumbnail);
+    
+    // Preload high-quality image only when in viewport
+    const img = new Image();
+    img.src = getResponsiveImageUrl(src, 800, 80);
+    img.onload = () => {
+      if (isMounted) {
+        setImageSrc(img.src);
+        setIsLoaded(true);
+      }
+    };
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [src, shouldLoad]);
+  
+  return (
+    <img 
+      ref={imgRef}
+      src={imageSrc || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E'}
+      alt={alt}
+      className={`w-full h-64 object-cover transition-all duration-700 ${
+        isLoaded ? 'blur-0 scale-100' : 'blur-md scale-105'
+      }`}
+      loading="lazy"
+      style={{
+        backgroundColor: '#f3f4f6',
+        minHeight: '256px'
+      }}
+    />
+  );
+};
+
 const GallerySection = () => {
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
@@ -18,11 +102,12 @@ const GallerySection = () => {
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
   const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.1 });
 
-  // Fetch gallery images from API - force fresh data
+  // Fetch gallery images from API - smart caching for performance
   const { data: galleryData, isLoading, error } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/gallery"],
-    staleTime: 0, // No cache - always fetch fresh data
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (v5 uses gcTime instead of cacheTime)
+    refetchOnWindowFocus: false, // Don't refetch on focus to reduce network calls
   });
 
   // Use configurable images if available, otherwise fallback to constants
@@ -125,26 +210,10 @@ const GallerySection = () => {
                 onClick={() => setSelectedImageIndex(index)}
                 data-testid={`gallery-image-${index}`}
               >
-                <motion.img 
+                <OptimizedImage 
                   src={photo.src} 
-                  alt={photo.alt} 
-                  className="w-full h-64 object-cover transition-transform duration-500"
-                  variants={scaleOnHover}
-                  loading="lazy"
-                  style={{
-                    backgroundColor: '#f3f4f6',
-                    minHeight: '256px'
-                  }}
-                  onLoad={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.backgroundColor = 'transparent';
-                  }}
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.backgroundColor = '#ef4444';
-                    img.style.color = 'white';
-                    img.alt = 'Failed to load image';
-                  }}
+                  alt={photo.alt}
+                  index={index}
                 />
               </motion.div>
             ))
