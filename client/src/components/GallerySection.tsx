@@ -1,7 +1,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
-import { fadeIn, staggerContainer, scaleOnHover } from "@/lib/animations";
+import { fadeIn, staggerContainer, scaleOnHover, staggerFast, revealText } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -70,7 +70,7 @@ const GallerySection = () => {
   }
   
   return (
-    <section id="gallery" className="py-20 bg-background" ref={sectionRef}>
+    <section id="gallery" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-16"
@@ -80,17 +80,17 @@ const GallerySection = () => {
           animate={isTitleInView ? "visible" : "hidden"}
         >
           <motion.h2 
-            className="text-4xl font-cormorant text-foreground mb-4"
-            variants={fadeIn}
+            className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
+            variants={revealText}
           >
             Our Gallery
           </motion.h2>
           <motion.div 
-            className="w-20 h-0.5 bg-accent mx-auto mb-6"
+            className="w-24 h-1 metallic-rose mx-auto rounded-full mb-6"
             variants={fadeIn}
           ></motion.div>
           <motion.p 
-            className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
+            className="text-muted-foreground font-montserrat text-lg max-w-2xl mx-auto"
             variants={fadeIn}
           >
             A glimpse into our journey together and the moments that led us here
@@ -98,11 +98,11 @@ const GallerySection = () => {
         </motion.div>
         
         <motion.div 
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
           ref={galleryRef}
-          variants={staggerContainer}
+          variants={staggerFast}
           initial="hidden"
-          animate="visible"
+          animate={isGalleryInView ? "visible" : "hidden"}
         >
           {isLoading ? (
             // Loading skeleton
@@ -116,11 +116,11 @@ const GallerySection = () => {
             galleryImages.map((photo, index) => (
               <motion.div 
                 key={index}
-                className="overflow-hidden rounded-lg shadow-md cursor-pointer"
+                className="overflow-hidden rounded-xl shadow-lg cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
                 variants={fadeIn}
                 custom={index}
                 transition={{ delay: index * 0.1 }}
-                whileHover="hover"
+                whileHover={{ scale: 1.03, y: -4 }}
                 initial="initial"
                 onClick={() => setSelectedImageIndex(index)}
                 data-testid={`gallery-image-${index}`}
@@ -128,7 +128,7 @@ const GallerySection = () => {
                 <motion.img 
                   src={photo.src} 
                   alt={photo.alt} 
-                  className="w-full h-64 object-cover transition duration-300"
+                  className="w-full h-64 object-cover transition-transform duration-500"
                   variants={scaleOnHover}
                   loading="lazy"
                   style={{

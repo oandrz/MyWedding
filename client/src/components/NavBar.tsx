@@ -79,12 +79,24 @@ const NavBar = () => {
         
         {/* Desktop menu */}
         <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
-          <Link href="/" className={`nav-link hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}>Home</Link>
+          <Link 
+            href="/" 
+            className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
+          >
+            Home
+            {location === '/' && !activeSection && (
+              <motion.span 
+                className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                layoutId="navbar-underline"
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
+            )}
+          </Link>
           {location === '/' && (
             <>
               <a 
                 href="#couple" 
-                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
+                className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
                 onClick={(e) => {
                   e.preventDefault();
                   const element = document.getElementById('couple');
@@ -95,10 +107,17 @@ const NavBar = () => {
                 }}
               >
                 Our Story
+                {activeSection === 'couple' && (
+                  <motion.span 
+                    className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                    layoutId="navbar-underline"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
               </a>
               <a 
                 href="#details" 
-                className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
+                className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
                 onClick={(e) => {
                   e.preventDefault();
                   const element = document.getElementById('details');
@@ -109,11 +128,18 @@ const NavBar = () => {
                 }}
               >
                 Wedding Details
+                {activeSection === 'details' && (
+                  <motion.span 
+                    className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                    layoutId="navbar-underline"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
               </a>
               {isFeatureEnabled('gallery') && (
                 <a 
                   href="#gallery" 
-                  className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
+                  className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
                   onClick={(e) => {
                     e.preventDefault();
                     const element = document.getElementById('gallery');
@@ -124,12 +150,19 @@ const NavBar = () => {
                   }}
                 >
                   Gallery
+                  {activeSection === 'gallery' && (
+                    <motion.span 
+                      className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                      layoutId="navbar-underline"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
                 </a>
               )}
               {isFeatureEnabled('rsvp') && (
                 <a 
                   href="#rsvp" 
-                  className={`nav-link hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
+                  className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
                   onClick={(e) => {
                     e.preventDefault();
                     const element = document.getElementById('rsvp');
@@ -140,6 +173,13 @@ const NavBar = () => {
                   }}
                 >
                   RSVP
+                  {activeSection === 'rsvp' && (
+                    <motion.span 
+                      className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                      layoutId="navbar-underline"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
                 </a>
               )}
             </>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { WEDDING_DATE } from "@/lib/constants";
-import { fadeIn, staggerContainer } from "@/lib/animations";
+import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
 
 type TimeLeft = {
   days: number;
@@ -52,16 +52,16 @@ const CountdownSection = () => {
   };
 
   return (
-    <section className="py-16 bg-background" ref={sectionRef}>
+    <section className="py-16 bg-gradient-to-b from-white to-rose-50/20 paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
         <motion.div 
-          className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-8"
-          variants={staggerContainer}
+          className="max-w-3xl mx-auto glass-card rounded-2xl p-8 md:p-12"
+          variants={slideUp}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
         >
           <motion.h2 
-            className="text-3xl font-cormorant text-center text-foreground mb-8"
+            className="text-4xl md:text-5xl font-cormorant font-bold text-center text-foreground mb-8"
             variants={fadeIn}
           >
             Counting Down to Our Special Day

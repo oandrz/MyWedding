@@ -5,6 +5,22 @@ import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 
+// Custom hook for parallax scrolling effect
+const useParallax = (speed: number = 0.5) => {
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setOffset(window.pageYOffset);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return offset * speed;
+};
+
 const BANNER_CACHE_KEY = "wedding_banner_cache";
 const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -36,6 +52,7 @@ interface HeroState {
 const HeroSection = () => {
   const [heroState, setHeroState] = useState<HeroState>({ status: 'idle' });
   const activeUrlRef = useRef<string | null>(null);
+  const parallaxOffset = useParallax(0.5); // Parallax speed factor
   
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -145,7 +162,9 @@ const HeroSection = () => {
         className={`absolute inset-0 bg-cover transition-opacity duration-500 ${showBanner ? 'opacity-100' : 'opacity-0'}`}
         style={{ 
           backgroundImage: `url('${bannerImage}')`,
-          backgroundPosition: '50% 30%'
+          backgroundPosition: '50% 30%',
+          transform: `translateY(${parallaxOffset}px)`,
+          willChange: 'transform'
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-[#00000080] to-[#00000040]"></div>

@@ -8,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { fadeIn, staggerContainer } from "@/lib/animations";
+import confetti from "canvas-confetti";
 
 // Extended schema with validation
 const rsvpSchema = z.object({
@@ -66,6 +67,36 @@ const RsvpSection = () => {
     onSuccess: (data) => {
       console.log("RSVP submitted successfully:", data);
       setIsSubmitted(true);
+      
+      // Trigger confetti celebration
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min;
+      }
+
+      const interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        });
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        });
+      }, 250);
+      
       toast({
         title: "RSVP Submitted",
         description: "Thank you for your response!",
@@ -88,7 +119,7 @@ const RsvpSection = () => {
   };
   
   return (
-    <section id="rsvp" className="py-20 bg-white" ref={sectionRef}>
+    <section id="rsvp" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-16"
@@ -98,13 +129,13 @@ const RsvpSection = () => {
           animate={isTitleInView ? "visible" : "hidden"}
         >
           <motion.h2 
-            className="text-4xl font-cormorant text-foreground mb-4"
+            className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
             RSVP
           </motion.h2>
           <motion.div 
-            className="w-20 h-0.5 bg-accent mx-auto mb-6"
+            className="w-24 h-1 metallic-gold mx-auto mb-6 rounded-full"
             variants={fadeIn}
           ></motion.div>
           <motion.p 
@@ -116,7 +147,7 @@ const RsvpSection = () => {
         </motion.div>
         
         <motion.div 
-          className="max-w-xl mx-auto bg-background p-8 rounded-lg shadow-md"
+          className="max-w-xl mx-auto glass-card p-8 md:p-10 rounded-2xl"
           ref={formRef}
           variants={staggerContainer}
           initial="hidden"
@@ -209,10 +240,11 @@ const RsvpSection = () => {
               <div className="text-center pt-4">
                 <motion.button 
                   type="submit" 
-                  className="custom-button px-8 py-3 bg-primary text-white font-montserrat uppercase tracking-wider text-sm hover:bg-opacity-90 hover:shadow-lg transition-all duration-300 rounded-sm disabled:opacity-70"
+                  className="gradient-button px-10 py-4 text-white font-montserrat uppercase tracking-wider text-sm rounded-lg disabled:opacity-70"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   disabled={isPending}
+                  data-testid="button-submit-rsvp"
                 >
                   {isPending ? "Sending..." : "Send RSVP"}
                 </motion.button>

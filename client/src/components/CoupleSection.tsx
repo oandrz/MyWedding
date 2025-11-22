@@ -2,7 +2,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
-import { fadeIn, staggerContainer, slideFromLeft, slideFromRight } from "@/lib/animations";
+import { fadeIn, staggerContainer, slideFromLeft, slideFromRight, fadeInScale, revealText } from "@/lib/animations";
 import type { ConfigImage } from "@shared/schema";
 
 const CoupleSection = () => {
@@ -36,7 +36,7 @@ const CoupleSection = () => {
     "https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
   
   return (
-    <section id="couple" className="py-20 bg-background" ref={sectionRef}>
+    <section id="couple" className="py-20 bg-gradient-to-b from-white via-amber-50/20 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-16"
@@ -46,13 +46,13 @@ const CoupleSection = () => {
           animate={isTitleInView ? "visible" : "hidden"}
         >
           <motion.h2 
-            className="text-4xl font-cormorant text-foreground mb-4"
-            variants={fadeIn}
+            className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
+            variants={revealText}
           >
             Our Love Story
           </motion.h2>
           <motion.div 
-            className="w-20 h-0.5 bg-accent mx-auto"
+            className="w-24 h-1 metallic-rose mx-auto rounded-full"
             variants={fadeIn}
           ></motion.div>
         </motion.div>
@@ -65,13 +65,17 @@ const CoupleSection = () => {
             initial="hidden"
             animate={isGroomInView ? "visible" : "hidden"}
           >
-            <div className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-lg">
+            <motion.div 
+              className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-2xl ring-4 ring-primary/20"
+              variants={fadeInScale}
+              whileHover={{ scale: 1.05, transition: { duration: 0.3 } }}
+            >
               <img 
                 className="w-full h-full object-cover" 
                 src={groomImage} 
                 alt={GROOM_NAME} 
               />
-            </div>
+            </motion.div>
             <h3 className="text-3xl font-cormorant text-primary mb-2">{GROOM_NAME}</h3>
             <p className="text-foreground font-montserrat mb-6">The Groom</p>
             <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
@@ -86,13 +90,17 @@ const CoupleSection = () => {
             initial="hidden"
             animate={isBrideInView ? "visible" : "hidden"}
           >
-            <div className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-lg">
+            <motion.div 
+              className="mb-6 h-64 w-64 mx-auto rounded-full overflow-hidden shadow-2xl ring-4 ring-secondary/20"
+              variants={fadeInScale}
+              whileHover={{ scale: 1.05, transition: { duration: 0.3 } }}
+            >
               <img 
                 className="w-full h-full object-cover" 
                 src={brideImage} 
                 alt={BRIDE_NAME} 
               />
-            </div>
+            </motion.div>
             <h3 className="text-3xl font-cormorant text-primary mb-2">{BRIDE_NAME}</h3>
             <p className="text-foreground font-montserrat mb-6">The Bride</p>
             <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">

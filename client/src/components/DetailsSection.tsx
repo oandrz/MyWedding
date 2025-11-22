@@ -17,7 +17,7 @@ const DetailsSection = () => {
   const isScheduleInView = useInView(scheduleRef, { once: true, amount: 0.3 });
   
   return (
-    <section id="details" className="py-20 bg-white" ref={sectionRef}>
+    <section id="details" className="py-20 bg-gradient-to-b from-white via-amber-50/20 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-16"
@@ -27,13 +27,13 @@ const DetailsSection = () => {
           animate={isTitleInView ? "visible" : "hidden"}
         >
           <motion.h2 
-            className="text-4xl font-cormorant text-foreground mb-4"
+            className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
             Wedding Details
           </motion.h2>
           <motion.div 
-            className="w-20 h-0.5 bg-accent mx-auto"
+            className="w-24 h-1 metallic-gold mx-auto rounded-full"
             variants={fadeIn}
           ></motion.div>
         </motion.div>
@@ -48,9 +48,9 @@ const DetailsSection = () => {
           {VENUES.map((venue, index) => (
             <motion.div 
               key={index}
-              className="text-center p-8 border border-gray-100 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+              className="text-center p-10 glass-card rounded-2xl transition-all duration-300"
               variants={fadeIn}
-              whileHover={{ y: -5, transition: { duration: 0.3 } }}
+              whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.3 } }}
             >
               <div className={`w-16 h-16 ${index === 0 ? 'bg-primary' : index === 1 ? 'bg-secondary' : 'bg-accent'} bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-6`}>
                 <i className={`${venue.icon} ${index === 0 ? 'text-primary' : index === 1 ? 'text-secondary' : 'text-accent'}`}></i>
@@ -88,14 +88,14 @@ const DetailsSection = () => {
           animate={isMapInView ? "visible" : "hidden"}
         >
           <motion.h3 
-            className="text-3xl font-cormorant text-center text-foreground mb-10"
+            className="text-4xl md:text-5xl font-cormorant font-bold text-center text-foreground mb-10"
             variants={fadeIn}
           >
             Location
           </motion.h3>
           
           <motion.div 
-            className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-lg"
+            className="aspect-w-16 aspect-h-9 rounded-2xl overflow-hidden shadow-2xl"
             variants={fadeIn}
           >
             <iframe
@@ -117,7 +117,7 @@ const DetailsSection = () => {
               href="https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__" 
               target="_blank" 
               rel="noreferrer"
-              className="custom-button inline-block px-6 py-2 bg-secondary text-white font-montserrat uppercase tracking-wider text-sm hover:bg-opacity-90 hover:shadow-md transition-all duration-300 rounded-sm"
+              className="gradient-button inline-block px-8 py-4 text-white font-montserrat uppercase tracking-wider text-sm rounded-lg"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -135,7 +135,7 @@ const DetailsSection = () => {
           animate={isScheduleInView ? "visible" : "hidden"}
         >
           <motion.h3 
-            className="text-3xl font-cormorant text-center text-foreground mb-10"
+            className="text-4xl md:text-5xl font-cormorant font-bold text-center text-foreground mb-10"
             variants={fadeIn}
           >
             Wedding Day Schedule
