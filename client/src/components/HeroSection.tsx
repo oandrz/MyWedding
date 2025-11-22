@@ -284,8 +284,8 @@ const HeroSection = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1, duration: 0.8 }}
       >
-        <div className="max-w-3xl mx-auto border border-white/20 rounded-lg py-6 px-8 bg-black/10 backdrop-blur-sm">
-          <div className="flex justify-center items-center text-center gap-6 md:gap-10">
+        <div className="max-w-3xl mx-auto border border-white/20 rounded-lg py-6 px-4 md:px-8 bg-black/10 backdrop-blur-sm">
+          <div className="flex justify-center items-center text-center gap-3 md:gap-6">
             {/* Days */}
             <motion.div 
               className="flex-1"
@@ -293,16 +293,16 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.2, duration: 0.6 }}
             >
-              <div className="text-4xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.days)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider">
+              <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
                 Days
               </div>
             </motion.div>
             
             {/* Separator */}
-            <div className="text-white/30 text-xl font-light">•</div>
+            <div className="hidden sm:flex text-white/30 text-xl font-light">•</div>
             
             {/* Hours */}
             <motion.div 
@@ -311,16 +311,16 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.3, duration: 0.6 }}
             >
-              <div className="text-4xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.hours)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider">
+              <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
                 Hours
               </div>
             </motion.div>
             
             {/* Separator */}
-            <div className="text-white/30 text-xl font-light">•</div>
+            <div className="hidden sm:flex text-white/30 text-xl font-light">•</div>
             
             {/* Minutes */}
             <motion.div 
@@ -329,16 +329,16 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.4, duration: 0.6 }}
             >
-              <div className="text-4xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.minutes)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider">
+              <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
                 Minutes
               </div>
             </motion.div>
             
             {/* Separator */}
-            <div className="text-white/30 text-xl font-light">•</div>
+            <div className="hidden sm:flex text-white/30 text-xl font-light">•</div>
             
             {/* Seconds */}
             <motion.div 
@@ -347,10 +347,10 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5, duration: 0.6 }}
             >
-              <div className="text-4xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.seconds)}
               </div>
-              <div className="text-xs uppercase font-montserrat text-white/80 tracking-wider">
+              <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
                 Seconds
               </div>
             </motion.div>
