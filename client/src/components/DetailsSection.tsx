@@ -54,6 +54,7 @@ const DetailsSection = () => {
         
         {/* KEY WEDDING INFO - Prominent */}
         <motion.div 
+          ref={venuesRef}
           className="max-w-3xl mx-auto mb-20 glass-card rounded-3xl p-8 md:p-12"
           variants={slideUp}
           initial="hidden"
