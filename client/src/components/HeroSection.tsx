@@ -248,9 +248,9 @@ const HeroSection = () => {
           className="flex items-center justify-center gap-4 mb-8"
           variants={fadeIn}
         >
-          <div className="h-0.5 w-12 md:w-24 bg-accent"></div>
+          <div className="h-0.5 w-12 md:w-24 bg-primary"></div>
           <div className="text-white text-2xl">♥</div>
-          <div className="h-0.5 w-12 md:w-24 bg-accent"></div>
+          <div className="h-0.5 w-12 md:w-24 bg-primary"></div>
         </motion.div>
         
         <motion.div 

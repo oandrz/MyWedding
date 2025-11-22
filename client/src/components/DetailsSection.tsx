@@ -41,7 +41,7 @@ const DetailsSection = () => {
             The Details
           </motion.h2>
           <motion.div 
-            className="w-24 h-1 metallic-gold mx-auto rounded-full mb-6"
+            className="w-24 h-1 bg-primary mx-auto rounded-full mb-6"
             variants={fadeIn}
           ></motion.div>
           <motion.p 
@@ -86,7 +86,7 @@ const DetailsSection = () => {
               <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-3">
                 Location
               </div>
-              <div className="text-3xl md:text-4xl font-cormorant font-bold metallic-gold text-transparent bg-clip-text mb-3">
+              <div className="text-3xl md:text-4xl font-cormorant font-bold text-primary mb-3">
                 {VENUES[0].location}
               </div>
               <div className="font-montserrat font-bold text-[15px] uppercase tracking-wider text-slate-800 my-2 block">
@@ -97,7 +97,7 @@ const DetailsSection = () => {
                 href="https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__" 
                 target="_blank" 
                 rel="noreferrer"
-                className="gradient-button inline-block px-8 py-4 text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg"
+                className="inline-block px-8 py-4 bg-primary text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300"
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
               >
