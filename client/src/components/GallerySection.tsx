@@ -26,12 +26,13 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
 const OptimizedImage = ({ src, alt, index }: { src: string; alt: string; index: number }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [imageSrc, setImageSrc] = useState<string>('');
-  const [shouldLoad, setShouldLoad] = useState(false);
+  // Eager load first 4 images immediately, others wait for intersection
+  const [shouldLoad, setShouldLoad] = useState(index < 4);
   const imgRef = useRef<HTMLImageElement>(null);
   
-  // Intersection Observer for progressive loading
+  // Intersection Observer for progressive loading (skip for first 4 images)
   useEffect(() => {
-    if (!imgRef.current) return;
+    if (index < 4 || !imgRef.current) return; // First 4 images bypass observer
     
     const observer = new IntersectionObserver(
       (entries) => {
@@ -42,13 +43,13 @@ const OptimizedImage = ({ src, alt, index }: { src: string; alt: string; index: 
           }
         });
       },
-      { rootMargin: '50px' } // Start loading 50px before entering viewport
+      { rootMargin: '300px' } // Start loading 300px before entering viewport (increased from 50px)
     );
     
     observer.observe(imgRef.current);
     
     return () => observer.disconnect();
-  }, []);
+  }, [index]);
   
   // Load images progressively when in viewport
   useEffect(() => {
@@ -60,9 +61,9 @@ const OptimizedImage = ({ src, alt, index }: { src: string; alt: string; index: 
     const thumbnail = getResponsiveImageUrl(src, 50, 20);
     setImageSrc(thumbnail);
     
-    // Preload high-quality image only when in viewport
+    // Preload high-quality image (reduced from 800px to 600px, quality 80 to 70 for faster loading)
     const img = new Image();
-    img.src = getResponsiveImageUrl(src, 800, 80);
+    img.src = getResponsiveImageUrl(src, 600, 70);
     img.onload = () => {
       if (isMounted) {
         setImageSrc(img.src);
