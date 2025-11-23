@@ -592,9 +592,20 @@ export class MemStorage implements IStorage {
     if (!existing) return undefined;
     
     const now = new Date();
+    
+    // Merge data field to prevent loss of existing fields
+    let mergedData = existing.data;
+    if (entryData.data !== undefined) {
+      const existingData = (typeof existing.data === 'object' && existing.data !== null) ? existing.data as Record<string, any> : {};
+      const newData = (typeof entryData.data === 'object' && entryData.data !== null) ? entryData.data as Record<string, any> : {};
+      mergedData = { ...existingData, ...newData };
+    }
+    
     const updated: ContentEntry = {
       ...existing,
-      ...entryData,
+      category: entryData.category ?? existing.category,
+      order: entryData.order ?? existing.order,
+      data: mergedData,
       id,
       updatedAt: now.toISOString()
     };
@@ -864,41 +875,103 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
   
-  // Content sections methods - Returns empty data until DB tables are created
-  async getContentSection(_sectionKey: string): Promise<ContentSection | undefined> {
-    // TODO: Implement when content_sections table is created via Drizzle migration
-    return undefined;
+  // Content sections methods
+  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
+    const [section] = await getDb()
+      .select()
+      .from(contentSections)
+      .where(eq(contentSections.sectionKey, sectionKey));
+    return section || undefined;
   }
   
-  async updateContentSection(_sectionKey: string, _data: any): Promise<ContentSection> {
-    // TODO: Implement when content_sections table is created via Drizzle migration
-    throw new Error("Content management requires database tables - currently only available in development mode");
+  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      throw new Error("Cannot update content section with empty or invalid data");
+    }
+    
+    // Get existing section to merge data
+    const existing = await this.getContentSection(sectionKey);
+    const existingData = (existing && typeof existing.data === 'object') ? existing.data as Record<string, any> : {};
+    const mergedData = { ...existingData, ...data };
+    
+    const [section] = await getDb()
+      .insert(contentSections)
+      .values({ sectionKey, data: mergedData })
+      .onConflictDoUpdate({
+        target: contentSections.sectionKey,
+        set: {
+          data: mergedData,
+          updatedAt: sql`now()`
+        }
+      })
+      .returning();
+    return section;
   }
   
   async getAllContentSections(): Promise<ContentSection[]> {
-    // TODO: Implement when content_sections table is created via Drizzle migration
-    return [];
+    return getDb()
+      .select()
+      .from(contentSections);
   }
   
-  // Content entries methods - Returns empty data until DB tables are created
-  async getContentEntries(_category: string): Promise<ContentEntry[]> {
-    // TODO: Implement when content_entries table is created via Drizzle migration
-    return [];
+  // Content entries methods
+  async getContentEntries(category: string): Promise<ContentEntry[]> {
+    return getDb()
+      .select()
+      .from(contentEntries)
+      .where(eq(contentEntries.category, category))
+      .orderBy(contentEntries.order);
   }
   
-  async createContentEntry(_entryData: InsertContentEntry): Promise<ContentEntry> {
-    // TODO: Implement when content_entries table is created via Drizzle migration
-    throw new Error("Content management requires database tables - currently only available in development mode");
+  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
+    const [entry] = await getDb()
+      .insert(contentEntries)
+      .values(entryData)
+      .returning();
+    return entry;
   }
   
-  async updateContentEntry(_id: number, _entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
-    // TODO: Implement when content_entries table is created via Drizzle migration
-    throw new Error("Content management requires database tables - currently only available in development mode");
+  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
+    // Get existing entry to merge data
+    const [existing] = await getDb()
+      .select()
+      .from(contentEntries)
+      .where(eq(contentEntries.id, id));
+    
+    if (!existing) {
+      return undefined;
+    }
+    
+    // Merge data fields while preserving other fields
+    const updateData: any = { updatedAt: sql`now()` };
+    
+    if (entryData.category !== undefined) {
+      updateData.category = entryData.category;
+    }
+    
+    if (entryData.order !== undefined) {
+      updateData.order = entryData.order;
+    }
+    
+    if (entryData.data !== undefined) {
+      const existingData = (typeof existing.data === 'object' && existing.data !== null) ? existing.data as Record<string, any> : {};
+      const newData = (typeof entryData.data === 'object' && entryData.data !== null) ? entryData.data as Record<string, any> : {};
+      updateData.data = { ...existingData, ...newData };
+    }
+    
+    const [entry] = await getDb()
+      .update(contentEntries)
+      .set(updateData)
+      .where(eq(contentEntries.id, id))
+      .returning();
+    return entry || undefined;
   }
   
-  async deleteContentEntry(_id: number): Promise<boolean> {
-    // TODO: Implement when content_entries table is created via Drizzle migration
-    throw new Error("Content management requires database tables - currently only available in development mode");
+  async deleteContentEntry(id: number): Promise<boolean> {
+    const result = await getDb()
+      .delete(contentEntries)
+      .where(eq(contentEntries.id, id));
+    return (result.rowCount || 0) > 0;
   }
 }
 

@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Users, BarChart3, LogOut, Settings, Calendar, Flag, Music, Mail } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, BarChart3, LogOut, Settings, Calendar, Flag, Music, Mail, FileText } from "lucide-react";
 import { Rsvp, WelcomeScreen } from "@shared/schema";
 import { useLocation } from "wouter";
 import ImageManager from "@/components/ImageManager";
@@ -148,6 +150,190 @@ export default function AdminDashboard() {
     welcomeScreenMutation.mutate(welcomeForm);
   };
 
+  // Content Management State
+  const [basicInfoForm, setBasicInfoForm] = useState({
+    groomName: "",
+    brideName: "",
+    weddingDate: "",
+    weddingDateDisplay: ""
+  });
+
+  const [coupleStoryForm, setCoupleStoryForm] = useState({
+    groomBio: "",
+    brideBio: "",
+    ourStory: ""
+  });
+
+  const [venueInfoForm, setVenueInfoForm] = useState({
+    venueName: "",
+    venueAddress: "",
+    ceremonyTime: "",
+    receptionTime: "",
+    mapUrl: ""
+  });
+
+  // Track hydration flags - true after first fetch completes (even if empty)
+  const [basicInfoHydrated, setBasicInfoHydrated] = useState(false);
+  const [coupleStoryHydrated, setCoupleStoryHydrated] = useState(false);
+  const [venueInfoHydrated, setVenueInfoHydrated] = useState(false);
+
+  // Fetch content sections with error handling
+  const { data: basicInfoData, isLoading: basicInfoLoading, isError: basicInfoError } = useQuery<{ section: { data: any } }>({
+    queryKey: ["/api/content/basic_info"],
+  });
+
+  const { data: coupleStoryData, isLoading: coupleStoryLoading, isError: coupleStoryError } = useQuery<{ section: { data: any } }>({
+    queryKey: ["/api/content/couple_story"],
+  });
+
+  const { data: venueInfoData, isLoading: venueInfoLoading, isError: venueInfoError } = useQuery<{ section: { data: any } }>({
+    queryKey: ["/api/content/venue_info"],
+  });
+
+  // Update forms when data loads and mark as hydrated
+  useEffect(() => {
+    if (basicInfoLoading) return; // Wait for loading to finish
+    // Mark hydrated once fetch completes (even if no data)
+    setBasicInfoHydrated(true);
+    if (basicInfoData?.section?.data) {
+      const data = basicInfoData.section.data;
+      setBasicInfoForm({
+        groomName: data.groomName || "",
+        brideName: data.brideName || "",
+        weddingDate: data.weddingDate || "",
+        weddingDateDisplay: data.weddingDateDisplay || ""
+      });
+    }
+  }, [basicInfoData, basicInfoLoading]);
+
+  useEffect(() => {
+    if (coupleStoryLoading) return; // Wait for loading to finish
+    // Mark hydrated once fetch completes (even if no data)
+    setCoupleStoryHydrated(true);
+    if (coupleStoryData?.section?.data) {
+      const data = coupleStoryData.section.data;
+      setCoupleStoryForm({
+        groomBio: data.groomBio || "",
+        brideBio: data.brideBio || "",
+        ourStory: data.ourStory || ""
+      });
+    }
+  }, [coupleStoryData, coupleStoryLoading]);
+
+  useEffect(() => {
+    if (venueInfoLoading) return; // Wait for loading to finish
+    // Mark hydrated once fetch completes (even if no data)
+    setVenueInfoHydrated(true);
+    if (venueInfoData?.section?.data) {
+      const data = venueInfoData.section.data;
+      setVenueInfoForm({
+        venueName: data.venueName || "",
+        venueAddress: data.venueAddress || "",
+        ceremonyTime: data.ceremonyTime || "",
+        receptionTime: data.receptionTime || "",
+        mapUrl: data.mapUrl || ""
+      });
+    }
+  }, [venueInfoData, venueInfoLoading]);
+
+  // Content update mutations
+  const basicInfoMutation = useMutation({
+    mutationFn: (data: typeof basicInfoForm) => {
+      return apiRequest("PATCH", "/api/admin/content/basic_info", { data });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/basic_info"] });
+      toast({
+        title: "Success",
+        description: "Basic information updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to update basic information: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const coupleStoryMutation = useMutation({
+    mutationFn: (data: typeof coupleStoryForm) => {
+      return apiRequest("PATCH", "/api/admin/content/couple_story", { data });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/couple_story"] });
+      toast({
+        title: "Success",
+        description: "Couple story updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to update couple story: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const venueInfoMutation = useMutation({
+    mutationFn: (data: typeof venueInfoForm) => {
+      return apiRequest("PATCH", "/api/admin/content/venue_info", { data });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/venue_info"] });
+      toast({
+        title: "Success",
+        description: "Venue information updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to update venue information: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Submit handlers - validate current form state, not fetched data
+  const handleBasicInfoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Guard: Only submit if hydrated and CURRENT form fields are valid
+    if (!basicInfoHydrated) return;
+    // Validate current form state (trimmed non-empty)
+    if (!basicInfoForm.groomName.trim() || !basicInfoForm.brideName.trim()) {
+      return;
+    }
+    basicInfoMutation.mutate(basicInfoForm);
+  };
+
+  const handleCoupleStorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Guard: Only submit if hydrated and CURRENT form fields are valid
+    if (!coupleStoryHydrated) return;
+    // Validate current form state (trimmed non-empty)
+    if (!coupleStoryForm.ourStory.trim()) {
+      return;
+    }
+    coupleStoryMutation.mutate(coupleStoryForm);
+  };
+
+  const handleVenueInfoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Guard: Only submit if hydrated and CURRENT form fields are valid
+    if (!venueInfoHydrated) return;
+    // Validate current form state (trimmed non-empty)
+    if (!venueInfoForm.venueName.trim()) {
+      return;
+    }
+    venueInfoMutation.mutate(venueInfoForm);
+  };
+
   const handleLogout = async () => {
     try {
       await apiRequest('POST', '/api/admin/logout');
@@ -231,7 +417,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="rsvps" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="config" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Configuration</span>
@@ -243,6 +429,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="welcome" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Mail className="h-4 w-4" />
               <span className="hidden md:inline">Welcome</span>
+            </TabsTrigger>
+            <TabsTrigger value="content" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
+              <FileText className="h-4 w-4" />
+              <span className="hidden md:inline">Content</span>
             </TabsTrigger>
             <TabsTrigger value="flags" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Flag className="h-4 w-4" />
@@ -602,6 +792,284 @@ export default function AdminDashboard() {
                   </div>
                 </form>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Content Management Tab */}
+        <TabsContent value="content">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <FileText className="h-6 w-6 text-rose-600" />
+                <div>
+                  <CardTitle className="text-xl">Content Management</CardTitle>
+                  <CardDescription>Edit website content - couple names, story, venue details, and schedule</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                {/* Basic Info Section */}
+                <AccordionItem value="basic-info">
+                  <AccordionTrigger className="text-lg font-medium">
+                    Basic Information
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <form onSubmit={handleBasicInfoSubmit} className="space-y-4 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="groom-name">Groom's Name</Label>
+                          <Input
+                            id="groom-name"
+                            placeholder="Andreas"
+                            value={basicInfoForm.groomName}
+                            onChange={(e) => setBasicInfoForm({ ...basicInfoForm, groomName: e.target.value })}
+                            data-testid="input-groom-name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="bride-name">Bride's Name</Label>
+                          <Input
+                            id="bride-name"
+                            placeholder="Christine"
+                            value={basicInfoForm.brideName}
+                            onChange={(e) => setBasicInfoForm({ ...basicInfoForm, brideName: e.target.value })}
+                            data-testid="input-bride-name"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="wedding-date">Wedding Date</Label>
+                          <Input
+                            id="wedding-date"
+                            type="date"
+                            value={basicInfoForm.weddingDate}
+                            onChange={(e) => setBasicInfoForm({ ...basicInfoForm, weddingDate: e.target.value })}
+                            data-testid="input-wedding-date"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="wedding-date-display">Date Display Text</Label>
+                          <Input
+                            id="wedding-date-display"
+                            placeholder="July 5, 2026"
+                            value={basicInfoForm.weddingDateDisplay}
+                            onChange={(e) => setBasicInfoForm({ ...basicInfoForm, weddingDateDisplay: e.target.value })}
+                            data-testid="input-wedding-date-display"
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        type="submit"
+                        className="bg-rose-600 hover:bg-rose-700" 
+                        disabled={!basicInfoHydrated || basicInfoMutation.isPending}
+                        data-testid="button-save-basic-info"
+                      >
+                        {basicInfoLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : basicInfoError ? (
+                          "Error - Click to Retry"
+                        ) : basicInfoMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Basic Information"
+                        )}
+                      </Button>
+                    </form>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Couple Story Section */}
+                <AccordionItem value="couple-story">
+                  <AccordionTrigger className="text-lg font-medium">
+                    Couple Story
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <form onSubmit={handleCoupleStorySubmit} className="space-y-4 pt-4">
+                      <div>
+                        <Label htmlFor="groom-bio">Groom Bio</Label>
+                        <Textarea
+                          id="groom-bio"
+                          placeholder="Groom's bio..."
+                          rows={3}
+                          value={coupleStoryForm.groomBio}
+                          onChange={(e) => setCoupleStoryForm({ ...coupleStoryForm, groomBio: e.target.value })}
+                          data-testid="input-groom-bio"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="bride-bio">Bride Bio</Label>
+                        <Textarea
+                          id="bride-bio"
+                          placeholder="Bride's bio..."
+                          rows={3}
+                          value={coupleStoryForm.brideBio}
+                          onChange={(e) => setCoupleStoryForm({ ...coupleStoryForm, brideBio: e.target.value })}
+                          data-testid="input-bride-bio"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="our-story">Our Story</Label>
+                        <Textarea
+                          id="our-story"
+                          placeholder="Your love story..."
+                          rows={4}
+                          value={coupleStoryForm.ourStory}
+                          onChange={(e) => setCoupleStoryForm({ ...coupleStoryForm, ourStory: e.target.value })}
+                          data-testid="input-our-story"
+                        />
+                      </div>
+                      <Button 
+                        type="submit"
+                        className="bg-rose-600 hover:bg-rose-700" 
+                        disabled={!coupleStoryHydrated || coupleStoryMutation.isPending}
+                        data-testid="button-save-couple-story"
+                      >
+                        {coupleStoryLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : coupleStoryError ? (
+                          "Error - Click to Retry"
+                        ) : coupleStoryMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Couple Story"
+                        )}
+                      </Button>
+                    </form>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Venue Info Section */}
+                <AccordionItem value="venue-info">
+                  <AccordionTrigger className="text-lg font-medium">
+                    Venue Information
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <form onSubmit={handleVenueInfoSubmit} className="space-y-4 pt-4">
+                      <div>
+                        <Label htmlFor="venue-name">Venue Name</Label>
+                        <Input
+                          id="venue-name"
+                          placeholder="Casakhasa Kemang"
+                          value={venueInfoForm.venueName}
+                          onChange={(e) => setVenueInfoForm({ ...venueInfoForm, venueName: e.target.value })}
+                          data-testid="input-venue-name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="venue-address">Address</Label>
+                        <Input
+                          id="venue-address"
+                          placeholder="Jl. Kemang Raya, Jakarta Selatan"
+                          value={venueInfoForm.venueAddress}
+                          onChange={(e) => setVenueInfoForm({ ...venueInfoForm, venueAddress: e.target.value })}
+                          data-testid="input-venue-address"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="ceremony-time">Ceremony Time</Label>
+                          <Input
+                            id="ceremony-time"
+                            placeholder="4:00 PM"
+                            value={venueInfoForm.ceremonyTime}
+                            onChange={(e) => setVenueInfoForm({ ...venueInfoForm, ceremonyTime: e.target.value })}
+                            data-testid="input-ceremony-time"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="reception-time">Reception Time</Label>
+                          <Input
+                            id="reception-time"
+                            placeholder="6:00 PM"
+                            value={venueInfoForm.receptionTime}
+                            onChange={(e) => setVenueInfoForm({ ...venueInfoForm, receptionTime: e.target.value })}
+                            data-testid="input-reception-time"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="map-url">Google Maps URL</Label>
+                        <Input
+                          id="map-url"
+                          placeholder="https://maps.google.com"
+                          value={venueInfoForm.mapUrl}
+                          onChange={(e) => setVenueInfoForm({ ...venueInfoForm, mapUrl: e.target.value })}
+                          data-testid="input-map-url"
+                        />
+                      </div>
+                      <Button 
+                        type="submit"
+                        className="bg-rose-600 hover:bg-rose-700" 
+                        disabled={!venueInfoHydrated || venueInfoMutation.isPending}
+                        data-testid="button-save-venue-info"
+                      >
+                        {venueInfoLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : venueInfoError ? (
+                          "Error - Click to Retry"
+                        ) : venueInfoMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Venue Information"
+                        )}
+                      </Button>
+                    </form>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Schedule Section */}
+                <AccordionItem value="schedule">
+                  <AccordionTrigger className="text-lg font-medium">
+                    Wedding Schedule
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 pt-4">
+                      <p className="text-sm text-gray-600">
+                        Schedule items are currently read-only. Full editor coming soon.
+                      </p>
+                      <div className="space-y-3">
+                        <div className="p-4 border rounded-lg bg-gray-50">
+                          <p className="font-medium">4:00 PM - Guest Arrival</p>
+                          <p className="text-sm text-gray-600">Welcome drinks and registration</p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-gray-50">
+                          <p className="font-medium">4:30 PM - Ceremony</p>
+                          <p className="text-sm text-gray-600">Wedding ceremony begins</p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-gray-50">
+                          <p className="font-medium">6:00 PM - Reception</p>
+                          <p className="text-sm text-gray-600">Dinner and celebration</p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-gray-50">
+                          <p className="font-medium">9:00 PM - Dancing</p>
+                          <p className="text-sm text-gray-600">Party and dance floor opens</p>
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </CardContent>
           </Card>
         </TabsContent>

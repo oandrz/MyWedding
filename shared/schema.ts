@@ -138,12 +138,33 @@ export const insertContentSectionSchema = createInsertSchema(contentSections).pi
   data: true
 });
 
+// Specific data schemas for different content entry categories
+const scheduleEntryDataSchema = z.object({
+  time: z.string().min(1, "Time is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required")
+});
+
 export const insertContentEntrySchema = createInsertSchema(contentEntries).pick({
   category: true,
   order: true,
   data: true
 }).extend({
   order: z.number().int().min(0).default(0)
+}).superRefine((data, ctx) => {
+  // Validate data structure based on category
+  if (data.category === 'schedule') {
+    const result = scheduleEntryDataSchema.safeParse(data.data);
+    if (!result.success) {
+      result.error.issues.forEach(issue => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Schedule entry ${issue.path.join('.')}: ${issue.message}`,
+          path: ['data', ...issue.path]
+        });
+      });
+    }
+  }
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
