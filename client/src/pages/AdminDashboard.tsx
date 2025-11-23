@@ -542,24 +542,6 @@ export default function AdminDashboard() {
                     </p>
                   </div>
 
-                  {/* Enable/Disable Switch */}
-                  <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="welcomeEnabled" className="text-base font-medium">
-                        Enable Welcome Screen
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Show the personalized welcome overlay to guests on page load
-                      </p>
-                    </div>
-                    <Switch
-                      id="welcomeEnabled"
-                      checked={welcomeForm.enabled}
-                      onCheckedChange={(checked) => setWelcomeForm({ ...welcomeForm, enabled: checked })}
-                      data-testid="switch-welcome-enabled"
-                    />
-                  </div>
-
                   {/* Preview Example */}
                   <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gradient-to-br from-rose-50 to-pink-50">
                     <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">Preview</p>
@@ -628,55 +610,86 @@ export default function AdminDashboard() {
                 <div className="text-center py-16">
                   <p className="text-red-500">Failed to load feature flags</p>
                 </div>
-              ) : featureFlagsData?.featureFlags && featureFlagsData.featureFlags.length > 0 ? (
+              ) : (
                 <div className="space-y-6">
-                  {featureFlagsData.featureFlags.map((flag: FeatureFlag) => (
-                    <div key={flag.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-medium text-gray-900">{flag.featureName}</h3>
-                          <Badge 
-                            variant={flag.enabled ? "default" : "secondary"}
-                            className={flag.enabled ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}
-                          >
-                            {flag.enabled ? "Enabled" : "Disabled"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">{flag.description}</p>
-                        <p className="text-xs text-gray-400">
-                          Key: <code className="bg-gray-100 px-1 rounded">{flag.featureKey}</code>
-                        </p>
+                  {/* Welcome Screen Toggle */}
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-medium text-gray-900">Enable Welcome Screen</h3>
+                        <Badge 
+                          variant={welcomeForm.enabled ? "default" : "secondary"}
+                          className={welcomeForm.enabled ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}
+                        >
+                          {welcomeForm.enabled ? "Enabled" : "Disabled"}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={flag.enabled}
-                          onCheckedChange={(enabled) => handleFeatureFlagToggle(flag.featureKey, enabled)}
-                          disabled={featureFlagMutation.isPending}
-                          className="data-[state=checked]:bg-rose-600"
-                        />
-                      </div>
+                      <p className="text-sm text-gray-600">Show the personalized welcome overlay to guests on page load</p>
                     </div>
-                  ))}
-                  
-                  <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-blue-900 mb-1">How Feature Flags Work</h4>
-                        <p className="text-sm text-blue-800">
-                          Toggle these switches to show or hide features on your wedding invitation. 
-                          Changes take effect immediately for all your guests.
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={welcomeForm.enabled}
+                        onCheckedChange={(checked) => setWelcomeForm({ ...welcomeForm, enabled: checked })}
+                        disabled={welcomeScreenMutation.isPending}
+                        className="data-[state=checked]:bg-rose-600"
+                        data-testid="switch-welcome-enabled"
+                      />
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <Flag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No feature flags configured</p>
+
+                  {/* Feature Flags */}
+                  {featureFlagsData?.featureFlags && featureFlagsData.featureFlags.length > 0 ? (
+                    <>
+                      <div className="border-t pt-6" />
+                      {featureFlagsData.featureFlags.map((flag: FeatureFlag) => (
+                        <div key={flag.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-medium text-gray-900">{flag.featureName}</h3>
+                              <Badge 
+                                variant={flag.enabled ? "default" : "secondary"}
+                                className={flag.enabled ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}
+                              >
+                                {flag.enabled ? "Enabled" : "Disabled"}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{flag.description}</p>
+                            <p className="text-xs text-gray-400">
+                              Key: <code className="bg-gray-100 px-1 rounded">{flag.featureKey}</code>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={flag.enabled}
+                              onCheckedChange={(enabled) => handleFeatureFlagToggle(flag.featureKey, enabled)}
+                              disabled={featureFlagMutation.isPending}
+                              className="data-[state=checked]:bg-rose-600"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-blue-900 mb-1">How Feature Flags Work</h4>
+                            <p className="text-sm text-blue-800">
+                              Toggle these switches to show or hide features on your wedding invitation. 
+                              Changes take effect immediately for all your guests.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Flag className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">No additional feature flags configured</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
