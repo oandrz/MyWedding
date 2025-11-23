@@ -983,6 +983,8 @@ export class KeyValueStorage implements IStorage {
   private currentConfigImageId: number = 1;
   private currentFeatureFlagId: number = 1;
   private currentAppSettingId: number = 1;
+  private currentContentSectionId: number = 1;
+  private currentContentEntryId: number = 1;
 
   constructor() {
     // Only initialize Replit Database if REPLIT_DB_URL is available (from file or env var)
@@ -1019,6 +1021,12 @@ export class KeyValueStorage implements IStorage {
     const existingSettings = await this.getAllAppSettings();
     if (existingSettings.length === 0) {
       await this.initializeDefaultAppSettings();
+    }
+
+    // Initialize default content sections if they don't exist
+    const existingSections = await this.getAllContentSections();
+    if (existingSections.length === 0) {
+      await this.initializeDefaultContentSections();
     }
   }
 
@@ -1100,6 +1108,106 @@ export class KeyValueStorage implements IStorage {
         updatedAt: new Date().toISOString()
       };
       await kv.set(`config_image:gallery_default_${i + 1}`, galleryImage);
+    }
+  }
+
+  private async initializeDefaultContentSections() {
+    const kv = this.ensureKvAvailable();
+    const now = new Date().toISOString();
+
+    // Basic Info Section
+    const basicInfoSection: ContentSection = {
+      id: this.currentContentSectionId++,
+      sectionKey: 'basic_info',
+      data: {
+        groomName: 'Andreas',
+        brideName: 'Christine',
+        weddingDate: '2026-07-05',
+        ceremonyTime: '14:00',
+        receptionTime: '18:00'
+      },
+      updatedAt: now
+    };
+    await kv.set('content_section:basic_info', basicInfoSection);
+
+    // Couple Story Section
+    const coupleStorySection: ContentSection = {
+      id: this.currentContentSectionId++,
+      sectionKey: 'couple_story',
+      data: {
+        groomBio: 'Andreas is a passionate software engineer who loves building things that make a difference.',
+        brideBio: 'Christine is a creative designer with an eye for beauty and a heart for adventure.',
+        ourStory: 'We met at a coffee shop on a rainy afternoon. What started as a casual conversation turned into endless laughter, shared dreams, and a love that continues to grow every day.'
+      },
+      updatedAt: now
+    };
+    await kv.set('content_section:couple_story', coupleStorySection);
+
+    // Venue Info Section
+    const venueInfoSection: ContentSection = {
+      id: this.currentContentSectionId++,
+      sectionKey: 'venue_info',
+      data: {
+        venueName: 'Garden Estate',
+        venueAddress: '123 Wedding Lane, Love City, LC 12345',
+        mapUrl: 'https://www.google.com/maps',
+        ceremonyTime: '2:00 PM',
+        receptionTime: '6:00 PM'
+      },
+      updatedAt: now
+    };
+    await kv.set('content_section:venue_info', venueInfoSection);
+
+    // Schedule Entries
+    const scheduleEntries = [
+      {
+        category: 'schedule',
+        order: 1,
+        data: {
+          time: '14:00',
+          title: 'Ceremony',
+          description: 'Join us as we exchange our vows'
+        }
+      },
+      {
+        category: 'schedule',
+        order: 2,
+        data: {
+          time: '15:30',
+          title: 'Cocktail Hour',
+          description: 'Enjoy refreshments and mingle with guests'
+        }
+      },
+      {
+        category: 'schedule',
+        order: 3,
+        data: {
+          time: '18:00',
+          title: 'Reception',
+          description: 'Dinner, dancing, and celebration'
+        }
+      },
+      {
+        category: 'schedule',
+        order: 4,
+        data: {
+          time: '22:00',
+          title: 'Send Off',
+          description: 'Farewell celebration'
+        }
+      }
+    ];
+
+    for (const entryData of scheduleEntries) {
+      const entry: ContentEntry = {
+        id: this.currentContentEntryId++,
+        category: entryData.category,
+        order: entryData.order,
+        data: entryData.data,
+        createdAt: now,
+        updatedAt: now
+      };
+      await kv.set(`content_entry:${entry.id}`, entry);
     }
   }
 
@@ -1470,41 +1578,131 @@ export class KeyValueStorage implements IStorage {
     return updated;
   }
   
-  // Content sections methods - Returns empty data until Replit DB integration is implemented
-  async getContentSection(_sectionKey: string): Promise<ContentSection | undefined> {
-    // TODO: Implement when Replit DB integration is added for content
-    return undefined;
+  // Content sections methods
+  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
+    try {
+      const kv = this.ensureKvAvailable();
+      const result = await kv.get(`content_section:${sectionKey}`);
+      return result.ok ? result.value : undefined;
+    } catch (error) {
+      console.error(`Error getting content section ${sectionKey}:`, error);
+      return undefined;
+    }
   }
   
-  async updateContentSection(_sectionKey: string, _data: any): Promise<ContentSection> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      throw new Error("Cannot update content section with empty or invalid data");
+    }
+    
+    const kv = this.ensureKvAvailable();
+    const existing = await this.getContentSection(sectionKey);
+    const id = existing?.id ?? this.currentContentSectionId++;
+    const now = new Date();
+    
+    // Merge new data with existing data instead of overwriting
+    const existingData = (existing && typeof existing.data === 'object') ? existing.data as Record<string, any> : {};
+    const mergedData = { ...existingData, ...data };
+    
+    const section: ContentSection = {
+      id,
+      sectionKey,
+      data: mergedData,
+      updatedAt: now.toISOString()
+    };
+    
+    await kv.set(`content_section:${sectionKey}`, section);
+    return section;
   }
   
   async getAllContentSections(): Promise<ContentSection[]> {
-    // TODO: Implement when Replit DB integration is added for content
-    return [];
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("content_section:");
+    if (!keysResult.ok) return [];
+    
+    const sections = [];
+    for (const key of keysResult.value) {
+      const sectionResult = await kv.get(key);
+      if (sectionResult.ok && sectionResult.value) sections.push(sectionResult.value);
+    }
+    return sections;
   }
   
-  // Content entries methods - Returns empty data until Replit DB integration is implemented
-  async getContentEntries(_category: string): Promise<ContentEntry[]> {
-    // TODO: Implement when Replit DB integration is added for content
-    return [];
+  // Content entries methods
+  async getContentEntries(category: string): Promise<ContentEntry[]> {
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("content_entry:");
+    if (!keysResult.ok) return [];
+    
+    const entries = [];
+    for (const key of keysResult.value) {
+      const entryResult = await kv.get(key);
+      if (entryResult.ok && entryResult.value && entryResult.value.category === category) {
+        entries.push(entryResult.value);
+      }
+    }
+    
+    // Sort by order
+    return entries.sort((a, b) => a.order - b.order);
   }
   
-  async createContentEntry(_entryData: InsertContentEntry): Promise<ContentEntry> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
+    const kv = this.ensureKvAvailable();
+    const id = this.currentContentEntryId++;
+    const now = new Date();
+    
+    const entry: ContentEntry = {
+      ...entryData,
+      id,
+      order: entryData.order ?? 0,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+    
+    await kv.set(`content_entry:${id}`, entry);
+    return entry;
   }
   
-  async updateContentEntry(_id: number, _entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
+    const kv = this.ensureKvAvailable();
+    const existing = await kv.get(`content_entry:${id}`);
+    
+    if (!existing.ok || !existing.value) {
+      return undefined;
+    }
+    
+    const now = new Date();
+    
+    // Merge data field to prevent loss of existing fields
+    let mergedData = existing.value.data;
+    if (entryData.data !== undefined) {
+      const existingData = (typeof existing.value.data === 'object' && existing.value.data !== null) ? existing.value.data as Record<string, any> : {};
+      const newData = (typeof entryData.data === 'object' && entryData.data !== null) ? entryData.data as Record<string, any> : {};
+      mergedData = { ...existingData, ...newData };
+    }
+    
+    const updated: ContentEntry = {
+      ...existing.value,
+      category: entryData.category ?? existing.value.category,
+      order: entryData.order ?? existing.value.order,
+      data: mergedData,
+      updatedAt: now.toISOString()
+    };
+    
+    await kv.set(`content_entry:${id}`, updated);
+    return updated;
   }
   
-  async deleteContentEntry(_id: number): Promise<boolean> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async deleteContentEntry(id: number): Promise<boolean> {
+    const kv = this.ensureKvAvailable();
+    const existing = await kv.get(`content_entry:${id}`);
+    
+    if (!existing.ok || !existing.value) {
+      return false;
+    }
+    
+    await kv.delete(`content_entry:${id}`);
+    return true;
   }
 }
 
