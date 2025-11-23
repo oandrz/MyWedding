@@ -1,6 +1,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { WEDDING_SCHEDULE, VENUES, WEDDING_DATE } from "@/lib/constants";
+import { useQuery } from "@tanstack/react-query";
+import { WEDDING_SCHEDULE } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
 
 const DetailsSection = () => {
@@ -15,6 +16,25 @@ const DetailsSection = () => {
   const areVenuesInView = useInView(venuesRef, { once: true, amount: 0.3 });
   const isMapInView = useInView(mapRef, { once: true, amount: 0.3 });
   const isScheduleInView = useInView(scheduleRef, { once: true, amount: 0.3 });
+
+  // Fetch basic info for wedding date
+  const { data: basicInfoData } = useQuery<{ section: { data: any } }>({
+    queryKey: ["/api/content/basic_info"],
+  });
+
+  // Fetch venue info
+  const { data: venueInfoData, isLoading: venueInfoLoading } = useQuery<{ section: { data: any } }>({
+    queryKey: ["/api/content/venue_info"],
+  });
+
+  const weddingDateStr = basicInfoData?.section?.data?.weddingDate || "2026-07-05T14:00:00.000Z";
+  const weddingDate = new Date(weddingDateStr);
+  
+  const venueName = venueInfoData?.section?.data?.venueName || "Casakhasa Kemang";
+  const venueAddress = venueInfoData?.section?.data?.venueAddress || "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia";
+  const ceremonyTime = venueInfoData?.section?.data?.ceremonyTime || "2:00 PM - 3:30 PM";
+  const receptionTime = venueInfoData?.section?.data?.receptionTime || "4:30 PM - 10:00 PM";
+  const mapUrl = venueInfoData?.section?.data?.mapUrl || "https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z";
   
   // Format wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -22,7 +42,7 @@ const DetailsSection = () => {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
-  }).format(WEDDING_DATE);
+  }).format(weddingDate);
 
   return (
     <section id="details" className="py-20 bg-gradient-to-b from-white via-amber-50/20 to-white paper-texture" ref={sectionRef}>
@@ -74,10 +94,20 @@ const DetailsSection = () => {
             {/* Time */}
             <div>
               <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-2">
-                Time
+                Ceremony
               </div>
               <div className="text-2xl md:text-3xl font-cormorant text-foreground">
-                {VENUES[0].time}
+                {venueInfoLoading ? "..." : ceremonyTime}
+              </div>
+            </div>
+
+            {/* Reception Time */}
+            <div>
+              <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-2">
+                Reception
+              </div>
+              <div className="text-2xl md:text-3xl font-cormorant text-foreground">
+                {venueInfoLoading ? "..." : receptionTime}
               </div>
             </div>
             
@@ -87,14 +117,14 @@ const DetailsSection = () => {
                 Location
               </div>
               <div className="text-3xl md:text-4xl font-cormorant font-bold text-primary mb-3">
-                {VENUES[0].location}
+                {venueInfoLoading ? "..." : venueName}
               </div>
               <div className="font-montserrat text-sm text-muted-foreground mb-4">
-                {VENUES[0].address}
+                {venueInfoLoading ? "..." : venueAddress}
               </div>
               
               <motion.a 
-                href="https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__" 
+                href={mapUrl} 
                 target="_blank" 
                 rel="noreferrer"
                 className="inline-block px-8 py-4 bg-primary text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300"
@@ -126,7 +156,7 @@ const DetailsSection = () => {
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.0!2d106.8204341!3d-6.2594469!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f22adf2c9a27%3A0x118d6eaa20e4454b!2sCasakhasa!5e0!3m2!1sen!2sus!4v1628664477739!5m2!1sen!2sus"
               allowFullScreen
               loading="lazy"
-              title="Wedding venue location - Casakhasa Kemang"
+              title={`Wedding venue location - ${venueName}`}
             ></iframe>
           </motion.div>
         </motion.div>
