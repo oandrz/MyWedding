@@ -1068,8 +1068,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid entry ID" });
       }
       
-      // Accept partial updates without strict validation (storage layer handles merging)
-      const updatedEntry = await storage.updateContentEntry(id, req.body);
+      // Validate using partial schema to allow updating individual fields
+      const validatedData = insertContentEntrySchema.partial().parse(req.body);
+      
+      const updatedEntry = await storage.updateContentEntry(id, validatedData);
       
       if (!updatedEntry) {
         return res.status(404).json({ message: "Content entry not found" });
@@ -1080,6 +1082,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entry: updatedEntry 
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
       console.error("Error updating content entry:", error);
       res.status(500).json({ message: "Failed to update content entry" });
     }
