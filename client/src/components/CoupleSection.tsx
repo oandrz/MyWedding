@@ -1,6 +1,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideFromLeft, slideFromRight, fadeInScale, revealText } from "@/lib/animations";
 import type { ConfigImage } from "@shared/schema";
 
@@ -26,25 +27,6 @@ const CoupleSection = () => {
   const { data: groomImagesData } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/groom-profile"],
   });
-
-  // Fetch basic info for names
-  const { data: basicInfoData } = useQuery<{ section: any }>({
-    queryKey: ["/api/content/basic_info"],
-  });
-
-  // Fetch couple story for bios and story text
-  const { data: coupleStoryData, isLoading: coupleStoryLoading } = useQuery<{ section: any }>({
-    queryKey: ["/api/content/couple_story"],
-  });
-
-  const basicContent = basicInfoData?.section?.data || basicInfoData?.section || {};
-  const storyContent = coupleStoryData?.section?.data || coupleStoryData?.section || {};
-  
-  const groomName = basicContent?.groomName || "Andreas";
-  const brideName = basicContent?.brideName || "Christine";
-  const groomBio = storyContent?.groomBio || `${groomName} is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances ${brideName}'s energetic personality.`;
-  const brideBio = storyContent?.brideBio || `${brideName} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.`;
-  const ourStory = storyContent?.ourStory || `Our story began five years ago at a mutual friend's birthday party. ${brideName} was helping with decorations when she accidentally spilled punch on ${groomName}'s new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, ${groomName} proposed during a sunrise hike to our favorite mountain lookout.`;
 
   // Get the active profile images or fallback to default
   const brideImage = brideImagesData?.images?.find(img => img.isActive)?.imageUrl || 
@@ -91,13 +73,13 @@ const CoupleSection = () => {
               <img 
                 className="w-full h-full object-cover" 
                 src={groomImage} 
-                alt={groomName} 
+                alt={GROOM_NAME} 
               />
             </motion.div>
-            <h3 className="text-3xl font-cormorant text-primary mb-2">{groomName}</h3>
+            <h3 className="text-3xl font-cormorant text-primary mb-2">{GROOM_NAME}</h3>
             <p className="text-foreground font-montserrat mb-6">The Groom</p>
             <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
-              {coupleStoryLoading ? "Loading..." : groomBio}
+              {GROOM_NAME} is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances {BRIDE_NAME}'s energetic personality.
             </p>
           </motion.div>
           
@@ -116,13 +98,13 @@ const CoupleSection = () => {
               <img 
                 className="w-full h-full object-cover" 
                 src={brideImage} 
-                alt={brideName} 
+                alt={BRIDE_NAME} 
               />
             </motion.div>
-            <h3 className="text-3xl font-cormorant text-primary mb-2">{brideName}</h3>
+            <h3 className="text-3xl font-cormorant text-primary mb-2">{BRIDE_NAME}</h3>
             <p className="text-foreground font-montserrat mb-6">The Bride</p>
             <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
-              {coupleStoryLoading ? "Loading..." : brideBio}
+              {BRIDE_NAME} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.
             </p>
           </motion.div>
         </div>
@@ -144,7 +126,7 @@ const CoupleSection = () => {
             className="text-muted-foreground font-montserrat leading-relaxed mb-8"
             variants={fadeIn}
           >
-            {coupleStoryLoading ? "Loading..." : ourStory}
+            Our story began five years ago at a mutual friend's birthday party. {BRIDE_NAME} was helping with decorations when she accidentally spilled punch on {GROOM_NAME}'s new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, {GROOM_NAME} proposed during a sunrise hike to our favorite mountain lookout.
           </motion.p>
           <motion.div 
             className="italic text-primary font-cormorant text-xl"

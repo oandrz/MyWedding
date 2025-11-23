@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, date, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -117,56 +117,6 @@ export const insertWelcomeScreenSchema = createInsertSchema(welcomeScreen).pick(
   enabled: true
 });
 
-export const contentSections = pgTable("content_sections", {
-  id: serial("id").primaryKey(),
-  sectionKey: text("section_key").notNull().unique(),
-  data: jsonb("data").notNull(),
-  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
-});
-
-export const contentEntries = pgTable("content_entries", {
-  id: serial("id").primaryKey(),
-  category: text("category").notNull(),
-  order: integer("order").notNull().default(0),
-  data: jsonb("data").notNull(),
-  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
-});
-
-export const insertContentSectionSchema = createInsertSchema(contentSections).pick({
-  sectionKey: true,
-  data: true
-});
-
-// Specific data schemas for different content entry categories
-const scheduleEntryDataSchema = z.object({
-  time: z.string().min(1, "Time is required"),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().min(1, "Description is required")
-});
-
-export const insertContentEntrySchema = createInsertSchema(contentEntries).pick({
-  category: true,
-  order: true,
-  data: true
-}).extend({
-  order: z.number().int().min(0).default(0)
-}).superRefine((data, ctx) => {
-  // Validate data structure based on category
-  if (data.category === 'schedule') {
-    const result = scheduleEntryDataSchema.safeParse(data.data);
-    if (!result.success) {
-      result.error.issues.forEach(issue => {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Schedule entry ${issue.path.join('.')}: ${issue.message}`,
-          path: ['data', ...issue.path]
-        });
-      });
-    }
-  }
-});
-
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
@@ -181,7 +131,3 @@ export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertWelcomeScreen = z.infer<typeof insertWelcomeScreenSchema>;
 export type WelcomeScreen = typeof welcomeScreen.$inferSelect;
-export type InsertContentSection = z.infer<typeof insertContentSectionSchema>;
-export type ContentSection = typeof contentSections.$inferSelect;
-export type InsertContentEntry = z.infer<typeof insertContentEntrySchema>;
-export type ContentEntry = typeof contentEntries.$inferSelect;

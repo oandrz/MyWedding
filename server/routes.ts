@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema, insertContentSectionSchema, insertContentEntrySchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -78,15 +78,6 @@ const audioUpload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Seed content sections if using DatabaseStorage
-  if (typeof (storage as any).seedContentSections === 'function') {
-    try {
-      await (storage as any).seedContentSections();
-    } catch (err) {
-      log(`Failed to seed content sections: ${err}`, 'database');
-    }
-  }
-
   // Start Flask server with improved error handling
   try {
     const { exec } = await import('child_process');
@@ -975,152 +966,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating welcome screen:", error);
         res.status(500).json({ message: "Failed to update welcome screen configuration" });
       }
-    }
-  });
-
-  // Content Section Routes - Get all content sections (public endpoint)
-  app.get("/api/content-sections", async (req: Request, res: Response) => {
-    try {
-      const sections = await storage.getAllContentSections();
-      res.status(200).json({ sections });
-    } catch (error) {
-      console.error("Error fetching content sections:", error);
-      res.status(500).json({ message: "Failed to fetch content sections" });
-    }
-  });
-
-  // Get specific content section (public endpoint)
-  app.get("/api/content/:sectionKey", async (req: Request, res: Response) => {
-    try {
-      const sectionKey = req.params.sectionKey;
-      const section = await storage.getContentSection(sectionKey);
-      
-      if (!section) {
-        return res.status(404).json({ message: "Content section not found" });
-      }
-      
-      res.status(200).json({ section });
-    } catch (error) {
-      console.error("Error fetching content section:", error);
-      res.status(500).json({ message: "Failed to fetch content section" });
-    }
-  });
-
-  // Update content section (admin only)
-  app.patch("/api/admin/content/:sectionKey", adminAuthMiddleware, async (req: Request, res: Response) => {
-    try {
-      const sectionKey = req.params.sectionKey;
-      
-      // Validate using partial schema to allow updating individual fields
-      const validatedData = insertContentSectionSchema.partial().parse(req.body);
-      
-      if (!validatedData.data) {
-        return res.status(400).json({ message: "Content data is required" });
-      }
-      
-      const updatedSection = await storage.updateContentSection(sectionKey, validatedData.data);
-      
-      res.status(200).json({ 
-        message: `Content section '${sectionKey}' updated successfully`,
-        section: updatedSection 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      console.error("Error updating content section:", error);
-      res.status(500).json({ message: "Failed to update content section" });
-    }
-  });
-
-  // Content Entries Routes - Get entries by category (public endpoint)
-  app.get("/api/content-entries/:category", async (req: Request, res: Response) => {
-    try {
-      const category = req.params.category;
-      const entries = await storage.getContentEntries(category);
-      res.status(200).json({ entries });
-    } catch (error) {
-      console.error("Error fetching content entries:", error);
-      res.status(500).json({ message: "Failed to fetch content entries" });
-    }
-  });
-
-  // Create content entry (admin only)
-  app.post("/api/admin/content-entries", adminAuthMiddleware, async (req: Request, res: Response) => {
-    try {
-      // Validate the request body using zod
-      const validatedData = insertContentEntrySchema.parse(req.body);
-      
-      const entry = await storage.createContentEntry(validatedData);
-      
-      res.status(201).json({ 
-        message: "Content entry created successfully",
-        entry 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      console.error("Error creating content entry:", error);
-      res.status(500).json({ message: "Failed to create content entry" });
-    }
-  });
-
-  // Update content entry (admin only)
-  app.patch("/api/admin/content-entries/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid entry ID" });
-      }
-      
-      // Validate using partial schema to allow updating individual fields
-      const validatedData = insertContentEntrySchema.partial().parse(req.body);
-      
-      const updatedEntry = await storage.updateContentEntry(id, validatedData);
-      
-      if (!updatedEntry) {
-        return res.status(404).json({ message: "Content entry not found" });
-      }
-      
-      res.status(200).json({ 
-        message: "Content entry updated successfully",
-        entry: updatedEntry 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
-      console.error("Error updating content entry:", error);
-      res.status(500).json({ message: "Failed to update content entry" });
-    }
-  });
-
-  // Delete content entry (admin only)
-  app.delete("/api/admin/content-entries/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid entry ID" });
-      }
-      
-      const deleted = await storage.deleteContentEntry(id);
-      
-      if (!deleted) {
-        return res.status(404).json({ message: "Content entry not found" });
-      }
-      
-      res.status(200).json({ 
-        message: "Content entry deleted successfully"
-      });
-    } catch (error) {
-      console.error("Error deleting content entry:", error);
-      res.status(500).json({ message: "Failed to delete content entry" });
     }
   });
 

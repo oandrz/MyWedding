@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen, contentSections, type ContentSection, type InsertContentSection, contentEntries, type ContentEntry, type InsertContentEntry } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import Database from "@replit/database";
@@ -49,17 +49,6 @@ export interface IStorage {
   // Welcome screen methods
   getWelcomeScreen(): Promise<WelcomeScreen>;
   updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen>;
-  
-  // Content sections methods
-  getContentSection(sectionKey: string): Promise<ContentSection | undefined>;
-  updateContentSection(sectionKey: string, data: any): Promise<ContentSection>;
-  getAllContentSections(): Promise<ContentSection[]>;
-  
-  // Content entries methods
-  getContentEntries(category: string): Promise<ContentEntry[]>;
-  createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry>;
-  updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined>;
-  deleteContentEntry(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -70,16 +59,12 @@ export class MemStorage implements IStorage {
   private featureFlags: Map<string, FeatureFlag>;
   private appSettings: Map<string, AppSetting>;
   private welcomeScreenData: WelcomeScreen | null;
-  private contentSectionsMap: Map<string, ContentSection>;
-  private contentEntriesMap: Map<number, ContentEntry>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
   currentConfigImageId: number;
   currentFeatureFlagId: number;
   currentAppSettingId: number;
-  currentContentSectionId: number;
-  currentContentEntryId: number;
 
   constructor() {
     this.users = new Map();
@@ -89,23 +74,18 @@ export class MemStorage implements IStorage {
     this.featureFlags = new Map();
     this.appSettings = new Map();
     this.welcomeScreenData = null;
-    this.contentSectionsMap = new Map();
-    this.contentEntriesMap = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
     this.currentConfigImageId = 1;
     this.currentFeatureFlagId = 1;
     this.currentAppSettingId = 1;
-    this.currentContentSectionId = 1;
-    this.currentContentEntryId = 1;
 
     // Initialize default images and feature flags
     this.initializeDefaultImages();
     this.initializeDefaultFeatureFlags();
     this.initializeDefaultAppSettings();
     this.initializeDefaultWelcomeScreen();
-    this.initializeDefaultContent();
   }
   
   private initializeDefaultWelcomeScreen() {
@@ -157,89 +137,6 @@ export class MemStorage implements IStorage {
         updatedAt: new Date().toISOString()
       };
       this.configImages.set(`gallery_default_${index + 1}`, galleryImage);
-    });
-  }
-
-  private initializeDefaultContent() {
-    // Initialize content sections with hardcoded values
-    const weddingDate = new Date('July 5, 2026 14:00:00');
-    
-    // Basic Info section
-    const basicInfo: ContentSection = {
-      id: this.currentContentSectionId++,
-      sectionKey: 'basic_info',
-      data: {
-        groomName: 'Andreas',
-        brideName: 'Christine Natasya Serena',
-        weddingDate: weddingDate.toISOString(),
-        weddingTime: '2:00 PM'
-      },
-      updatedAt: new Date().toISOString()
-    };
-    this.contentSectionsMap.set('basic_info', basicInfo);
-    
-    // Couple Story section
-    const coupleStory: ContentSection = {
-      id: this.currentContentSectionId++,
-      sectionKey: 'couple_story',
-      data: {
-        groomBio: "Andreas is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances Christine Natasya Serena's energetic personality.",
-        brideBio: "Christine Natasya Serena is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.",
-        ourStory: "Our story began five years ago at a mutual friend's birthday party. Christine Natasya Serena was helping with decorations when she accidentally spilled punch on Andreas's new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, Andreas proposed during a sunrise hike to our favorite mountain lookout."
-      },
-      updatedAt: new Date().toISOString()
-    };
-    this.contentSectionsMap.set('couple_story', coupleStory);
-    
-    // Venue Info section
-    const venueInfo: ContentSection = {
-      id: this.currentContentSectionId++,
-      sectionKey: 'venue_info',
-      data: {
-        venueName: 'Casakhasa Kemang',
-        address: 'Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia',
-        ceremonyTime: '2:00 PM - 3:30 PM',
-        receptionTime: '4:30 PM - 10:00 PM',
-        mapUrl: 'https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__'
-      },
-      updatedAt: new Date().toISOString()
-    };
-    this.contentSectionsMap.set('venue_info', venueInfo);
-    
-    // Initialize schedule entries
-    const scheduleItems = [
-      {
-        title: "Ceremony",
-        time: "2:00 PM - 3:30 PM",
-        description: "Exchange of vows and rings in a beautiful ceremony at St. Mary's Cathedral"
-      },
-      {
-        title: "Cocktail Hour",
-        time: "4:00 PM - 5:00 PM",
-        description: "Enjoy hors d'oeuvres and drinks while the wedding party takes photos"
-      },
-      {
-        title: "Dinner Reception",
-        time: "5:30 PM - 7:30 PM",
-        description: "Elegant dinner, toasts, and speeches celebrating the newlyweds"
-      },
-      {
-        title: "Dancing & Celebration",
-        time: "8:00 PM - 10:00 PM",
-        description: "Dance the night away with music, cake cutting, and joyous celebration"
-      }
-    ];
-    
-    scheduleItems.forEach((item, index) => {
-      const entry: ContentEntry = {
-        id: this.currentContentEntryId++,
-        category: 'schedule',
-        order: index,
-        data: item,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      this.contentEntriesMap.set(entry.id, entry);
     });
   }
 
@@ -533,89 +430,6 @@ export class MemStorage implements IStorage {
     };
     return this.welcomeScreenData;
   }
-  
-  // Content sections methods
-  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
-    return this.contentSectionsMap.get(sectionKey);
-  }
-  
-  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
-    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-      throw new Error("Cannot update content section with empty or invalid data");
-    }
-    
-    const existing = this.contentSectionsMap.get(sectionKey);
-    const id = existing?.id ?? this.currentContentSectionId++;
-    const now = new Date();
-    
-    // Merge new data with existing data instead of overwriting
-    const existingData = (existing && typeof existing.data === 'object') ? existing.data : {};
-    const mergedData = { ...existingData, ...data };
-    
-    const section: ContentSection = {
-      id,
-      sectionKey,
-      data: mergedData,
-      updatedAt: now.toISOString()
-    };
-    this.contentSectionsMap.set(sectionKey, section);
-    return section;
-  }
-  
-  async getAllContentSections(): Promise<ContentSection[]> {
-    return Array.from(this.contentSectionsMap.values());
-  }
-  
-  // Content entries methods
-  async getContentEntries(category: string): Promise<ContentEntry[]> {
-    return Array.from(this.contentEntriesMap.values())
-      .filter(entry => entry.category === category)
-      .sort((a, b) => a.order - b.order);
-  }
-  
-  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
-    const id = this.currentContentEntryId++;
-    const now = new Date();
-    const entry: ContentEntry = {
-      ...entryData,
-      id,
-      order: entryData.order ?? 0,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
-    };
-    this.contentEntriesMap.set(id, entry);
-    return entry;
-  }
-  
-  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
-    const existing = this.contentEntriesMap.get(id);
-    if (!existing) return undefined;
-    
-    const now = new Date();
-    
-    // Merge data field to prevent loss of existing fields
-    let mergedData = existing.data;
-    if (entryData.data !== undefined) {
-      const existingData = (typeof existing.data === 'object' && existing.data !== null) ? existing.data as Record<string, any> : {};
-      const newData = (typeof entryData.data === 'object' && entryData.data !== null) ? entryData.data as Record<string, any> : {};
-      mergedData = { ...existingData, ...newData };
-    }
-    
-    const updated: ContentEntry = {
-      ...existing,
-      category: entryData.category ?? existing.category,
-      order: entryData.order ?? existing.order,
-      data: mergedData,
-      id,
-      updatedAt: now.toISOString()
-    };
-    this.contentEntriesMap.set(id, updated);
-    return updated;
-  }
-  
-  async deleteContentEntry(id: number): Promise<boolean> {
-    return this.contentEntriesMap.delete(id);
-  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -874,166 +688,6 @@ export class DatabaseStorage implements IStorage {
     
     return updated;
   }
-  
-  // Content sections methods
-  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
-    const [section] = await getDb()
-      .select()
-      .from(contentSections)
-      .where(eq(contentSections.sectionKey, sectionKey));
-    return section || undefined;
-  }
-  
-  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
-    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-      throw new Error("Cannot update content section with empty or invalid data");
-    }
-    
-    // Get existing section to merge data
-    const existing = await this.getContentSection(sectionKey);
-    const existingData = (existing && typeof existing.data === 'object') ? existing.data as Record<string, any> : {};
-    const mergedData = { ...existingData, ...data };
-    
-    const [section] = await getDb()
-      .insert(contentSections)
-      .values({ sectionKey, data: mergedData })
-      .onConflictDoUpdate({
-        target: contentSections.sectionKey,
-        set: {
-          data: mergedData,
-          updatedAt: sql`now()`
-        }
-      })
-      .returning();
-    return section;
-  }
-  
-  async getAllContentSections(): Promise<ContentSection[]> {
-    return getDb()
-      .select()
-      .from(contentSections);
-  }
-  
-  // Content entries methods
-  async getContentEntries(category: string): Promise<ContentEntry[]> {
-    return getDb()
-      .select()
-      .from(contentEntries)
-      .where(eq(contentEntries.category, category))
-      .orderBy(contentEntries.order);
-  }
-  
-  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
-    const [entry] = await getDb()
-      .insert(contentEntries)
-      .values(entryData)
-      .returning();
-    return entry;
-  }
-  
-  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
-    // Get existing entry to merge data
-    const [existing] = await getDb()
-      .select()
-      .from(contentEntries)
-      .where(eq(contentEntries.id, id));
-    
-    if (!existing) {
-      return undefined;
-    }
-    
-    // Merge data fields while preserving other fields
-    const updateData: any = { updatedAt: sql`now()` };
-    
-    if (entryData.category !== undefined) {
-      updateData.category = entryData.category;
-    }
-    
-    if (entryData.order !== undefined) {
-      updateData.order = entryData.order;
-    }
-    
-    if (entryData.data !== undefined) {
-      const existingData = (typeof existing.data === 'object' && existing.data !== null) ? existing.data as Record<string, any> : {};
-      const newData = (typeof entryData.data === 'object' && entryData.data !== null) ? entryData.data as Record<string, any> : {};
-      updateData.data = { ...existingData, ...newData };
-    }
-    
-    const [entry] = await getDb()
-      .update(contentEntries)
-      .set(updateData)
-      .where(eq(contentEntries.id, id))
-      .returning();
-    return entry || undefined;
-  }
-  
-  async deleteContentEntry(id: number): Promise<boolean> {
-    const result = await getDb()
-      .delete(contentEntries)
-      .where(eq(contentEntries.id, id));
-    return (result.rowCount || 0) > 0;
-  }
-
-  // Seed initial content sections on server startup
-  async seedContentSections(): Promise<void> {
-    console.log('Seeding initial content sections...');
-    
-    // Check if basic_info exists
-    const basicInfo = await this.getContentSection('basic_info');
-    if (!basicInfo) {
-      await getDb()
-        .insert(contentSections)
-        .values({
-          sectionKey: 'basic_info',
-          data: {
-            groomName: 'Andreas',
-            brideName: 'Christine',
-            weddingDate: '2026-07-05T14:00:00.000Z',
-            weddingDateDisplay: 'July 5, 2026'
-          }
-        })
-        .onConflictDoNothing();
-      console.log('✓ Created basic_info section');
-    }
-
-    // Check if couple_story exists
-    const coupleStory = await this.getContentSection('couple_story');
-    if (!coupleStory) {
-      await getDb()
-        .insert(contentSections)
-        .values({
-          sectionKey: 'couple_story',
-          data: {
-            groomBio: '',
-            brideBio: '',
-            ourStory: ''
-          }
-        })
-        .onConflictDoNothing();
-      console.log('✓ Created couple_story section');
-    }
-
-    // Check if venue_info exists
-    const venueInfo = await this.getContentSection('venue_info');
-    if (!venueInfo) {
-      await getDb()
-        .insert(contentSections)
-        .values({
-          sectionKey: 'venue_info',
-          data: {
-            venueName: 'Casakhasa Kemang',
-            venueAddress: 'Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia',
-            ceremonyTime: '2:00 PM - 3:30 PM',
-            receptionTime: '4:30 PM - 10:00 PM',
-            mapUrl: 'https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z'
-          }
-        })
-        .onConflictDoNothing();
-      console.log('✓ Created venue_info section');
-    }
-
-    console.log('Content sections seeding complete');
-  }
 }
 
 export class KeyValueStorage implements IStorage {
@@ -1081,9 +735,6 @@ export class KeyValueStorage implements IStorage {
     if (existingSettings.length === 0) {
       await this.initializeDefaultAppSettings();
     }
-
-    // Initialize default content sections if they don't exist
-    await this.seedContentSections();
   }
 
   private async initializeDefaultFeatureFlags() {
@@ -1532,196 +1183,6 @@ export class KeyValueStorage implements IStorage {
     
     await kv.set('welcome_screen', updated);
     return updated;
-  }
-  
-  // Content sections methods
-  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
-    const kv = this.ensureKvAvailable();
-    try {
-      const section = await kv.get(`content_section:${sectionKey}`);
-      return section || undefined;
-    } catch (error) {
-      console.error(`Error getting content section ${sectionKey}:`, error);
-      return undefined;
-    }
-  }
-  
-  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
-    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-      throw new Error("Cannot update content section with empty or invalid data");
-    }
-
-    const kv = this.ensureKvAvailable();
-    const existing = await this.getContentSection(sectionKey);
-    const existingData = (existing && typeof existing.data === 'object') ? existing.data as Record<string, any> : {};
-    const mergedData = { ...existingData, ...data };
-    
-    const section: ContentSection = {
-      id: existing?.id || Date.now(),
-      sectionKey,
-      data: mergedData,
-      updatedAt: new Date().toISOString()
-    };
-    
-    await kv.set(`content_section:${sectionKey}`, section);
-    return section;
-  }
-  
-  async getAllContentSections(): Promise<ContentSection[]> {
-    const kv = this.ensureKvAvailable();
-    try {
-      const sections: ContentSection[] = [];
-      const keys = ['basic_info', 'couple_story', 'venue_info'];
-      
-      for (const key of keys) {
-        const section = await kv.get(`content_section:${key}`);
-        if (section) {
-          sections.push(section);
-        }
-      }
-      
-      return sections;
-    } catch (error) {
-      console.error('Error getting all content sections:', error);
-      return [];
-    }
-  }
-  
-  // Content entries methods
-  async getContentEntries(category: string): Promise<ContentEntry[]> {
-    const kv = this.ensureKvAvailable();
-    try {
-      const entries = await kv.get(`content_entries:${category}`);
-      return entries || [];
-    } catch (error) {
-      console.error(`Error getting content entries for ${category}:`, error);
-      return [];
-    }
-  }
-  
-  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
-    const kv = this.ensureKvAvailable();
-    const entries = await this.getContentEntries(entryData.category);
-    
-    const entry: ContentEntry = {
-      id: Date.now(),
-      ...entryData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    entries.push(entry);
-    await kv.set(`content_entries:${entryData.category}`, entries);
-    return entry;
-  }
-  
-  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
-    if (!entryData.category) {
-      throw new Error("Category is required to update content entry");
-    }
-
-    const kv = this.ensureKvAvailable();
-    const entries = await this.getContentEntries(entryData.category);
-    const index = entries.findIndex(e => e.id === id);
-    
-    if (index === -1) {
-      return undefined;
-    }
-    
-    const existingData = (typeof entries[index].data === 'object' && entries[index].data !== null) 
-      ? entries[index].data as Record<string, any> 
-      : {};
-    const newData = (typeof entryData.data === 'object' && entryData.data !== null) 
-      ? entryData.data as Record<string, any> 
-      : {};
-    
-    entries[index] = {
-      ...entries[index],
-      ...entryData,
-      data: { ...existingData, ...newData },
-      updatedAt: new Date().toISOString()
-    };
-    
-    await kv.set(`content_entries:${entryData.category}`, entries);
-    return entries[index];
-  }
-  
-  async deleteContentEntry(id: number): Promise<boolean> {
-    const kv = this.ensureKvAvailable();
-    // Search all categories
-    const categories = ['schedule']; // Add more categories as needed
-    
-    for (const category of categories) {
-      const entries = await this.getContentEntries(category);
-      const index = entries.findIndex(e => e.id === id);
-      
-      if (index !== -1) {
-        entries.splice(index, 1);
-        await kv.set(`content_entries:${category}`, entries);
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  // Seed initial content sections
-  async seedContentSections(): Promise<void> {
-    console.log('Seeding initial content sections...');
-    const kv = this.ensureKvAvailable();
-    
-    // Check if basic_info exists
-    const basicInfo = await this.getContentSection('basic_info');
-    if (!basicInfo) {
-      await kv.set('content_section:basic_info', {
-        id: Date.now(),
-        sectionKey: 'basic_info',
-        data: {
-          groomName: 'Andreas',
-          brideName: 'Christine',
-          weddingDate: '2026-07-05T14:00:00.000Z',
-          weddingDateDisplay: 'July 5, 2026'
-        },
-        updatedAt: new Date().toISOString()
-      });
-      console.log('✓ Created basic_info section');
-    }
-
-    // Check if couple_story exists
-    const coupleStory = await this.getContentSection('couple_story');
-    if (!coupleStory) {
-      await kv.set('content_section:couple_story', {
-        id: Date.now() + 1,
-        sectionKey: 'couple_story',
-        data: {
-          groomBio: '',
-          brideBio: '',
-          ourStory: ''
-        },
-        updatedAt: new Date().toISOString()
-      });
-      console.log('✓ Created couple_story section');
-    }
-
-    // Check if venue_info exists
-    const venueInfo = await this.getContentSection('venue_info');
-    if (!venueInfo) {
-      await kv.set('content_section:venue_info', {
-        id: Date.now() + 2,
-        sectionKey: 'venue_info',
-        data: {
-          venueName: 'Casakhasa Kemang',
-          venueAddress: 'Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia',
-          ceremonyTime: '2:00 PM - 3:30 PM',
-          receptionTime: '4:30 PM - 10:00 PM',
-          mapUrl: 'https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z'
-        },
-        updatedAt: new Date().toISOString()
-      });
-      console.log('✓ Created venue_info section');
-    }
-
-    console.log('Content sections seeding complete');
   }
 }
 
