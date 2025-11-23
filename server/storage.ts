@@ -973,6 +973,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(contentEntries.id, id));
     return (result.rowCount || 0) > 0;
   }
+
+  // Seed initial content sections on server startup
+  async seedContentSections(): Promise<void> {
+    console.log('Seeding initial content sections...');
+    
+    // Check if basic_info exists
+    const basicInfo = await this.getContentSection('basic_info');
+    if (!basicInfo) {
+      await getDb()
+        .insert(contentSections)
+        .values({
+          sectionKey: 'basic_info',
+          data: {
+            groomName: 'Andreas',
+            brideName: 'Christine',
+            weddingDate: '2026-07-05T14:00:00.000Z',
+            weddingDateDisplay: 'July 5, 2026'
+          }
+        })
+        .onConflictDoNothing();
+      console.log('✓ Created basic_info section');
+    }
+
+    // Check if couple_story exists
+    const coupleStory = await this.getContentSection('couple_story');
+    if (!coupleStory) {
+      await getDb()
+        .insert(contentSections)
+        .values({
+          sectionKey: 'couple_story',
+          data: {
+            groomBio: '',
+            brideBio: '',
+            ourStory: ''
+          }
+        })
+        .onConflictDoNothing();
+      console.log('✓ Created couple_story section');
+    }
+
+    // Check if venue_info exists
+    const venueInfo = await this.getContentSection('venue_info');
+    if (!venueInfo) {
+      await getDb()
+        .insert(contentSections)
+        .values({
+          sectionKey: 'venue_info',
+          data: {
+            venueName: 'Casakhasa Kemang',
+            venueAddress: 'Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia',
+            ceremonyTime: '2:00 PM - 3:30 PM',
+            receptionTime: '4:30 PM - 10:00 PM',
+            mapUrl: 'https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z'
+          }
+        })
+        .onConflictDoNothing();
+      console.log('✓ Created venue_info section');
+    }
+
+    console.log('Content sections seeding complete');
+  }
 }
 
 export class KeyValueStorage implements IStorage {
@@ -1020,6 +1081,9 @@ export class KeyValueStorage implements IStorage {
     if (existingSettings.length === 0) {
       await this.initializeDefaultAppSettings();
     }
+
+    // Initialize default content sections if they don't exist
+    await this.seedContentSections();
   }
 
   private async initializeDefaultFeatureFlags() {
@@ -1470,41 +1534,194 @@ export class KeyValueStorage implements IStorage {
     return updated;
   }
   
-  // Content sections methods - Returns empty data until Replit DB integration is implemented
-  async getContentSection(_sectionKey: string): Promise<ContentSection | undefined> {
-    // TODO: Implement when Replit DB integration is added for content
-    return undefined;
+  // Content sections methods
+  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
+    const kv = this.ensureKvAvailable();
+    try {
+      const section = await kv.get(`content_section:${sectionKey}`);
+      return section || undefined;
+    } catch (error) {
+      console.error(`Error getting content section ${sectionKey}:`, error);
+      return undefined;
+    }
   }
   
-  async updateContentSection(_sectionKey: string, _data: any): Promise<ContentSection> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      throw new Error("Cannot update content section with empty or invalid data");
+    }
+
+    const kv = this.ensureKvAvailable();
+    const existing = await this.getContentSection(sectionKey);
+    const existingData = (existing && typeof existing.data === 'object') ? existing.data as Record<string, any> : {};
+    const mergedData = { ...existingData, ...data };
+    
+    const section: ContentSection = {
+      id: existing?.id || Date.now(),
+      sectionKey,
+      data: mergedData,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await kv.set(`content_section:${sectionKey}`, section);
+    return section;
   }
   
   async getAllContentSections(): Promise<ContentSection[]> {
-    // TODO: Implement when Replit DB integration is added for content
-    return [];
+    const kv = this.ensureKvAvailable();
+    try {
+      const sections: ContentSection[] = [];
+      const keys = ['basic_info', 'couple_story', 'venue_info'];
+      
+      for (const key of keys) {
+        const section = await kv.get(`content_section:${key}`);
+        if (section) {
+          sections.push(section);
+        }
+      }
+      
+      return sections;
+    } catch (error) {
+      console.error('Error getting all content sections:', error);
+      return [];
+    }
   }
   
-  // Content entries methods - Returns empty data until Replit DB integration is implemented
-  async getContentEntries(_category: string): Promise<ContentEntry[]> {
-    // TODO: Implement when Replit DB integration is added for content
-    return [];
+  // Content entries methods
+  async getContentEntries(category: string): Promise<ContentEntry[]> {
+    const kv = this.ensureKvAvailable();
+    try {
+      const entries = await kv.get(`content_entries:${category}`);
+      return entries || [];
+    } catch (error) {
+      console.error(`Error getting content entries for ${category}:`, error);
+      return [];
+    }
   }
   
-  async createContentEntry(_entryData: InsertContentEntry): Promise<ContentEntry> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
+    const kv = this.ensureKvAvailable();
+    const entries = await this.getContentEntries(entryData.category);
+    
+    const entry: ContentEntry = {
+      id: Date.now(),
+      ...entryData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    entries.push(entry);
+    await kv.set(`content_entries:${entryData.category}`, entries);
+    return entry;
   }
   
-  async updateContentEntry(_id: number, _entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
+    if (!entryData.category) {
+      throw new Error("Category is required to update content entry");
+    }
+
+    const kv = this.ensureKvAvailable();
+    const entries = await this.getContentEntries(entryData.category);
+    const index = entries.findIndex(e => e.id === id);
+    
+    if (index === -1) {
+      return undefined;
+    }
+    
+    const existingData = (typeof entries[index].data === 'object' && entries[index].data !== null) 
+      ? entries[index].data as Record<string, any> 
+      : {};
+    const newData = (typeof entryData.data === 'object' && entryData.data !== null) 
+      ? entryData.data as Record<string, any> 
+      : {};
+    
+    entries[index] = {
+      ...entries[index],
+      ...entryData,
+      data: { ...existingData, ...newData },
+      updatedAt: new Date().toISOString()
+    };
+    
+    await kv.set(`content_entries:${entryData.category}`, entries);
+    return entries[index];
   }
   
-  async deleteContentEntry(_id: number): Promise<boolean> {
-    // TODO: Implement when Replit DB integration is added for content
-    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  async deleteContentEntry(id: number): Promise<boolean> {
+    const kv = this.ensureKvAvailable();
+    // Search all categories
+    const categories = ['schedule']; // Add more categories as needed
+    
+    for (const category of categories) {
+      const entries = await this.getContentEntries(category);
+      const index = entries.findIndex(e => e.id === id);
+      
+      if (index !== -1) {
+        entries.splice(index, 1);
+        await kv.set(`content_entries:${category}`, entries);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Seed initial content sections
+  async seedContentSections(): Promise<void> {
+    console.log('Seeding initial content sections...');
+    const kv = this.ensureKvAvailable();
+    
+    // Check if basic_info exists
+    const basicInfo = await this.getContentSection('basic_info');
+    if (!basicInfo) {
+      await kv.set('content_section:basic_info', {
+        id: Date.now(),
+        sectionKey: 'basic_info',
+        data: {
+          groomName: 'Andreas',
+          brideName: 'Christine',
+          weddingDate: '2026-07-05T14:00:00.000Z',
+          weddingDateDisplay: 'July 5, 2026'
+        },
+        updatedAt: new Date().toISOString()
+      });
+      console.log('✓ Created basic_info section');
+    }
+
+    // Check if couple_story exists
+    const coupleStory = await this.getContentSection('couple_story');
+    if (!coupleStory) {
+      await kv.set('content_section:couple_story', {
+        id: Date.now() + 1,
+        sectionKey: 'couple_story',
+        data: {
+          groomBio: '',
+          brideBio: '',
+          ourStory: ''
+        },
+        updatedAt: new Date().toISOString()
+      });
+      console.log('✓ Created couple_story section');
+    }
+
+    // Check if venue_info exists
+    const venueInfo = await this.getContentSection('venue_info');
+    if (!venueInfo) {
+      await kv.set('content_section:venue_info', {
+        id: Date.now() + 2,
+        sectionKey: 'venue_info',
+        data: {
+          venueName: 'Casakhasa Kemang',
+          venueAddress: 'Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia',
+          ceremonyTime: '2:00 PM - 3:30 PM',
+          receptionTime: '4:30 PM - 10:00 PM',
+          mapUrl: 'https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z'
+        },
+        updatedAt: new Date().toISOString()
+      });
+      console.log('✓ Created venue_info section');
+    }
+
+    console.log('Content sections seeding complete');
   }
 }
 

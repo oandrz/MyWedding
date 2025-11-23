@@ -78,6 +78,15 @@ const audioUpload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Seed content sections if using DatabaseStorage
+  if (typeof (storage as any).seedContentSections === 'function') {
+    try {
+      await (storage as any).seedContentSections();
+    } catch (err) {
+      log(`Failed to seed content sections: ${err}`, 'database');
+    }
+  }
+
   // Start Flask server with improved error handling
   try {
     const { exec } = await import('child_process');
