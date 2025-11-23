@@ -69,17 +69,18 @@ const HeroSection = () => {
   });
 
   // Fetch basic info from CMS
-  const { data: basicInfoData, isLoading: basicInfoLoading } = useQuery<{ section: { data: any } }>({
+  const { data: basicInfoData, isLoading: basicInfoLoading } = useQuery<{ section: any }>({
     queryKey: ["/api/content/basic_info"],
   });
 
-  const groomName = basicInfoData?.section?.data?.groomName || "Andreas";
-  const brideName = basicInfoData?.section?.data?.brideName || "Christine";
-  const weddingDateStr = basicInfoData?.section?.data?.weddingDate || "2026-07-05T14:00:00.000Z";
-  const weddingDateDisplay = basicInfoData?.section?.data?.weddingDateDisplay || "July 5, 2026";
+  const contentData = basicInfoData?.section?.data || basicInfoData?.section || {};
+  const groomName = contentData?.groomName || "Andreas";
+  const brideName = contentData?.brideName || "Christine";
+  const weddingDateStr = contentData?.weddingDate || "2026-07-05T14:00:00.000Z";
+  const weddingDateDisplay = contentData?.weddingDateDisplay || "July 5, 2026";
   
-  // Parse wedding date
-  const weddingDate = new Date(weddingDateStr);
+  // Parse wedding date - memoized to prevent infinite loop
+  const weddingDate = useMemo(() => new Date(weddingDateStr), [weddingDateStr]);
   
   // Calculate and update the countdown
   useEffect(() => {

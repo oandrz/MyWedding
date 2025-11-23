@@ -28,20 +28,23 @@ const CoupleSection = () => {
   });
 
   // Fetch basic info for names
-  const { data: basicInfoData } = useQuery<{ section: { data: any } }>({
+  const { data: basicInfoData } = useQuery<{ section: any }>({
     queryKey: ["/api/content/basic_info"],
   });
 
   // Fetch couple story for bios and story text
-  const { data: coupleStoryData, isLoading: coupleStoryLoading } = useQuery<{ section: { data: any } }>({
+  const { data: coupleStoryData, isLoading: coupleStoryLoading } = useQuery<{ section: any }>({
     queryKey: ["/api/content/couple_story"],
   });
 
-  const groomName = basicInfoData?.section?.data?.groomName || "Andreas";
-  const brideName = basicInfoData?.section?.data?.brideName || "Christine";
-  const groomBio = coupleStoryData?.section?.data?.groomBio || `${groomName} is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances ${brideName}'s energetic personality.`;
-  const brideBio = coupleStoryData?.section?.data?.brideBio || `${brideName} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.`;
-  const ourStory = coupleStoryData?.section?.data?.ourStory || `Our story began five years ago at a mutual friend's birthday party. ${brideName} was helping with decorations when she accidentally spilled punch on ${groomName}'s new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, ${groomName} proposed during a sunrise hike to our favorite mountain lookout.`;
+  const basicContent = basicInfoData?.section?.data || basicInfoData?.section || {};
+  const storyContent = coupleStoryData?.section?.data || coupleStoryData?.section || {};
+  
+  const groomName = basicContent?.groomName || "Andreas";
+  const brideName = basicContent?.brideName || "Christine";
+  const groomBio = storyContent?.groomBio || `${groomName} is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances ${brideName}'s energetic personality.`;
+  const brideBio = storyContent?.brideBio || `${brideName} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.`;
+  const ourStory = storyContent?.ourStory || `Our story began five years ago at a mutual friend's birthday party. ${brideName} was helping with decorations when she accidentally spilled punch on ${groomName}'s new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, ${groomName} proposed during a sunrise hike to our favorite mountain lookout.`;
 
   // Get the active profile images or fallback to default
   const brideImage = brideImagesData?.images?.find(img => img.isActive)?.imageUrl || 

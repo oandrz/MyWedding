@@ -18,23 +18,26 @@ const DetailsSection = () => {
   const isScheduleInView = useInView(scheduleRef, { once: true, amount: 0.3 });
 
   // Fetch basic info for wedding date
-  const { data: basicInfoData } = useQuery<{ section: { data: any } }>({
+  const { data: basicInfoData } = useQuery<{ section: any }>({
     queryKey: ["/api/content/basic_info"],
   });
 
   // Fetch venue info
-  const { data: venueInfoData, isLoading: venueInfoLoading } = useQuery<{ section: { data: any } }>({
+  const { data: venueInfoData, isLoading: venueInfoLoading } = useQuery<{ section: any }>({
     queryKey: ["/api/content/venue_info"],
   });
 
-  const weddingDateStr = basicInfoData?.section?.data?.weddingDate || "2026-07-05T14:00:00.000Z";
+  const basicContent = basicInfoData?.section?.data || basicInfoData?.section || {};
+  const venueContent = venueInfoData?.section?.data || venueInfoData?.section || {};
+
+  const weddingDateStr = basicContent?.weddingDate || "2026-07-05T14:00:00.000Z";
   const weddingDate = new Date(weddingDateStr);
   
-  const venueName = venueInfoData?.section?.data?.venueName || "Casakhasa Kemang";
-  const venueAddress = venueInfoData?.section?.data?.venueAddress || "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia";
-  const ceremonyTime = venueInfoData?.section?.data?.ceremonyTime || "2:00 PM - 3:30 PM";
-  const receptionTime = venueInfoData?.section?.data?.receptionTime || "4:30 PM - 10:00 PM";
-  const mapUrl = venueInfoData?.section?.data?.mapUrl || "https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z";
+  const venueName = venueContent?.venueName || "Casakhasa Kemang";
+  const venueAddress = venueContent?.venueAddress || "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia";
+  const ceremonyTime = venueContent?.ceremonyTime || "2:00 PM - 3:30 PM";
+  const receptionTime = venueContent?.receptionTime || "4:30 PM - 10:00 PM";
+  const mapUrl = venueContent?.mapUrl || "https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z";
   
   // Format wedding date
   const formattedDate = new Intl.DateTimeFormat('en-US', {
