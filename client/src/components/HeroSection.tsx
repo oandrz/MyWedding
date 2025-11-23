@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
@@ -68,19 +67,25 @@ const HeroSection = () => {
     minutes: 0,
     seconds: 0
   });
+
+  // Fetch basic info from CMS
+  const { data: basicInfoData, isLoading: basicInfoLoading } = useQuery<{ section: { data: any } }>({
+    queryKey: ["/api/content/basic_info"],
+  });
+
+  const groomName = basicInfoData?.section?.data?.groomName || "Andreas";
+  const brideName = basicInfoData?.section?.data?.brideName || "Christine";
+  const weddingDateStr = basicInfoData?.section?.data?.weddingDate || "2026-07-05T14:00:00.000Z";
+  const weddingDateDisplay = basicInfoData?.section?.data?.weddingDateDisplay || "July 5, 2026";
   
-  // Format the wedding date
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  }).format(WEDDING_DATE);
+  // Parse wedding date
+  const weddingDate = new Date(weddingDateStr);
   
   // Calculate and update the countdown
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      const difference = WEDDING_DATE.getTime() - now;
+      const difference = weddingDate.getTime() - now;
       
       if (difference > 0) {
         setTimeLeft({
@@ -98,7 +103,7 @@ const HeroSection = () => {
     const timer = setInterval(calculateTimeLeft, 1000);
     
     return () => clearInterval(timer);
-  }, []);
+  }, [weddingDate]);
   
   // Format time with leading zeros
   const formatTime = (time: number): string => {
@@ -241,7 +246,7 @@ const HeroSection = () => {
           className="text-5xl md:text-7xl font-cormorant font-light text-white mb-8"
           variants={fadeIn}
         >
-          {GROOM_NAME} & {BRIDE_NAME}
+          {basicInfoLoading ? "Loading..." : `${groomName} & ${brideName}`}
         </motion.h1>
         
         <motion.div 
@@ -258,7 +263,7 @@ const HeroSection = () => {
           variants={fadeIn}
         >
           <p className="text-xl md:text-2xl font-cormorant text-white">
-            {formattedDate}
+            {basicInfoLoading ? "..." : weddingDateDisplay}
           </p>
           <div className="mt-1 text-sm text-white/80 font-montserrat uppercase tracking-wider">Save the Date</div>
         </motion.div>
