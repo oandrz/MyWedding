@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen, contentSections, type ContentSection, type InsertContentSection, contentEntries, type ContentEntry, type InsertContentEntry } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import Database from "@replit/database";
@@ -49,6 +49,17 @@ export interface IStorage {
   // Welcome screen methods
   getWelcomeScreen(): Promise<WelcomeScreen>;
   updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen>;
+  
+  // Content sections methods
+  getContentSection(sectionKey: string): Promise<ContentSection | undefined>;
+  updateContentSection(sectionKey: string, data: any): Promise<ContentSection>;
+  getAllContentSections(): Promise<ContentSection[]>;
+  
+  // Content entries methods
+  getContentEntries(category: string): Promise<ContentEntry[]>;
+  createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry>;
+  updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined>;
+  deleteContentEntry(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -59,12 +70,16 @@ export class MemStorage implements IStorage {
   private featureFlags: Map<string, FeatureFlag>;
   private appSettings: Map<string, AppSetting>;
   private welcomeScreenData: WelcomeScreen | null;
+  private contentSectionsMap: Map<string, ContentSection>;
+  private contentEntriesMap: Map<number, ContentEntry>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
   currentConfigImageId: number;
   currentFeatureFlagId: number;
   currentAppSettingId: number;
+  currentContentSectionId: number;
+  currentContentEntryId: number;
 
   constructor() {
     this.users = new Map();
@@ -74,18 +89,23 @@ export class MemStorage implements IStorage {
     this.featureFlags = new Map();
     this.appSettings = new Map();
     this.welcomeScreenData = null;
+    this.contentSectionsMap = new Map();
+    this.contentEntriesMap = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
     this.currentConfigImageId = 1;
     this.currentFeatureFlagId = 1;
     this.currentAppSettingId = 1;
+    this.currentContentSectionId = 1;
+    this.currentContentEntryId = 1;
 
     // Initialize default images and feature flags
     this.initializeDefaultImages();
     this.initializeDefaultFeatureFlags();
     this.initializeDefaultAppSettings();
     this.initializeDefaultWelcomeScreen();
+    this.initializeDefaultContent();
   }
   
   private initializeDefaultWelcomeScreen() {
@@ -137,6 +157,89 @@ export class MemStorage implements IStorage {
         updatedAt: new Date().toISOString()
       };
       this.configImages.set(`gallery_default_${index + 1}`, galleryImage);
+    });
+  }
+
+  private initializeDefaultContent() {
+    // Initialize content sections with hardcoded values
+    const weddingDate = new Date('July 5, 2026 14:00:00');
+    
+    // Basic Info section
+    const basicInfo: ContentSection = {
+      id: this.currentContentSectionId++,
+      sectionKey: 'basic_info',
+      data: {
+        groomName: 'Andreas',
+        brideName: 'Christine Natasya Serena',
+        weddingDate: weddingDate.toISOString(),
+        weddingTime: '2:00 PM'
+      },
+      updatedAt: new Date().toISOString()
+    };
+    this.contentSectionsMap.set('basic_info', basicInfo);
+    
+    // Couple Story section
+    const coupleStory: ContentSection = {
+      id: this.currentContentSectionId++,
+      sectionKey: 'couple_story',
+      data: {
+        groomBio: "Andreas is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances Christine Natasya Serena's energetic personality.",
+        brideBio: "Christine Natasya Serena is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.",
+        ourStory: "Our story began five years ago at a mutual friend's birthday party. Christine Natasya Serena was helping with decorations when she accidentally spilled punch on Andreas's new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, Andreas proposed during a sunrise hike to our favorite mountain lookout."
+      },
+      updatedAt: new Date().toISOString()
+    };
+    this.contentSectionsMap.set('couple_story', coupleStory);
+    
+    // Venue Info section
+    const venueInfo: ContentSection = {
+      id: this.currentContentSectionId++,
+      sectionKey: 'venue_info',
+      data: {
+        venueName: 'Casakhasa Kemang',
+        address: 'Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia',
+        ceremonyTime: '2:00 PM - 3:30 PM',
+        receptionTime: '4:30 PM - 10:00 PM',
+        mapUrl: 'https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__'
+      },
+      updatedAt: new Date().toISOString()
+    };
+    this.contentSectionsMap.set('venue_info', venueInfo);
+    
+    // Initialize schedule entries
+    const scheduleItems = [
+      {
+        title: "Ceremony",
+        time: "2:00 PM - 3:30 PM",
+        description: "Exchange of vows and rings in a beautiful ceremony at St. Mary's Cathedral"
+      },
+      {
+        title: "Cocktail Hour",
+        time: "4:00 PM - 5:00 PM",
+        description: "Enjoy hors d'oeuvres and drinks while the wedding party takes photos"
+      },
+      {
+        title: "Dinner Reception",
+        time: "5:30 PM - 7:30 PM",
+        description: "Elegant dinner, toasts, and speeches celebrating the newlyweds"
+      },
+      {
+        title: "Dancing & Celebration",
+        time: "8:00 PM - 10:00 PM",
+        description: "Dance the night away with music, cake cutting, and joyous celebration"
+      }
+    ];
+    
+    scheduleItems.forEach((item, index) => {
+      const entry: ContentEntry = {
+        id: this.currentContentEntryId++,
+        category: 'schedule',
+        order: index,
+        data: item,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.contentEntriesMap.set(entry.id, entry);
     });
   }
 
@@ -430,6 +533,78 @@ export class MemStorage implements IStorage {
     };
     return this.welcomeScreenData;
   }
+  
+  // Content sections methods
+  async getContentSection(sectionKey: string): Promise<ContentSection | undefined> {
+    return this.contentSectionsMap.get(sectionKey);
+  }
+  
+  async updateContentSection(sectionKey: string, data: any): Promise<ContentSection> {
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      throw new Error("Cannot update content section with empty or invalid data");
+    }
+    
+    const existing = this.contentSectionsMap.get(sectionKey);
+    const id = existing?.id ?? this.currentContentSectionId++;
+    const now = new Date();
+    
+    // Merge new data with existing data instead of overwriting
+    const existingData = (existing && typeof existing.data === 'object') ? existing.data : {};
+    const mergedData = { ...existingData, ...data };
+    
+    const section: ContentSection = {
+      id,
+      sectionKey,
+      data: mergedData,
+      updatedAt: now.toISOString()
+    };
+    this.contentSectionsMap.set(sectionKey, section);
+    return section;
+  }
+  
+  async getAllContentSections(): Promise<ContentSection[]> {
+    return Array.from(this.contentSectionsMap.values());
+  }
+  
+  // Content entries methods
+  async getContentEntries(category: string): Promise<ContentEntry[]> {
+    return Array.from(this.contentEntriesMap.values())
+      .filter(entry => entry.category === category)
+      .sort((a, b) => a.order - b.order);
+  }
+  
+  async createContentEntry(entryData: InsertContentEntry): Promise<ContentEntry> {
+    const id = this.currentContentEntryId++;
+    const now = new Date();
+    const entry: ContentEntry = {
+      ...entryData,
+      id,
+      order: entryData.order ?? 0,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+    this.contentEntriesMap.set(id, entry);
+    return entry;
+  }
+  
+  async updateContentEntry(id: number, entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
+    const existing = this.contentEntriesMap.get(id);
+    if (!existing) return undefined;
+    
+    const now = new Date();
+    const updated: ContentEntry = {
+      ...existing,
+      ...entryData,
+      id,
+      updatedAt: now.toISOString()
+    };
+    this.contentEntriesMap.set(id, updated);
+    return updated;
+  }
+  
+  async deleteContentEntry(id: number): Promise<boolean> {
+    return this.contentEntriesMap.delete(id);
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -687,6 +862,43 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+  
+  // Content sections methods - Returns empty data until DB tables are created
+  async getContentSection(_sectionKey: string): Promise<ContentSection | undefined> {
+    // TODO: Implement when content_sections table is created via Drizzle migration
+    return undefined;
+  }
+  
+  async updateContentSection(_sectionKey: string, _data: any): Promise<ContentSection> {
+    // TODO: Implement when content_sections table is created via Drizzle migration
+    throw new Error("Content management requires database tables - currently only available in development mode");
+  }
+  
+  async getAllContentSections(): Promise<ContentSection[]> {
+    // TODO: Implement when content_sections table is created via Drizzle migration
+    return [];
+  }
+  
+  // Content entries methods - Returns empty data until DB tables are created
+  async getContentEntries(_category: string): Promise<ContentEntry[]> {
+    // TODO: Implement when content_entries table is created via Drizzle migration
+    return [];
+  }
+  
+  async createContentEntry(_entryData: InsertContentEntry): Promise<ContentEntry> {
+    // TODO: Implement when content_entries table is created via Drizzle migration
+    throw new Error("Content management requires database tables - currently only available in development mode");
+  }
+  
+  async updateContentEntry(_id: number, _entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
+    // TODO: Implement when content_entries table is created via Drizzle migration
+    throw new Error("Content management requires database tables - currently only available in development mode");
+  }
+  
+  async deleteContentEntry(_id: number): Promise<boolean> {
+    // TODO: Implement when content_entries table is created via Drizzle migration
+    throw new Error("Content management requires database tables - currently only available in development mode");
   }
 }
 
@@ -1183,6 +1395,43 @@ export class KeyValueStorage implements IStorage {
     
     await kv.set('welcome_screen', updated);
     return updated;
+  }
+  
+  // Content sections methods - Returns empty data until Replit DB integration is implemented
+  async getContentSection(_sectionKey: string): Promise<ContentSection | undefined> {
+    // TODO: Implement when Replit DB integration is added for content
+    return undefined;
+  }
+  
+  async updateContentSection(_sectionKey: string, _data: any): Promise<ContentSection> {
+    // TODO: Implement when Replit DB integration is added for content
+    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  }
+  
+  async getAllContentSections(): Promise<ContentSection[]> {
+    // TODO: Implement when Replit DB integration is added for content
+    return [];
+  }
+  
+  // Content entries methods - Returns empty data until Replit DB integration is implemented
+  async getContentEntries(_category: string): Promise<ContentEntry[]> {
+    // TODO: Implement when Replit DB integration is added for content
+    return [];
+  }
+  
+  async createContentEntry(_entryData: InsertContentEntry): Promise<ContentEntry> {
+    // TODO: Implement when Replit DB integration is added for content
+    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  }
+  
+  async updateContentEntry(_id: number, _entryData: Partial<InsertContentEntry>): Promise<ContentEntry | undefined> {
+    // TODO: Implement when Replit DB integration is added for content
+    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
+  }
+  
+  async deleteContentEntry(_id: number): Promise<boolean> {
+    // TODO: Implement when Replit DB integration is added for content
+    throw new Error("Content management requires Replit DB integration - currently only available in development mode");
   }
 }
 
