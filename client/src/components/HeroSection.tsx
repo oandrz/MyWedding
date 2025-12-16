@@ -253,38 +253,38 @@ const HeroSection = () => {
           <div className="h-0.5 w-12 md:w-24 bg-primary"></div>
         </motion.div>
         
+        {/* Date + RSVP Button Container */}
         <motion.div 
-          className="mb-12 border border-white/20 rounded-lg py-4 px-8 bg-black/10 inline-block mx-auto backdrop-blur-sm"
+          className="flex flex-row items-center justify-center gap-4 mb-8"
           variants={fadeIn}
         >
-          <p className="text-xl md:text-2xl font-cormorant text-white">
-            {formattedDate}
-          </p>
-          <div className="mt-1 text-sm text-white/80 font-montserrat uppercase tracking-wider">Save the Date</div>
+          <div className="border border-white/20 rounded-lg py-3 px-6 bg-black/10 backdrop-blur-sm">
+            <p className="text-lg md:text-2xl font-cormorant text-white">
+              {formattedDate}
+            </p>
+            <div className="mt-1 text-xs md:text-sm text-white/80 font-montserrat uppercase tracking-wider">Save the Date</div>
+          </div>
+          
+          <motion.a 
+            href="#rsvp" 
+            className="custom-button px-6 py-3 bg-primary text-white font-montserrat uppercase tracking-wider text-xs md:text-sm hover:bg-opacity-90 hover:shadow-lg transition-all duration-300 rounded-sm border border-white/20"
+            whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.5)" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="flex items-center gap-2">
+              <span>RSVP Now</span>
+              <span className="text-xs">♥</span>
+            </span>
+          </motion.a>
         </motion.div>
         
-        <motion.a 
-          href="#rsvp" 
-          className="custom-button inline-block px-8 py-3 bg-primary text-white font-montserrat uppercase tracking-wider text-sm hover:bg-opacity-90 hover:shadow-lg transition-all duration-300 rounded-sm border border-white/20"
-          whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.5)" }}
-          whileTap={{ scale: 0.95 }}
-          variants={fadeIn}
+        {/* Integrated Countdown - Matching Save the Date Style */}
+        <motion.div 
+          className="w-full max-w-3xl mx-auto border border-white/20 rounded-lg py-4 md:py-6 px-4 md:px-8 bg-black/10 backdrop-blur-sm"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1, duration: 0.8 }}
         >
-          <span className="flex items-center gap-2">
-            <span>RSVP Now</span>
-            <span className="text-xs">♥</span>
-          </span>
-        </motion.a>
-      </motion.div>
-      
-      {/* Integrated Countdown - Matching Save the Date Style */}
-      <motion.div 
-        className="absolute bottom-32 sm:bottom-28 md:bottom-24 left-0 right-0 z-10 px-4"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1, duration: 0.8 }}
-      >
-        <div className="max-w-3xl mx-auto border border-white/20 rounded-lg py-6 px-4 md:px-8 bg-black/10 backdrop-blur-sm">
           <div className="flex justify-center items-center text-center gap-3 md:gap-6">
             {/* Days */}
             <motion.div 
@@ -293,7 +293,7 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.2, duration: 0.6 }}
             >
-              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-2xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.days)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
@@ -311,7 +311,7 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.3, duration: 0.6 }}
             >
-              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-2xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.hours)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
@@ -329,7 +329,7 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.4, duration: 0.6 }}
             >
-              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-2xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.minutes)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
@@ -347,7 +347,7 @@ const HeroSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5, duration: 0.6 }}
             >
-              <div className="text-3xl md:text-5xl font-cormorant text-white mb-1">
+              <div className="text-2xl md:text-5xl font-cormorant text-white mb-1">
                 {formatTime(timeLeft.seconds)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
@@ -355,7 +355,7 @@ const HeroSection = () => {
               </div>
             </motion.div>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
       
       <motion.div 
