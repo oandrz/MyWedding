@@ -279,7 +279,7 @@ const HeroSection = () => {
       
       {/* Integrated Countdown - Matching Save the Date Style */}
       <motion.div 
-        className="absolute bottom-24 left-0 right-0 z-10 px-4"
+        className="absolute bottom-32 sm:bottom-28 md:bottom-24 left-0 right-0 z-10 px-4"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1, duration: 0.8 }}
