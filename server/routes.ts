@@ -839,6 +839,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Migration endpoint to generate thumbnails for existing gallery images (admin only)
+  app.post("/api/admin/migrate-thumbnails", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const galleryImages = await storage.getConfigImagesByType("gallery");
+      const results: { imageKey: string; status: string; thumbnailUrl?: string }[] = [];
+
+      for (const image of galleryImages) {
+        // Skip if already has a thumbnail
+        if ((image as any).thumbnailUrl) {
+          results.push({ imageKey: image.imageKey, status: "skipped - already has thumbnail" });
+          continue;
+        }
+
+        // Check if it's an internal storage URL (contains /storage/) or external URL
+        const isInternalStorage = image.imageUrl.includes("/storage/");
+        const isExternalUrl = image.imageUrl.startsWith("http") && !isInternalStorage;
+        
+        // Skip external URLs (like Unsplash) - they have built-in resizing
+        if (isExternalUrl) {
+          results.push({ imageKey: image.imageKey, status: "skipped - external URL" });
+          continue;
+        }
+
+        try {
+          // Parse the URL to get object path
+          const objectPath = weddingObjectStorage.parsePublicUrl(image.imageUrl) || image.imageUrl;
+          
+          if (!objectPath) {
+            results.push({ imageKey: image.imageKey, status: "skipped - could not parse URL" });
+            continue;
+          }
+          
+          // Fetch the original image from object storage
+          const originalBuffer = await weddingObjectStorage.downloadFileAsBuffer(objectPath);
+          
+          // Generate thumbnail
+          const { thumbnailBuffer, thumbnailContentType } = await optimizeImage(originalBuffer);
+          
+          // Generate unique thumbnail filename
+          const originalFilename = image.imageUrl.split('/').pop() || `${image.imageKey}.jpg`;
+          const thumbnailFilename = generateThumbnailFilename(originalFilename);
+          
+          // Upload thumbnail
+          const thumbnailUrl = await weddingObjectStorage.uploadFile(
+            thumbnailBuffer,
+            thumbnailFilename,
+            thumbnailContentType,
+            "admin/gallery/thumbnails"
+          );
+
+          // Update the config image with the new thumbnail URL
+          // Only pass fields that belong to InsertConfigImage to avoid schema errors
+          await storage.updateConfigImage(image.imageKey, {
+            imageKey: image.imageKey,
+            imageUrl: image.imageUrl,
+            thumbnailUrl,
+            imageType: image.imageType,
+            title: image.title,
+            description: image.description,
+            isActive: image.isActive ?? true,
+          });
+
+          results.push({ imageKey: image.imageKey, status: "success", thumbnailUrl });
+        } catch (imgError) {
+          console.error(`Failed to migrate thumbnail for ${image.imageKey}:`, imgError);
+          results.push({ imageKey: image.imageKey, status: `failed - ${(imgError as Error).message}` });
+        }
+      }
+
+      // Invalidate cache after migration
+      invalidateConfigImagesCache();
+
+      res.status(200).json({
+        message: "Thumbnail migration completed",
+        results,
+        summary: {
+          total: galleryImages.length,
+          success: results.filter(r => r.status === "success").length,
+          skipped: results.filter(r => r.status.startsWith("skipped")).length,
+          failed: results.filter(r => r.status.startsWith("failed")).length,
+        }
+      });
+    } catch (error) {
+      console.error("Thumbnail migration error:", error);
+      res.status(500).json({ message: "Failed to migrate thumbnails" });
+    }
+  });
+
   // Feature Flags API Routes
   
   // Get all feature flags (public endpoint for frontend)

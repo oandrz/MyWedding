@@ -103,6 +103,22 @@ export class WeddingObjectStorageService {
     return url;
   }
 
+  // Download a file as Buffer (for internal processing)
+  async downloadFileAsBuffer(objectPath: string): Promise<Buffer> {
+    const bucket = objectStorageClient.bucket(this.bucketName);
+    const file = bucket.file(objectPath);
+
+    // Check if file exists
+    const [exists] = await file.exists();
+    if (!exists) {
+      throw new ObjectNotFoundError();
+    }
+
+    // Download file contents
+    const [contents] = await file.download();
+    return contents;
+  }
+
   // Download and stream a file
   async downloadFile(objectPath: string, res: Response): Promise<void> {
     try {
