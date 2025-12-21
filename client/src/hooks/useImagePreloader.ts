@@ -34,10 +34,12 @@ export function useImagePreloader() {
   useEffect(() => {
     if (!galleryData?.images) return;
 
-    galleryData.images.forEach((img, index) => {
-      const optimizedUrl = img.imageUrl.includes('unsplash.com') 
-        ? getResponsiveImageUrl(img.imageUrl, 600, 70)
-        : img.imageUrl;
+    galleryData.images.forEach((img) => {
+      // Prefer thumbnail URL if available, otherwise use original
+      const thumbnailUrl = (img as any).thumbnailUrl || img.imageUrl;
+      const optimizedUrl = thumbnailUrl.includes('unsplash.com') 
+        ? getResponsiveImageUrl(thumbnailUrl, 600, 70)
+        : thumbnailUrl;
       
       if (preloadedUrls.current.has(optimizedUrl)) return;
       preloadedUrls.current.add(optimizedUrl);

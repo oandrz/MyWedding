@@ -43,6 +43,7 @@ export const configImages = pgTable("config_images", {
   id: serial("id").primaryKey(),
   imageKey: text("image_key").notNull().unique(), // "banner" or "gallery_default_1", etc.
   imageUrl: text("image_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"), // Optimized thumbnail for fast loading
   imageType: text("image_type").notNull(), // "banner" or "gallery"
   title: text("title"),
   description: text("description"),
@@ -63,6 +64,7 @@ export const insertMediaSchema = createInsertSchema(media).pick({
 export const insertConfigImageSchema = createInsertSchema(configImages).pick({
   imageKey: true,
   imageUrl: true,
+  thumbnailUrl: true,
   imageType: true,
   title: true,
   description: true,

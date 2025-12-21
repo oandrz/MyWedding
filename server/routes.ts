@@ -15,6 +15,7 @@ import { googleDriveService } from "./googleDriveService";
 import { weddingObjectStorage, ObjectNotFoundError } from "./objectStorage";
 import { sessionStore } from "./session";
 import { generateCSRFToken, deleteCSRFToken } from "./middleware/csrf";
+import { optimizeImage, generateThumbnailFilename } from "./imageOptimizer";
 
 // Simple in-memory cache for frequently accessed data
 interface CacheEntry<T> {
@@ -694,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid image type. Must be one of: ' + validImageTypes.join(', ') });
       }
 
-      // Upload to App Storage
+      // Upload original to App Storage
       const imageUrl = await weddingObjectStorage.uploadAdminImage(
         req.file.buffer,
         uniqueFilename,
@@ -702,10 +703,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageType as "banner" | "gallery" | "bride-profile" | "groom-profile"
       );
 
+      // Generate and upload thumbnail for gallery images
+      let thumbnailUrl: string | undefined;
+      if (imageType === "gallery") {
+        try {
+          const { thumbnailBuffer, thumbnailContentType } = await optimizeImage(req.file.buffer);
+          const thumbnailFilename = generateThumbnailFilename(uniqueFilename);
+          thumbnailUrl = await weddingObjectStorage.uploadFile(
+            thumbnailBuffer,
+            thumbnailFilename,
+            thumbnailContentType,
+            "admin/gallery/thumbnails"
+          );
+          console.log(`Generated thumbnail: ${thumbnailUrl}`);
+        } catch (thumbError) {
+          console.error("Thumbnail generation failed, using original:", thumbError);
+        }
+      }
+
       // Create config image data
       const configImageData = {
         imageKey,
         imageUrl,
+        thumbnailUrl,
         imageType,
         title: title || undefined,
         description: description || undefined,

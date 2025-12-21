@@ -22,29 +22,32 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
   return url.toString();
 };
 
-// Optimized Image Component with instant loading (images preloaded in background)
-const OptimizedImage = ({ src, alt, index }: { src: string; alt: string; index: number }) => {
+// Optimized Image Component - uses thumbnail for fast loading
+const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: string; index: number }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   
+  // Fallback to empty string if thumbnail is undefined
+  const safeThumb = thumbnail || '';
+  
   // Check if the image is already cached by the browser
   useEffect(() => {
-    if (!imgRef.current) return;
+    if (!imgRef.current || !safeThumb) return;
     
     // If image is already loaded from cache, mark as loaded immediately
     if (imgRef.current.complete && imgRef.current.naturalHeight !== 0) {
       setIsLoaded(true);
     }
-  }, [src]);
+  }, [safeThumb]);
   
   const handleLoad = () => {
     setIsLoaded(true);
   };
   
-  // For Unsplash images, use optimized URL
-  const optimizedSrc = src.includes('unsplash.com') 
-    ? getResponsiveImageUrl(src, 600, 70)
-    : src;
+  // For Unsplash images, use optimized URL; for local images, use thumbnail directly
+  const optimizedSrc = safeThumb.includes('unsplash.com') 
+    ? getResponsiveImageUrl(safeThumb, 600, 70)
+    : safeThumb;
   
   return (
     <div className="relative w-full h-64 bg-gray-100 overflow-hidden">
@@ -92,9 +95,10 @@ const GallerySection = () => {
   const galleryImages = galleryData?.images && galleryData.images.length > 0
     ? galleryData.images.map(img => ({
         src: img.imageUrl,
+        thumbnail: (img as any).thumbnailUrl || img.imageUrl,
         alt: img.title || img.description || "Gallery image"
       }))
-    : GALLERY_PHOTOS;
+    : GALLERY_PHOTOS.map(p => ({ ...p, thumbnail: p.src }));
 
   // Hide gallery section if no images are configured
   const hasConfiguredImages = (galleryData?.images?.length ?? 0) > 0;
@@ -189,7 +193,7 @@ const GallerySection = () => {
                 data-testid={`gallery-image-${index}`}
               >
                 <OptimizedImage 
-                  src={photo.src} 
+                  thumbnail={photo.thumbnail} 
                   alt={photo.alt}
                   index={index}
                 />
