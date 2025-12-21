@@ -690,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueFilename = `${imageKey}-${Date.now()}.${fileExtension}`;
 
       // Validate imageType
-      const validImageTypes = ["banner", "gallery", "bride-profile", "groom-profile"];
+      const validImageTypes = ["banner", "gallery", "bride-profile", "groom-profile", "verse-image"];
       if (!validImageTypes.includes(imageType)) {
         return res.status(400).json({ message: 'Invalid image type. Must be one of: ' + validImageTypes.join(', ') });
       }
@@ -700,7 +700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.file.buffer,
         uniqueFilename,
         req.file.mimetype,
-        imageType as "banner" | "gallery" | "bride-profile" | "groom-profile"
+        imageType as "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image"
       );
 
       // Generate and upload thumbnail for gallery images

@@ -66,7 +66,7 @@ export class WeddingObjectStorageService {
   }
 
   // Upload a file for admin images
-  async uploadAdminImage(buffer: Buffer, filename: string, contentType: string, imageType: "banner" | "gallery" | "bride-profile" | "groom-profile"): Promise<string> {
+  async uploadAdminImage(buffer: Buffer, filename: string, contentType: string, imageType: "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image"): Promise<string> {
     let directory: string;
     switch (imageType) {
       case "banner":
@@ -80,6 +80,9 @@ export class WeddingObjectStorageService {
         break;
       case "groom-profile":
         directory = "admin/profiles/groom";
+        break;
+      case "verse-image":
+        directory = "admin/verse";
         break;
       default:
         directory = "admin/other";
