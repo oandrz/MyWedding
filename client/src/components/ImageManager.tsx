@@ -21,7 +21,7 @@ import ImageUploadModal from "./ImageUploadModal";
 const imageConfigSchema = z.object({
   imageKey: z.string().min(1, "Image key is required"),
   imageUrl: z.string().url("Must be a valid URL"),
-  imageType: z.enum(["banner", "gallery", "bride-profile", "groom-profile"]),
+  imageType: z.enum(["banner", "gallery", "bride-profile", "groom-profile", "verse-image"]),
   title: z.string().optional(),
   description: z.string().optional(),
   isActive: z.boolean().default(true)
@@ -33,7 +33,7 @@ const ImageManager = () => {
   const [activeTab, setActiveTab] = useState("banner");
   const [editingImage, setEditingImage] = useState<ConfigImage | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile">("banner");
+  const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image">("banner");
   const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -50,6 +50,7 @@ const ImageManager = () => {
   const galleryImages = imagesData?.images?.filter(img => img.imageType === "gallery") || [];
   const brideProfileImages = imagesData?.images?.filter(img => img.imageType === "bride-profile") || [];
   const groomProfileImages = imagesData?.images?.filter(img => img.imageType === "groom-profile") || [];
+  const verseImages = imagesData?.images?.filter(img => img.imageType === "verse-image") || [];
 
   // Form setup
   const form = useForm<ImageConfigForm>({
@@ -98,7 +99,7 @@ const ImageManager = () => {
   };
 
   const handleEdit = (image: ConfigImage) => {
-    setUploadModalType(image.imageType as "banner" | "gallery" | "bride-profile" | "groom-profile");
+    setUploadModalType(image.imageType as "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image");
     setEditingImage(image);
     setShowUploadModal(true);
   };
@@ -127,7 +128,7 @@ const ImageManager = () => {
     }
   });
 
-  const handleNewImage = (type: "banner" | "gallery" | "bride-profile" | "groom-profile") => {
+  const handleNewImage = (type: "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image") => {
     setEditingImage(null); // Clear editing state for new image
     setUploadModalType(type);
     setShowUploadModal(true);
@@ -198,11 +199,12 @@ const ImageManager = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="banner">Banner</TabsTrigger>
           <TabsTrigger value="gallery">Gallery</TabsTrigger>
           <TabsTrigger value="bride-profile">Bride</TabsTrigger>
           <TabsTrigger value="groom-profile">Groom</TabsTrigger>
+          <TabsTrigger value="verse-image">Verse</TabsTrigger>
         </TabsList>
 
         <TabsContent value="banner" className="space-y-6">
@@ -339,6 +341,38 @@ const ImageManager = () => {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="verse-image" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Verse Section Image</h3>
+              <p className="text-sm text-gray-600">Image displayed next to the Bible verse</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {verseImages.map((image) => (
+              <ImageCard key={image.id} image={image} />
+            ))}
+            
+            {verseImages.length === 0 && (
+              <Card className="overflow-hidden border-2 border-dashed border-amber-300 hover:border-amber-400 transition-colors cursor-pointer group">
+                <div 
+                  className="relative h-48 flex items-center justify-center bg-amber-50 hover:bg-amber-100 transition-colors"
+                  onClick={() => handleNewImage("verse-image")}
+                >
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-600 flex items-center justify-center group-hover:bg-amber-700 transition-colors">
+                      <Plus className="h-6 w-6 text-white" />
+                    </div>
+                    <p className="text-amber-700 font-medium">Add Verse Image</p>
+                    <p className="text-amber-600 text-sm mt-1">Click to upload</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Upload Modal */}
@@ -356,6 +390,7 @@ const ImageManager = () => {
           queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
           queryClient.invalidateQueries({ queryKey: ["/api/config-images/bride-profile"] });
           queryClient.invalidateQueries({ queryKey: ["/api/config-images/groom-profile"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/config-images/verse-image"] });
         }}
       />
 

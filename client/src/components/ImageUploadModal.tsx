@@ -32,7 +32,7 @@ type FileUploadForm = z.infer<typeof fileUploadSchema>;
 interface ImageUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  imageType: "banner" | "gallery" | "bride-profile" | "groom-profile";
+  imageType: "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image";
   editingImage?: any; // ConfigImage type
   onSuccess?: () => void;
 }
