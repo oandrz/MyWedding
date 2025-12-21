@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema, ConfigImage, FeatureFlag } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -15,6 +15,58 @@ import { googleDriveService } from "./googleDriveService";
 import { weddingObjectStorage, ObjectNotFoundError } from "./objectStorage";
 import { sessionStore } from "./session";
 import { generateCSRFToken, deleteCSRFToken } from "./middleware/csrf";
+
+// Simple in-memory cache for frequently accessed data
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+const cache = {
+  configImages: new Map<string, CacheEntry<ConfigImage[]>>(),
+  featureFlags: null as CacheEntry<FeatureFlag[]> | null,
+};
+
+const CACHE_TTL = 30 * 1000; // 30 seconds
+
+function getCachedConfigImages(type: string): ConfigImage[] | null {
+  const entry = cache.configImages.get(type);
+  if (entry && Date.now() < entry.expiresAt) {
+    return entry.data;
+  }
+  cache.configImages.delete(type);
+  return null;
+}
+
+function setCachedConfigImages(type: string, images: ConfigImage[]): void {
+  cache.configImages.set(type, {
+    data: images,
+    expiresAt: Date.now() + CACHE_TTL
+  });
+}
+
+function invalidateConfigImagesCache(): void {
+  cache.configImages.clear();
+}
+
+function getCachedFeatureFlags(): FeatureFlag[] | null {
+  if (cache.featureFlags && Date.now() < cache.featureFlags.expiresAt) {
+    return cache.featureFlags.data;
+  }
+  cache.featureFlags = null;
+  return null;
+}
+
+function setCachedFeatureFlags(flags: FeatureFlag[]): void {
+  cache.featureFlags = {
+    data: flags,
+    expiresAt: Date.now() + CACHE_TTL
+  };
+}
+
+function invalidateFeatureFlagsCache(): void {
+  cache.featureFlags = null;
+}
 
 const FLASK_API_URL = "http://localhost:5001";
 
@@ -578,7 +630,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all configurable images (public endpoint)
   app.get("/api/config-images", async (req: Request, res: Response) => {
     try {
+      // Check cache first
+      const cached = getCachedConfigImages('all');
+      if (cached) {
+        return res.status(200).json({ images: cached });
+      }
+      
       const images = await storage.getAllConfigImages();
+      setCachedConfigImages('all', images);
       res.status(200).json({ images });
     } catch (error) {
       console.error("Error fetching config images:", error);
@@ -590,7 +649,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/config-images/:type", async (req: Request, res: Response) => {
     try {
       const imageType = req.params.type;
+      
+      // Check cache first
+      const cached = getCachedConfigImages(imageType);
+      if (cached) {
+        return res.status(200).json({ images: cached });
+      }
+      
       const images = await storage.getConfigImagesByType(imageType);
+      setCachedConfigImages(imageType, images);
       res.status(200).json({ images });
     } catch (error) {
       console.error("Error fetching config images by type:", error);
@@ -655,6 +722,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         image = await storage.createConfigImage(configImageData);
       }
 
+      // Invalidate cache after update
+      invalidateConfigImagesCache();
+
       res.status(201).json({
         message: "Config image uploaded successfully",
         image
@@ -682,6 +752,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         image = await storage.createConfigImage(validatedData);
       }
       
+      // Invalidate cache after update
+      invalidateConfigImagesCache();
+      
       res.status(201).json({ 
         message: "Image configuration updated successfully",
         image 
@@ -704,6 +777,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertConfigImageSchema.parse(req.body);
       
       const image = await storage.updateConfigImage(imageKey, validatedData);
+      
+      // Invalidate cache after update
+      invalidateConfigImagesCache();
       
       res.status(200).json({ 
         message: "Image configuration updated successfully",
@@ -731,6 +807,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Image not found" });
       }
       
+      // Invalidate cache after delete
+      invalidateConfigImagesCache();
+      
       res.status(200).json({ 
         message: "Image deleted successfully" 
       });
@@ -745,7 +824,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all feature flags (public endpoint for frontend)
   app.get("/api/feature-flags", async (req: Request, res: Response) => {
     try {
+      // Check cache first
+      const cached = getCachedFeatureFlags();
+      if (cached) {
+        return res.status(200).json({ featureFlags: cached });
+      }
+      
       const featureFlags = await storage.getAllFeatureFlags();
+      setCachedFeatureFlags(featureFlags);
       res.status(200).json({ featureFlags });
     } catch (error) {
       console.error("Error fetching feature flags:", error);
@@ -786,6 +872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Feature flag not found" });
       }
       
+      // Invalidate cache after update
+      invalidateFeatureFlagsCache();
+      
       res.status(200).json({ 
         message: `Feature flag '${updatedFeatureFlag.featureName}' ${enabled ? 'enabled' : 'disabled'} successfully`,
         featureFlag: updatedFeatureFlag 
@@ -809,6 +898,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const featureFlag = await storage.createFeatureFlag(validatedData);
+      
+      // Invalidate cache after creation
+      invalidateFeatureFlagsCache();
       
       res.status(201).json({ 
         message: "Feature flag created successfully",

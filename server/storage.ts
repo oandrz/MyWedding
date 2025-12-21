@@ -997,13 +997,14 @@ export class KeyValueStorage implements IStorage {
     const keysResult = await kv.list("config_image:");
     if (!keysResult.ok) return [];
     
-    const images = [];
-    for (const key of keysResult.value) {
-      const imageResult = await kv.get(key);
-      if (imageResult.ok && imageResult.value && imageResult.value.imageType === imageType && imageResult.value.isActive) {
-        images.push(imageResult.value);
-      }
-    }
+    // Fetch all images in parallel to avoid N+1 query problem
+    const imagePromises = keysResult.value.map(key => kv.get(key));
+    const imageResults = await Promise.all(imagePromises);
+    
+    const images = imageResults
+      .filter(result => result.ok && result.value && result.value.imageType === imageType && result.value.isActive)
+      .map(result => result.value as ConfigImage);
+    
     return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
@@ -1012,11 +1013,14 @@ export class KeyValueStorage implements IStorage {
     const keysResult = await kv.list("config_image:");
     if (!keysResult.ok) return [];
     
-    const images = [];
-    for (const key of keysResult.value) {
-      const imageResult = await kv.get(key);
-      if (imageResult.ok && imageResult.value) images.push(imageResult.value);
-    }
+    // Fetch all images in parallel to avoid N+1 query problem
+    const imagePromises = keysResult.value.map(key => kv.get(key));
+    const imageResults = await Promise.all(imagePromises);
+    
+    const images = imageResults
+      .filter(result => result.ok && result.value)
+      .map(result => result.value as ConfigImage);
+    
     return images.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
@@ -1066,11 +1070,14 @@ export class KeyValueStorage implements IStorage {
     const keysResult = await kv.list("feature_flag:");
     if (!keysResult.ok) return [];
     
-    const flags = [];
-    for (const key of keysResult.value) {
-      const flagResult = await kv.get(key);
-      if (flagResult.ok && flagResult.value) flags.push(flagResult.value);
-    }
+    // Fetch all flags in parallel to avoid N+1 query problem
+    const flagPromises = keysResult.value.map(key => kv.get(key));
+    const flagResults = await Promise.all(flagPromises);
+    
+    const flags = flagResults
+      .filter(result => result.ok && result.value)
+      .map(result => result.value as FeatureFlag);
+    
     return flags.sort((a, b) => a.featureName.localeCompare(b.featureName));
   }
 
@@ -1133,11 +1140,14 @@ export class KeyValueStorage implements IStorage {
     const keysResult = await kv.list("app_setting:");
     if (!keysResult.ok) return [];
     
-    const settings = [];
-    for (const key of keysResult.value) {
-      const settingResult = await kv.get(key);
-      if (settingResult.ok && settingResult.value) settings.push(settingResult.value);
-    }
+    // Fetch all settings in parallel to avoid N+1 query problem
+    const settingPromises = keysResult.value.map(key => kv.get(key));
+    const settingResults = await Promise.all(settingPromises);
+    
+    const settings = settingResults
+      .filter(result => result.ok && result.value)
+      .map(result => result.value as AppSetting);
+    
     return settings.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
   
