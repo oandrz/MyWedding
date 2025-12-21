@@ -78,7 +78,7 @@ const CoupleSection = () => {
             </motion.div>
             <h3 className="text-3xl font-cormorant text-primary mb-2">{GROOM_NAME}</h3>
             <p className="text-foreground font-montserrat mb-4">The Groom</p>
-            <p className="font-montserrat text-sm italic mb-1 text-[#dba9a9] font-bold">
+            <p className="font-montserrat text-sm italic mb-1 text-[#dba9a9] font-normal">
               the son of
             </p>
             <p className="text-foreground font-montserrat text-sm">
