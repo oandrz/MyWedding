@@ -77,9 +77,16 @@ const CoupleSection = () => {
               />
             </motion.div>
             <h3 className="text-3xl font-cormorant text-primary mb-2">{GROOM_NAME}</h3>
-            <p className="text-foreground font-montserrat mb-6">The Groom</p>
-            <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
-              {GROOM_NAME} is a software engineer with a talent for playing the guitar. He's an avid sports enthusiast who never misses a game and has a collection of vintage records that he treasures. His calm demeanor perfectly balances {BRIDE_NAME}'s energetic personality.
+            <p className="text-foreground font-montserrat mb-4">The Groom</p>
+            <p className="text-muted-foreground font-montserrat text-sm italic mb-1">
+              the son of
+            </p>
+            <p className="text-foreground font-montserrat text-sm">
+              Mr. John Doe
+            </p>
+            <p className="text-muted-foreground font-montserrat text-sm">&</p>
+            <p className="text-foreground font-montserrat text-sm">
+              Mrs. Jane Doe
             </p>
           </motion.div>
           
@@ -102,9 +109,16 @@ const CoupleSection = () => {
               />
             </motion.div>
             <h3 className="text-3xl font-cormorant text-primary mb-2">{BRIDE_NAME}</h3>
-            <p className="text-foreground font-montserrat mb-6">The Bride</p>
-            <p className="text-muted-foreground font-montserrat text-sm leading-relaxed">
-              {BRIDE_NAME} is a passionate kindergarten teacher who loves baking, hiking on weekends, and has an infectious laugh that lights up any room. She dreams of traveling the world and hopes to visit at least 30 countries in her lifetime.
+            <p className="text-foreground font-montserrat mb-4">The Bride</p>
+            <p className="text-muted-foreground font-montserrat text-sm italic mb-1">
+              the daughter of
+            </p>
+            <p className="text-foreground font-montserrat text-sm">
+              Mr. Richard Smith
+            </p>
+            <p className="text-muted-foreground font-montserrat text-sm">&</p>
+            <p className="text-foreground font-montserrat text-sm">
+              Mrs. Mary Smith
             </p>
           </motion.div>
         </div>
