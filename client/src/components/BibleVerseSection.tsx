@@ -1,19 +1,10 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { fadeIn, staggerContainer } from "@/lib/animations";
-import type { ConfigImage } from "@shared/schema";
 
 const BibleVerseSection = () => {
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
-
-  // Fetch verse section image
-  const { data: verseImageData } = useQuery<{ images: ConfigImage[] }>({
-    queryKey: ["/api/config-images/verse-image"],
-  });
-
-  const verseImage = verseImageData?.images?.find(img => img.isActive)?.imageUrl;
 
   return (
     <section 
@@ -22,21 +13,12 @@ const BibleVerseSection = () => {
       ref={sectionRef}
     >
       <div className="grid md:grid-cols-2 h-full">
-        {/* Left side - Configurable image */}
-        <div className="bg-[#3a3a3a] flex items-center justify-center min-h-[300px] md:min-h-[500px] overflow-hidden">
-          {verseImage ? (
-            <img 
-              src={verseImage} 
-              alt="Couple" 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="text-gray-500 text-center p-8">
-              <p className="font-montserrat text-sm">Upload an image via Admin Dashboard</p>
-              <p className="font-montserrat text-xs mt-2">(Image Type: verse-image)</p>
-            </div>
-          )}
-        </div>
+        {/* Left side - Couple image */}
+        <img 
+          src="/storage/admin/profiles/groom/gallery_1758978208533-1762699218291.JPG" 
+          alt="Couple" 
+          className="w-full h-full object-cover min-h-[300px] md:min-h-[500px]"
+        />
         
         {/* Right side - Light background with verse */}
         <div className="bg-[#f5f1eb] flex items-center justify-center p-8 md:p-12 min-h-[300px] md:min-h-[500px]">
