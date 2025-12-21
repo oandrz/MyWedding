@@ -1,5 +1,6 @@
 import NavBar from "@/components/NavBar";
 import HeroSection from "@/components/HeroSection";
+import BibleVerseSection from "@/components/BibleVerseSection";
 import CoupleSection from "@/components/CoupleSection";
 import DetailsSection from "@/components/DetailsSection";
 import GallerySection from "@/components/GallerySection";
@@ -18,6 +19,7 @@ export default function Home() {
     <div className="overflow-hidden">
       <NavBar />
       <HeroSection />
+      <BibleVerseSection />
       <CoupleSection />
       {/* Floral Divider */}
       <div className="floral-divider w-full"></div>
