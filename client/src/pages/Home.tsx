@@ -6,10 +6,13 @@ import GallerySection from "@/components/GallerySection";
 import RsvpSection from "@/components/RsvpSection";
 import Footer from "@/components/Footer";
 import { useGalleryEnabled, useRsvpEnabled } from "@/hooks/useFeatureFlags";
+import { useImagePreloader } from "@/hooks/useImagePreloader";
 
 export default function Home() {
   const isGalleryEnabled = useGalleryEnabled();
   const isRsvpEnabled = useRsvpEnabled();
+  
+  useImagePreloader();
 
   return (
     <div className="overflow-hidden">

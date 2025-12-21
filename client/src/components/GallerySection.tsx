@@ -22,74 +22,51 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
   return url.toString();
 };
 
-// Optimized Image Component with progressive blur-up loading
+// Optimized Image Component with instant loading (images preloaded in background)
 const OptimizedImage = ({ src, alt, index }: { src: string; alt: string; index: number }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [imageSrc, setImageSrc] = useState<string>('');
-  // Eager load first 4 images immediately, others wait for intersection
-  const [shouldLoad, setShouldLoad] = useState(index < 4);
   const imgRef = useRef<HTMLImageElement>(null);
   
-  // Intersection Observer for progressive loading (skip for first 4 images)
+  // Check if the image is already cached by the browser
   useEffect(() => {
-    if (index < 4 || !imgRef.current) return; // First 4 images bypass observer
+    if (!imgRef.current) return;
     
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            setShouldLoad(true);
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { rootMargin: '300px' } // Start loading 300px before entering viewport (increased from 50px)
-    );
-    
-    observer.observe(imgRef.current);
-    
-    return () => observer.disconnect();
-  }, [index]);
+    // If image is already loaded from cache, mark as loaded immediately
+    if (imgRef.current.complete && imgRef.current.naturalHeight !== 0) {
+      setIsLoaded(true);
+    }
+  }, [src]);
   
-  // Load images progressively when in viewport
-  useEffect(() => {
-    if (!shouldLoad) return;
-    
-    let isMounted = true;
-    
-    // Start with low-quality blur placeholder
-    const thumbnail = getResponsiveImageUrl(src, 50, 20);
-    setImageSrc(thumbnail);
-    
-    // Preload high-quality image (reduced from 800px to 600px, quality 80 to 70 for faster loading)
-    const img = new Image();
-    img.src = getResponsiveImageUrl(src, 600, 70);
-    img.onload = () => {
-      if (isMounted) {
-        setImageSrc(img.src);
-        setIsLoaded(true);
-      }
-    };
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [src, shouldLoad]);
+  const handleLoad = () => {
+    setIsLoaded(true);
+  };
+  
+  // For Unsplash images, use optimized URL
+  const optimizedSrc = src.includes('unsplash.com') 
+    ? getResponsiveImageUrl(src, 600, 70)
+    : src;
   
   return (
-    <img 
-      ref={imgRef}
-      src={imageSrc || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E'}
-      alt={alt}
-      className={`w-full h-64 object-cover transition-all duration-700 ${
-        isLoaded ? 'blur-0 scale-100' : 'blur-md scale-105'
-      }`}
-      loading="lazy"
-      style={{
-        backgroundColor: '#f3f4f6',
-        minHeight: '256px'
-      }}
-    />
+    <div className="relative w-full h-64 bg-gray-100 overflow-hidden">
+      {/* Blur placeholder - shows until image loads */}
+      {!isLoaded && (
+        <div 
+          className="absolute inset-0 bg-gradient-to-br from-rose-100 to-gray-200 animate-pulse"
+          style={{ minHeight: '256px' }}
+        />
+      )}
+      <img 
+        ref={imgRef}
+        src={optimizedSrc}
+        alt={alt}
+        onLoad={handleLoad}
+        className={`w-full h-64 object-cover transition-opacity duration-300 ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
+        loading={index < 8 ? "eager" : "lazy"}
+        decoding="async"
+      />
+    </div>
   );
 };
 
