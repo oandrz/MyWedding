@@ -24,25 +24,8 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
 
 // Optimized Image Component - uses thumbnail for fast loading
 const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: string; index: number }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-  
   // Fallback to empty string if thumbnail is undefined
   const safeThumb = thumbnail || '';
-  
-  // Check if the image is already cached by the browser
-  useEffect(() => {
-    if (!imgRef.current || !safeThumb) return;
-    
-    // If image is already loaded from cache, mark as loaded immediately
-    if (imgRef.current.complete && imgRef.current.naturalHeight !== 0) {
-      setIsLoaded(true);
-    }
-  }, [safeThumb]);
-  
-  const handleLoad = () => {
-    setIsLoaded(true);
-  };
   
   // For Unsplash images, use optimized URL; for local images, use thumbnail directly
   const optimizedSrc = safeThumb.includes('unsplash.com') 
@@ -51,21 +34,10 @@ const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: str
   
   return (
     <div className="relative w-full h-64 bg-gray-100 overflow-hidden">
-      {/* Blur placeholder - shows until image loads */}
-      {!isLoaded && (
-        <div 
-          className="absolute inset-0 bg-gradient-to-br from-rose-100 to-gray-200 animate-pulse"
-          style={{ minHeight: '256px' }}
-        />
-      )}
       <img 
-        ref={imgRef}
         src={optimizedSrc}
         alt={alt}
-        onLoad={handleLoad}
-        className={`w-full h-64 object-cover transition-opacity duration-300 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="w-full h-64 object-cover"
         loading={index < 8 ? "eager" : "lazy"}
         decoding="async"
       />
@@ -188,7 +160,6 @@ const GallerySection = () => {
                 custom={index}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ scale: 1.03, y: -4 }}
-                initial="initial"
                 onClick={() => setSelectedImageIndex(index)}
                 data-testid={`gallery-image-${index}`}
               >
