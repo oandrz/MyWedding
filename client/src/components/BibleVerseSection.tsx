@@ -9,19 +9,21 @@ const BibleVerseSection = () => {
   return (
     <section 
       id="verse" 
-      className="w-full h-[350px] md:h-[500px]"
+      className="w-full"
       ref={sectionRef}
     >
-      <div className="grid grid-cols-1 md:grid-cols-[40%_60%] h-full w-full">
+      <div className="grid grid-cols-1 md:grid-cols-[40%_60%] w-full items-stretch">
         {/* Left side - Couple image (40% width) */}
-        <img 
-          src="/storage/admin/profiles/groom/gallery_1758978208533-1762699218291.JPG" 
-          alt="Couple" 
-          className="w-full h-[200px] md:h-full object-cover"
-        />
+        <div className="flex overflow-hidden bg-[#3a3a3a]">
+          <img 
+            src="/storage/admin/profiles/groom/gallery_1758978208533-1762699218291.JPG" 
+            alt="Couple" 
+            className="w-full h-auto md:max-h-[500px] object-cover"
+          />
+        </div>
         
         {/* Right side - Light background with verse (60% width) */}
-        <div className="bg-[#f5f1eb] flex items-center justify-center p-6 md:p-12 h-[150px] md:h-full">
+        <div className="bg-[#f5f1eb] flex items-center justify-center p-8 md:p-16 min-h-[300px] md:min-h-[500px]">
           <motion.div
             className="max-w-md text-center"
             variants={staggerContainer}
