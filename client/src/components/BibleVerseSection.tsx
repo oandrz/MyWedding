@@ -2,8 +2,6 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 
-import ART05595 from "@assets/ART05595.JPG";
-
 const BibleVerseSection = () => {
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
@@ -18,7 +16,7 @@ const BibleVerseSection = () => {
         {/* Left side - Couple image (40% width) */}
         <div className="flex overflow-hidden bg-[#3a3a3a]">
           <img 
-            src={ART05595} 
+            src="/storage/admin/profiles/groom/gallery_1758978208533-1762699218291.JPG" 
             alt="Couple" 
             className="w-full h-auto md:max-h-[500px] object-cover"
           />
