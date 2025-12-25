@@ -135,7 +135,7 @@ const RsvpSection = () => {
             RSVP
           </motion.h2>
           <motion.div 
-            className="w-24 h-1 metallic-gold mx-auto mb-6 rounded-full"
+            className="w-24 h-1 metallic-gold mx-auto mb-6 rounded-full text-[#dba9a9]"
             variants={fadeIn}
           ></motion.div>
           <motion.p 
