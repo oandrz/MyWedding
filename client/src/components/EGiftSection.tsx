@@ -114,7 +114,7 @@ const EGiftSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center max-w-3xl mx-auto">
           <div className="mb-4">
-            <Gift className="h-10 w-10 mx-auto text-[#8b7355] mb-4" />
+            <Gift className="h-10 w-10 mx-auto text-[#dba9a9] mb-4" />
           </div>
           
           <h2 className="text-3xl md:text-4xl font-cormorant mb-4 text-[#dba9a9]">
