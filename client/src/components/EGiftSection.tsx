@@ -19,8 +19,6 @@ interface EGiftSettings {
 const EGiftSection = () => {
   const { toast } = useToast();
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
-  
-  console.log("EGiftSection rendering");
 
   const { data: settingsData, isLoading } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
