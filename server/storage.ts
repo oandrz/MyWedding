@@ -774,11 +774,8 @@ export class KeyValueStorage implements IStorage {
   }
 
   private async initializeDefaults() {
-    // Initialize default feature flags if they don't exist
-    const existingFlags = await this.getAllFeatureFlags();
-    if (existingFlags.length === 0) {
-      await this.initializeDefaultFeatureFlags();
-    }
+    // Initialize default feature flags - add any missing ones
+    await this.ensureDefaultFeatureFlags();
 
     // Initialize default images if they don't exist
     const existingImages = await this.getAllConfigImages();
@@ -793,7 +790,7 @@ export class KeyValueStorage implements IStorage {
     }
   }
 
-  private async initializeDefaultFeatureFlags() {
+  private async ensureDefaultFeatureFlags() {
     const kv = this.ensureKvAvailable();
     const defaultFeatures = [
       {
@@ -835,12 +832,16 @@ export class KeyValueStorage implements IStorage {
     ];
 
     for (const feature of defaultFeatures) {
-      const featureFlag: FeatureFlag = {
-        id: this.currentFeatureFlagId++,
-        ...feature,
-        updatedAt: new Date().toISOString()
-      };
-      await kv.set(`feature_flag:${feature.featureKey}`, featureFlag);
+      const existingResult = await kv.get(`feature_flag:${feature.featureKey}`);
+      if (!existingResult.ok || !existingResult.value) {
+        const featureFlag: FeatureFlag = {
+          id: this.currentFeatureFlagId++,
+          ...feature,
+          updatedAt: new Date().toISOString()
+        };
+        await kv.set(`feature_flag:${feature.featureKey}`, featureFlag);
+        console.log(`Added missing feature flag: ${feature.featureKey}`);
+      }
     }
   }
 
