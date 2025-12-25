@@ -76,7 +76,7 @@ const EGiftSection = () => {
     <Card className="bg-white/80 backdrop-blur-sm border-none shadow-lg hover:shadow-xl transition-shadow">
       <CardContent className="p-6 text-center">
         <p className="text-sm text-gray-500 font-montserrat mb-2">{label}</p>
-        <h3 className="text-xl font-cormorant font-semibold text-[#8b7355] mb-3">
+        <h3 className="text-xl font-cormorant font-semibold mb-3 text-[#dba9a9]">
           {account.accountHolder}
         </h3>
         <p className="text-sm font-montserrat text-gray-600 uppercase tracking-wider mb-1">
