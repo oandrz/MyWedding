@@ -93,3 +93,8 @@ export function useCountdownEnabled() {
   const { isFeatureEnabled } = useFeatureFlags();
   return isFeatureEnabled('countdown');
 }
+
+export function useEGiftEnabled() {
+  const { isFeatureEnabled } = useFeatureFlags();
+  return isFeatureEnabled('egift');
+}

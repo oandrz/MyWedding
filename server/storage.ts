@@ -316,6 +316,12 @@ export class MemStorage implements IStorage {
         featureName: 'Wedding Countdown',
         description: 'Show countdown timer to wedding date',
         enabled: true
+      },
+      {
+        featureKey: 'egift',
+        featureName: 'E-Gift / Bank Transfer',
+        description: 'Allow guests to send monetary gifts via bank transfer',
+        enabled: true
       }
     ];
 
@@ -366,15 +372,60 @@ export class MemStorage implements IStorage {
   }
 
   private initializeDefaultAppSettings() {
-    const defaultMusicSetting: AppSetting = {
-      id: this.currentAppSettingId++,
-      settingKey: 'background_music_url',
-      settingValue: '/music/wedding-piano.mp3',
-      settingType: 'audio',
-      description: 'Background music file URL',
-      updatedAt: new Date().toISOString()
-    };
-    this.appSettings.set('background_music_url', defaultMusicSetting);
+    const now = new Date().toISOString();
+    const defaultSettings = [
+      {
+        settingKey: 'background_music_url',
+        settingValue: '/music/wedding-piano.mp3',
+        settingType: 'audio',
+        description: 'Background music file URL'
+      },
+      {
+        settingKey: 'egift_groom_name',
+        settingValue: 'Andreas',
+        settingType: 'text',
+        description: 'Groom account holder name for e-gift'
+      },
+      {
+        settingKey: 'egift_groom_bank',
+        settingValue: 'Bank BCA',
+        settingType: 'text',
+        description: 'Groom bank name for e-gift'
+      },
+      {
+        settingKey: 'egift_groom_account',
+        settingValue: '1234567890',
+        settingType: 'text',
+        description: 'Groom account number for e-gift'
+      },
+      {
+        settingKey: 'egift_bride_name',
+        settingValue: 'Christine',
+        settingType: 'text',
+        description: 'Bride account holder name for e-gift'
+      },
+      {
+        settingKey: 'egift_bride_bank',
+        settingValue: 'Bank BCA',
+        settingType: 'text',
+        description: 'Bride bank name for e-gift'
+      },
+      {
+        settingKey: 'egift_bride_account',
+        settingValue: '0987654321',
+        settingType: 'text',
+        description: 'Bride account number for e-gift'
+      }
+    ];
+    
+    defaultSettings.forEach(setting => {
+      const appSetting: AppSetting = {
+        id: this.currentAppSettingId++,
+        ...setting,
+        updatedAt: now
+      };
+      this.appSettings.set(setting.settingKey, appSetting);
+    });
   }
 
   async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {
@@ -774,6 +825,12 @@ export class KeyValueStorage implements IStorage {
         featureName: 'Wedding Countdown',
         description: 'Show countdown timer to wedding date',
         enabled: false
+      },
+      {
+        featureKey: 'egift',
+        featureName: 'E-Gift / Bank Transfer',
+        description: 'Allow guests to send monetary gifts via bank transfer',
+        enabled: true
       }
     ];
 
@@ -1092,15 +1149,60 @@ export class KeyValueStorage implements IStorage {
 
   private async initializeDefaultAppSettings() {
     const kv = this.ensureKvAvailable();
-    const defaultMusicSetting: AppSetting = {
-      id: this.currentAppSettingId++,
-      settingKey: 'background_music_url',
-      settingValue: '/music/wedding-piano.mp3',
-      settingType: 'audio',
-      description: 'Background music file URL',
-      updatedAt: new Date().toISOString()
-    };
-    await kv.set(`app_setting:background_music_url`, defaultMusicSetting);
+    const now = new Date().toISOString();
+    const defaultSettings = [
+      {
+        settingKey: 'background_music_url',
+        settingValue: '/music/wedding-piano.mp3',
+        settingType: 'audio',
+        description: 'Background music file URL'
+      },
+      {
+        settingKey: 'egift_groom_name',
+        settingValue: 'Andreas',
+        settingType: 'text',
+        description: 'Groom account holder name for e-gift'
+      },
+      {
+        settingKey: 'egift_groom_bank',
+        settingValue: 'Bank BCA',
+        settingType: 'text',
+        description: 'Groom bank name for e-gift'
+      },
+      {
+        settingKey: 'egift_groom_account',
+        settingValue: '1234567890',
+        settingType: 'text',
+        description: 'Groom account number for e-gift'
+      },
+      {
+        settingKey: 'egift_bride_name',
+        settingValue: 'Christine',
+        settingType: 'text',
+        description: 'Bride account holder name for e-gift'
+      },
+      {
+        settingKey: 'egift_bride_bank',
+        settingValue: 'Bank BCA',
+        settingType: 'text',
+        description: 'Bride bank name for e-gift'
+      },
+      {
+        settingKey: 'egift_bride_account',
+        settingValue: '0987654321',
+        settingType: 'text',
+        description: 'Bride account number for e-gift'
+      }
+    ];
+    
+    for (const setting of defaultSettings) {
+      const appSetting: AppSetting = {
+        id: this.currentAppSettingId++,
+        ...setting,
+        updatedAt: now
+      };
+      await kv.set(`app_setting:${setting.settingKey}`, appSetting);
+    }
   }
 
   async createAppSetting(insertAppSetting: InsertAppSetting): Promise<AppSetting> {

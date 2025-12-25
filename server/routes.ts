@@ -1027,6 +1027,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // App Settings API Routes
   
+  // Get all app settings (public endpoint) - for frontend components like E-Gift
+  app.get("/api/app-settings", async (req: Request, res: Response) => {
+    try {
+      const settings = await storage.getAllAppSettings();
+      res.status(200).json({ settings });
+    } catch (error) {
+      console.error("Error fetching all app settings:", error);
+      res.status(500).json({ message: "Failed to fetch app settings" });
+    }
+  });
+
+  // Update app setting (admin only)
+  app.patch("/api/admin/app-settings/:settingKey", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const settingKey = req.params.settingKey;
+      const { settingValue, settingType, description } = req.body;
+      
+      if (!settingValue) {
+        return res.status(400).json({ message: "Setting value is required" });
+      }
+      
+      const setting = await storage.updateAppSetting(settingKey, {
+        settingKey,
+        settingValue,
+        settingType: settingType || 'text',
+        description: description || null
+      });
+      
+      res.status(200).json({ 
+        message: "Setting updated successfully",
+        setting 
+      });
+    } catch (error) {
+      console.error("Error updating app setting:", error);
+      res.status(500).json({ message: "Failed to update app setting" });
+    }
+  });
+  
   // Get background music URL (public endpoint) - MUST come before generic /:settingKey route
   app.get("/api/settings/music", async (req: Request, res: Response) => {
     try {
