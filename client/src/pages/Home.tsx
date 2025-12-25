@@ -14,7 +14,7 @@ export default function Home() {
   const isGalleryEnabled = useGalleryEnabled();
   const isRsvpEnabled = useRsvpEnabled();
   const isEGiftEnabled = useEGiftEnabled();
-  
+
   useImagePreloader();
 
   return (
@@ -29,7 +29,11 @@ export default function Home() {
       {/* Floral Divider */}
       <div className="floral-divider w-full"></div>
       {isGalleryEnabled && <GallerySection />}
+      {/* Floral Divider */}
+      {isEGiftEnabled && <div className="floral-divider w-full"></div>}
       {isEGiftEnabled && <EGiftSection />}
+      {/* Floral Divider */}
+      {(isEGiftEnabled || isGalleryEnabled) && <div className="floral-divider w-full"></div>}
       {isRsvpEnabled && <RsvpSection />}
       <Footer />
     </div>

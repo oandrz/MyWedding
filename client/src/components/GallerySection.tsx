@@ -10,6 +10,10 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 // Helper: Generate responsive Unsplash URLs with optimized sizing
 const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number = 75): string => {
+  // #region agent log
+  const isUnsplash = baseUrl.includes('unsplash.com');
+  fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:getResponsiveImageUrl',message:'Image URL optimization check',data:{baseUrl:baseUrl.substring(0,100),width,quality,isUnsplash,willOptimize:isUnsplash},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   if (!baseUrl.includes('unsplash.com')) return baseUrl;
   
   // Parse existing URL
@@ -55,13 +59,39 @@ const GallerySection = () => {
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
   const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.1 });
 
+  // #region agent log
+  const apiCallStartTime = useRef(Date.now());
+  const mountCount = useRef(0);
+  useEffect(() => {
+    mountCount.current++;
+    const mountTime = Date.now();
+    fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:mount',message:'Component mounted',data:{mountCount:mountCount.current,mountTime},timestamp:mountTime,sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+    return () => {
+      fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:unmount',message:'Component unmounted',data:{mountCount:mountCount.current,unmountTime:Date.now()},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+    };
+  }, []);
+  // #endregion
+  
   // Fetch gallery images from API - smart caching for performance
+  // FIX: Use placeholderData to show fallback images IMMEDIATELY while API loads
+  // This prevents the 19-second wait for API timeout when database is unavailable
   const { data: galleryData, isLoading, error } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/gallery"],
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (v5 uses gcTime instead of cacheTime)
     refetchOnWindowFocus: false, // Don't refetch on focus to reduce network calls
+    retry: 1, // Only retry once to reduce wait time on failures
+    retryDelay: 1000, // 1 second between retries
+    // Provide placeholder data so UI renders immediately with fallback images
+    placeholderData: { images: [] },
   });
+  
+  // #region agent log
+  useEffect(() => {
+    const apiCallDuration = Date.now() - apiCallStartTime.current;
+    fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:apiState',message:'Gallery API state change',data:{isLoading,hasData:!!galleryData,hasError:!!error,imageCount:galleryData?.images?.length || 0,apiCallDuration,errorMessage:error?.toString()?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+  }, [isLoading, galleryData, error]);
+  // #endregion
 
   // Use configurable images if available, otherwise fallback to constants
   const galleryImages = galleryData?.images && galleryData.images.length > 0
@@ -73,8 +103,9 @@ const GallerySection = () => {
     : GALLERY_PHOTOS.map(p => ({ ...p, thumbnail: p.src }));
 
   // Hide gallery section if no images are configured
+  // FIX: Show gallery if we have configured images OR if fallback GALLERY_PHOTOS exist
   const hasConfiguredImages = (galleryData?.images?.length ?? 0) > 0;
-  const shouldShowGallery = hasConfiguredImages || (!galleryData && GALLERY_PHOTOS.length > 0);
+  const shouldShowGallery = hasConfiguredImages || GALLERY_PHOTOS.length > 0;
 
   // Keyboard navigation
   useEffect(() => {
