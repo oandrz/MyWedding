@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, Gift } from "lucide-react";
+import { motion, useInView } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { fadeIn, staggerContainer } from "@/lib/animations";
 
 interface BankAccount {
   accountHolder: string;
@@ -19,6 +20,13 @@ interface EGiftSettings {
 const EGiftSection = () => {
   const { toast } = useToast();
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
+  
+  const sectionRef = useRef(null);
+  const titleRef = useRef(null);
+  const cardsRef = useRef(null);
+  
+  const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
+  const areCardsInView = useInView(cardsRef, { once: true, amount: 0.3 });
 
   const { data: settingsData, isLoading } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
@@ -43,11 +51,11 @@ const EGiftSection = () => {
 
   if (isLoading) {
     return (
-      <section id="e-gift" className="py-16 md:py-24 bg-[#f5f1eb]">
+      <section id="e-gift" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <Gift className="h-10 w-10 mx-auto text-[#8b7355] mb-4 animate-pulse" />
-            <p className="text-gray-500 font-montserrat">Loading gift information...</p>
+            <Gift className="h-10 w-10 mx-auto text-primary mb-4 animate-pulse" />
+            <p className="text-muted-foreground font-montserrat">Loading gift information...</p>
           </div>
         </div>
       </section>
@@ -72,63 +80,90 @@ const EGiftSection = () => {
     }
   };
 
-  const BankAccountCard = ({ account, label }: { account: BankAccount; label: string }) => (
-    <Card className="bg-white/80 backdrop-blur-sm border-none shadow-lg hover:shadow-xl transition-shadow">
-      <CardContent className="p-6 text-center">
-        <p className="text-sm text-gray-500 font-montserrat mb-2">{label}</p>
-        <h3 className="text-xl font-cormorant font-semibold mb-3 text-[#dba9a9]">
-          {account.accountHolder}
-        </h3>
-        <p className="text-sm font-montserrat text-gray-600 uppercase tracking-wider mb-1">
-          {account.bankName}
-        </p>
-        <p className="text-2xl font-montserrat font-medium text-gray-800 mb-4 tracking-wider">
-          {account.accountNumber}
-        </p>
-        <Button
-          onClick={() => handleCopyAccount(account.accountNumber, account.accountHolder)}
-          className="hover:bg-[#c4929a] text-white font-montserrat text-sm px-6 bg-[#dba9a9]"
-          data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}-account`}
-        >
-          {copiedAccount === account.accountNumber ? (
-            <>
-              <Check className="h-4 w-4 mr-2" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Account Number
-            </>
-          )}
-        </Button>
-      </CardContent>
-    </Card>
+  const BankAccountCard = ({ account, label, index }: { account: BankAccount; label: string; index: number }) => (
+    <motion.div 
+      className="glass-card rounded-2xl p-8 text-center"
+      variants={fadeIn}
+      initial="hidden"
+      animate={areCardsInView ? "visible" : "hidden"}
+      transition={{ delay: index * 0.2 }}
+    >
+      <p className="text-sm text-muted-foreground font-montserrat mb-2 uppercase tracking-wider">{label}</p>
+      <h3 className="text-2xl font-cormorant font-semibold mb-3 text-primary">
+        {account.accountHolder}
+      </h3>
+      <p className="text-sm font-montserrat text-muted-foreground uppercase tracking-wider mb-1">
+        {account.bankName}
+      </p>
+      <p className="text-2xl font-montserrat font-medium text-foreground mb-6 tracking-wider">
+        {account.accountNumber}
+      </p>
+      <motion.button
+        onClick={() => handleCopyAccount(account.accountNumber, account.accountHolder)}
+        className="bg-primary px-6 py-3 text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}-account`}
+      >
+        {copiedAccount === account.accountNumber ? (
+          <>
+            <Check className="h-4 w-4 mr-2 inline" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="h-4 w-4 mr-2 inline" />
+            Copy Account Number
+          </>
+        )}
+      </motion.button>
+    </motion.div>
   );
 
   return (
     <section
       id="e-gift"
-      className="py-16 md:py-24 bg-[#f5f1eb]"
+      className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture"
+      ref={sectionRef}
     >
       <div className="container mx-auto px-4">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="mb-4">
-            <Gift className="h-10 w-10 mx-auto text-[#dba9a9] mb-4" />
-          </div>
+        <motion.div 
+          className="text-center mb-16"
+          ref={titleRef}
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isTitleInView ? "visible" : "hidden"}
+        >
+          <motion.div variants={fadeIn}>
+            <Gift className="h-10 w-10 mx-auto text-primary mb-4" />
+          </motion.div>
           
-          <h2 className="text-3xl md:text-4xl font-cormorant mb-4 text-[#dba9a9]">
+          <motion.h2 
+            className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
+            variants={fadeIn}
+          >
             Wedding Gift
-          </h2>
+          </motion.h2>
           
-          <p className="text-gray-600 font-montserrat mb-12">
+          <motion.div 
+            className="w-24 h-1 mx-auto mb-6 rounded-full bg-primary"
+            variants={fadeIn}
+          ></motion.div>
+          
+          <motion.p 
+            className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
+            variants={fadeIn}
+          >
             Your kind blessing can be sent to the information below
-          </p>
+          </motion.p>
+        </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <BankAccountCard account={groomAccount} label="a.n" />
-            <BankAccountCard account={brideAccount} label="a.n" />
-          </div>
+        <div 
+          className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto"
+          ref={cardsRef}
+        >
+          <BankAccountCard account={groomAccount} label="a.n" index={0} />
+          <BankAccountCard account={brideAccount} label="a.n" index={1} />
         </div>
       </div>
     </section>
@@ -136,3 +171,4 @@ const EGiftSection = () => {
 };
 
 export default EGiftSection;
+
