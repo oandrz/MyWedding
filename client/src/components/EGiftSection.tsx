@@ -89,7 +89,7 @@ const EGiftSection = () => {
         </p>
         <Button
           onClick={() => handleCopyAccount(account.accountNumber, account.accountHolder)}
-          className="bg-[#8b7355] hover:bg-[#6d5a43] text-white font-montserrat text-sm px-6"
+          className="bg-[#dba9a9] hover:bg-[#6d5a43] text-white font-montserrat text-sm px-6"
           data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}-account`}
         >
           {copiedAccount === account.accountNumber ? (
