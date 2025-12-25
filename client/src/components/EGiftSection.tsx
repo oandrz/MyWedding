@@ -1,8 +1,6 @@
-import { motion, useInView } from "framer-motion";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, Gift } from "lucide-react";
-import { fadeIn, staggerContainer } from "@/lib/animations";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,10 +17,10 @@ interface EGiftSettings {
 }
 
 const EGiftSection = () => {
-  const sectionRef = useRef(null);
-  const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
   const { toast } = useToast();
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
+  
+  console.log("EGiftSection rendering");
 
   const { data: settingsData, isLoading } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
@@ -114,41 +112,26 @@ const EGiftSection = () => {
     <section
       id="e-gift"
       className="py-16 md:py-24 bg-[#f5f1eb]"
-      ref={sectionRef}
     >
       <div className="container mx-auto px-4">
-        <motion.div
-          className="text-center max-w-3xl mx-auto"
-          variants={staggerContainer}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-        >
-          <motion.div variants={fadeIn} className="mb-4">
+        <div className="text-center max-w-3xl mx-auto">
+          <div className="mb-4">
             <Gift className="h-10 w-10 mx-auto text-[#8b7355] mb-4" />
-          </motion.div>
+          </div>
           
-          <motion.h2
-            className="text-3xl md:text-4xl font-cormorant text-[#8b7355] mb-4"
-            variants={fadeIn}
-          >
+          <h2 className="text-3xl md:text-4xl font-cormorant text-[#8b7355] mb-4">
             Wedding Gift
-          </motion.h2>
+          </h2>
           
-          <motion.p
-            className="text-gray-600 font-montserrat mb-12"
-            variants={fadeIn}
-          >
+          <p className="text-gray-600 font-montserrat mb-12">
             Your kind blessing can be sent to the information below
-          </motion.p>
+          </p>
 
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto"
-            variants={fadeIn}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <BankAccountCard account={groomAccount} label="a.n" />
             <BankAccountCard account={brideAccount} label="a.n" />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );
