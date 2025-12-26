@@ -1,4 +1,4 @@
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, scaleOnHover, staggerFast, revealText } from "@/lib/animations";
@@ -7,6 +7,7 @@ import type { ConfigImage } from "@shared/schema";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useResponsivePhotoLimit } from "@/hooks/useResponsivePhotoLimit";
 
 // Helper: Generate responsive Unsplash URLs with optimized sizing
 const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number = 75): string => {
@@ -55,6 +56,15 @@ const GallerySection = () => {
   const galleryRef = useRef(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
+  // Responsive pagination for mobile/tablet
+  const { limit, batchSize, isDesktop } = useResponsivePhotoLimit();
+  const [visibleCount, setVisibleCount] = useState<number>(limit);
+
+  // Reset visible count when screen size changes
+  useEffect(() => {
+    setVisibleCount(limit);
+  }, [limit]);
+
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
   const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.1 });
@@ -101,6 +111,17 @@ const GallerySection = () => {
       alt: img.title || img.description || "Gallery image"
     }))
     : GALLERY_PHOTOS.map(p => ({ ...p, thumbnail: p.src }));
+
+  // Pagination: slice images for mobile/tablet, show all on desktop
+  const visibleImages = isDesktop
+    ? galleryImages
+    : galleryImages.slice(0, visibleCount);
+  const remainingCount = galleryImages.length - visibleCount;
+  const showLoadMore = !isDesktop && remainingCount > 0;
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => Math.min(prev + batchSize, galleryImages.length));
+  };
 
   // Hide gallery section if no images are configured
   // FIX: Show gallery if we have configured images OR if fallback GALLERY_PHOTOS exist
@@ -183,7 +204,7 @@ const GallerySection = () => {
               />
             ))
           ) : (
-            galleryImages.map((photo, index) => (
+            visibleImages.map((photo, index) => (
               <motion.div
                 key={index}
                 className="break-inside-avoid mb-6 overflow-hidden rounded-xl shadow-lg cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
@@ -203,6 +224,28 @@ const GallerySection = () => {
             ))
           )}
         </motion.div>
+
+        {/* Load More Button - Mobile/Tablet only */}
+        <AnimatePresence>
+          {showLoadMore && (
+            <motion.div
+              className="mt-10 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <button
+                onClick={handleLoadMore}
+                className="px-8 py-3 rounded-full text-white font-montserrat font-medium shadow-lg hover:shadow-xl transition-all hover:brightness-110"
+                style={{ backgroundColor: '#dba9a9' }}
+                data-testid="load-more-gallery"
+              >
+                Load More ({remainingCount} remaining)
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Image Viewer Modal */}
