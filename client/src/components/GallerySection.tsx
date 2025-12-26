@@ -12,17 +12,17 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number = 75): string => {
   // #region agent log
   const isUnsplash = baseUrl.includes('unsplash.com');
-  fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:getResponsiveImageUrl',message:'Image URL optimization check',data:{baseUrl:baseUrl.substring(0,100),width,quality,isUnsplash,willOptimize:isUnsplash},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GallerySection.tsx:getResponsiveImageUrl', message: 'Image URL optimization check', data: { baseUrl: baseUrl.substring(0, 100), width, quality, isUnsplash, willOptimize: isUnsplash }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'D' }) }).catch(() => { });
   // #endregion
   if (!baseUrl.includes('unsplash.com')) return baseUrl;
-  
+
   // Parse existing URL
   const url = new URL(baseUrl);
   url.searchParams.set('w', width.toString());
   url.searchParams.set('q', quality.toString());
   url.searchParams.set('auto', 'format'); // Let Unsplash choose best format (WebP when supported)
   url.searchParams.set('fit', 'crop');
-  
+
   return url.toString();
 };
 
@@ -30,18 +30,18 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
 const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: string; index: number }) => {
   // Fallback to empty string if thumbnail is undefined
   const safeThumb = thumbnail || '';
-  
+
   // For Unsplash images, use optimized URL; for local images, use thumbnail directly
-  const optimizedSrc = safeThumb.includes('unsplash.com') 
+  const optimizedSrc = safeThumb.includes('unsplash.com')
     ? getResponsiveImageUrl(safeThumb, 600, 70)
     : safeThumb;
-  
+
   return (
-    <div className="relative w-full h-64 bg-gray-100 overflow-hidden">
-      <img 
+    <div className="relative w-full bg-gray-100 overflow-hidden rounded-xl">
+      <img
         src={optimizedSrc}
         alt={alt}
-        className="w-full h-64 object-cover"
+        className="w-full h-auto"
         loading={index < 8 ? "eager" : "lazy"}
         decoding="async"
       />
@@ -54,7 +54,7 @@ const GallerySection = () => {
   const titleRef = useRef(null);
   const galleryRef = useRef(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  
+
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
   const isGalleryInView = useInView(galleryRef, { once: true, amount: 0.1 });
@@ -65,13 +65,13 @@ const GallerySection = () => {
   useEffect(() => {
     mountCount.current++;
     const mountTime = Date.now();
-    fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:mount',message:'Component mounted',data:{mountCount:mountCount.current,mountTime},timestamp:mountTime,sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GallerySection.tsx:mount', message: 'Component mounted', data: { mountCount: mountCount.current, mountTime }, timestamp: mountTime, sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => { });
     return () => {
-      fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:unmount',message:'Component unmounted',data:{mountCount:mountCount.current,unmountTime:Date.now()},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GallerySection.tsx:unmount', message: 'Component unmounted', data: { mountCount: mountCount.current, unmountTime: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'F' }) }).catch(() => { });
     };
   }, []);
   // #endregion
-  
+
   // Fetch gallery images from API - smart caching for performance
   // FIX: Use placeholderData to show fallback images IMMEDIATELY while API loads
   // This prevents the 19-second wait for API timeout when database is unavailable
@@ -85,21 +85,21 @@ const GallerySection = () => {
     // Provide placeholder data so UI renders immediately with fallback images
     placeholderData: { images: [] },
   });
-  
+
   // #region agent log
   useEffect(() => {
     const apiCallDuration = Date.now() - apiCallStartTime.current;
-    fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GallerySection.tsx:apiState',message:'Gallery API state change',data:{isLoading,hasData:!!galleryData,hasError:!!error,imageCount:galleryData?.images?.length || 0,apiCallDuration,errorMessage:error?.toString()?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/da997407-4aba-4420-8dd6-4151cd4b9a7a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'GallerySection.tsx:apiState', message: 'Gallery API state change', data: { isLoading, hasData: !!galleryData, hasError: !!error, imageCount: galleryData?.images?.length || 0, apiCallDuration, errorMessage: error?.toString()?.substring(0, 100) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'A' }) }).catch(() => { });
   }, [isLoading, galleryData, error]);
   // #endregion
 
   // Use configurable images if available, otherwise fallback to constants
   const galleryImages = galleryData?.images && galleryData.images.length > 0
     ? galleryData.images.map(img => ({
-        src: img.imageUrl,
-        thumbnail: (img as any).thumbnailUrl || img.imageUrl,
-        alt: img.title || img.description || "Gallery image"
-      }))
+      src: img.imageUrl,
+      thumbnail: (img as any).thumbnailUrl || img.imageUrl,
+      alt: img.title || img.description || "Gallery image"
+    }))
     : GALLERY_PHOTOS.map(p => ({ ...p, thumbnail: p.src }));
 
   // Hide gallery section if no images are configured
@@ -138,37 +138,37 @@ const GallerySection = () => {
   if (!shouldShowGallery) {
     return null;
   }
-  
+
   return (
     <section id="gallery" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
-        <motion.div 
+        <motion.div
           className="text-center mb-16"
           ref={titleRef}
           variants={staggerContainer}
           initial="hidden"
           animate={isTitleInView ? "visible" : "hidden"}
         >
-          <motion.h2 
+          <motion.h2
             className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={revealText}
           >
             Our Gallery
           </motion.h2>
-          <motion.div 
+          <motion.div
             className="w-24 h-1 metallic-rose mx-auto rounded-full mb-6"
             variants={fadeIn}
           ></motion.div>
-          <motion.p 
+          <motion.p
             className="text-muted-foreground font-montserrat text-lg max-w-2xl mx-auto"
             variants={fadeIn}
           >
             A glimpse into our journey together and the moments that led us here
           </motion.p>
         </motion.div>
-        
-        <motion.div 
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+
+        <motion.div
+          className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6"
           ref={galleryRef}
           variants={staggerFast}
           initial="hidden"
@@ -177,16 +177,16 @@ const GallerySection = () => {
           {isLoading ? (
             // Loading skeleton
             Array.from({ length: 8 }).map((_, index) => (
-              <div 
+              <div
                 key={index}
-                className="h-64 bg-gray-200 animate-pulse rounded-lg"
+                className="break-inside-avoid mb-6 aspect-[2/3] bg-gray-200 animate-pulse rounded-xl"
               />
             ))
           ) : (
             galleryImages.map((photo, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
-                className="overflow-hidden rounded-xl shadow-lg cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
+                className="break-inside-avoid mb-6 overflow-hidden rounded-xl shadow-lg cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
                 variants={fadeIn}
                 custom={index}
                 transition={{ delay: index * 0.1 }}
@@ -194,8 +194,8 @@ const GallerySection = () => {
                 onClick={() => setSelectedImageIndex(index)}
                 data-testid={`gallery-image-${index}`}
               >
-                <OptimizedImage 
-                  thumbnail={photo.thumbnail} 
+                <OptimizedImage
+                  thumbnail={photo.thumbnail}
                   alt={photo.alt}
                   index={index}
                 />
