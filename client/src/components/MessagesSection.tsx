@@ -210,12 +210,12 @@ const MessagesSection = () => {
                 ))}
               </div>
               
-              {data.count > 3 && (
+              {data.messages.length > 3 && (
                 <div className="text-center">
                   <Link href="/messages">
                     <a className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-montserrat text-sm transition-colors">
                       <MessageCircle className="w-4 h-4" />
-                      See all {data.count} wishes
+                      See all {data.messages.length} wishes
                     </a>
                   </Link>
                 </div>
