@@ -33,7 +33,7 @@ const NavBar = () => {
       
       // Handle active section highlighting
       if (location === '/') {
-        const sections = ['couple', 'details', 'gallery', 'rsvp'];
+        const sections = ['couple', 'details', 'gallery', 'rsvp', 'messages'];
         
         // Find the section that is currently in view
         for (const section of sections) {
@@ -185,7 +185,27 @@ const NavBar = () => {
             </>
           )}
           {isFeatureEnabled('messages') && (
-            <Link href="/messages" className={`nav-link hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}>Messages</Link>
+            <a 
+              href="#messages" 
+              className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'messages' ? 'text-primary' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById('messages');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                setActiveSection('messages');
+              }}
+            >
+              Wishes
+              {activeSection === 'messages' && (
+                <motion.span 
+                  className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                  layoutId="navbar-underline"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </a>
           )}
           {isFeatureEnabled('gallery') && (
             <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
@@ -278,13 +298,21 @@ const NavBar = () => {
                   </a>
                 </>
               )}
-              <Link 
-                href="/messages" 
-                className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/messages' ? 'text-primary' : ''}`}
-                onClick={closeMenu}
+              <a 
+                href="#messages" 
+                className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'messages' ? 'text-primary' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  closeMenu();
+                  const element = document.getElementById('messages');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  setActiveSection('messages');
+                }}
               >
-                Messages
-              </Link>
+                Wishes
+              </a>
               <Link 
                 href="/gallery" 
                 className={`py-2 ${location !== '/gallery' ? 'border-b border-gray-200' : ''} hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}
