@@ -112,11 +112,25 @@ export const welcomeScreen = pgTable("welcome_screen", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
 });
 
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull()
+});
+
 export const insertWelcomeScreenSchema = createInsertSchema(welcomeScreen).pick({
   headingText: true,
   deliveryLabel: true,
   fallbackName: true,
   enabled: true
+});
+
+export const insertMessageSchema = createInsertSchema(messages).pick({
+  name: true,
+  email: true,
+  content: true
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -133,3 +147,5 @@ export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertWelcomeScreen = z.infer<typeof insertWelcomeScreenSchema>;
 export type WelcomeScreen = typeof welcomeScreen.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;

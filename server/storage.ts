@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen } from "@shared/schema";
+import { users, type User, type InsertUser, rsvp, type Rsvp, type InsertRsvp, media, type Media, type InsertMedia, configImages, type ConfigImage, type InsertConfigImage, featureFlags, type FeatureFlag, type InsertFeatureFlag, appSettings, type AppSetting, type InsertAppSetting, welcomeScreen, type WelcomeScreen, type InsertWelcomeScreen, messages, type Message, type InsertMessage } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import Database from "@replit/database";
@@ -49,6 +49,11 @@ export interface IStorage {
   // Welcome screen methods
   getWelcomeScreen(): Promise<WelcomeScreen>;
   updateWelcomeScreen(data: InsertWelcomeScreen): Promise<WelcomeScreen>;
+  
+  // Message methods
+  createMessage(messageData: InsertMessage): Promise<Message>;
+  getMessageById(id: number): Promise<Message | undefined>;
+  getAllMessages(): Promise<Message[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -59,12 +64,14 @@ export class MemStorage implements IStorage {
   private featureFlags: Map<string, FeatureFlag>;
   private appSettings: Map<string, AppSetting>;
   private welcomeScreenData: WelcomeScreen | null;
+  private messagesData: Map<number, Message>;
   currentUserId: number;
   currentRsvpId: number;
   currentMediaId: number;
   currentConfigImageId: number;
   currentFeatureFlagId: number;
   currentAppSettingId: number;
+  currentMessageId: number;
 
   constructor() {
     this.users = new Map();
@@ -74,12 +81,14 @@ export class MemStorage implements IStorage {
     this.featureFlags = new Map();
     this.appSettings = new Map();
     this.welcomeScreenData = null;
+    this.messagesData = new Map();
     this.currentUserId = 1;
     this.currentRsvpId = 1;
     this.currentMediaId = 1;
     this.currentConfigImageId = 1;
     this.currentFeatureFlagId = 1;
     this.currentAppSettingId = 1;
+    this.currentMessageId = 1;
 
     // Initialize default images and feature flags
     this.initializeDefaultImages();
@@ -485,6 +494,27 @@ export class MemStorage implements IStorage {
     };
     return this.welcomeScreenData;
   }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const id = this.currentMessageId++;
+    const now = new Date();
+    const message: Message = {
+      id,
+      ...insertMessage,
+      createdAt: now.toISOString()
+    };
+    this.messagesData.set(id, message);
+    return message;
+  }
+
+  async getMessageById(id: number): Promise<Message | undefined> {
+    return this.messagesData.get(id);
+  }
+
+  async getAllMessages(): Promise<Message[]> {
+    return Array.from(this.messagesData.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -743,6 +773,29 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await getDb()
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  async getMessageById(id: number): Promise<Message | undefined> {
+    const [message] = await getDb()
+      .select()
+      .from(messages)
+      .where(eq(messages.id, id));
+    return message || undefined;
+  }
+
+  async getAllMessages(): Promise<Message[]> {
+    return getDb()
+      .select()
+      .from(messages)
+      .orderBy(desc(messages.createdAt));
   }
 }
 
@@ -1305,6 +1358,47 @@ export class KeyValueStorage implements IStorage {
     
     await kv.set('welcome_screen', updated);
     return updated;
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const kv = this.ensureKvAvailable();
+    const messagesData = await this.getAllMessagesData();
+    
+    // Calculate next ID from existing messages to ensure uniqueness across restarts
+    const existingIds = Object.keys(messagesData).map(k => parseInt(k, 10));
+    const nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+    
+    const now = new Date();
+    const message: Message = {
+      id: nextId,
+      ...insertMessage,
+      createdAt: now.toISOString()
+    };
+    
+    messagesData[nextId] = message;
+    await kv.set('messages', messagesData);
+    
+    return message;
+  }
+
+  async getMessageById(id: number): Promise<Message | undefined> {
+    const messagesData = await this.getAllMessagesData();
+    return messagesData[id];
+  }
+
+  async getAllMessages(): Promise<Message[]> {
+    const messagesData = await this.getAllMessagesData();
+    return Object.values(messagesData)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  private async getAllMessagesData(): Promise<Record<number, Message>> {
+    const kv = this.ensureKvAvailable();
+    const result = await kv.get('messages');
+    if (result.ok && result.value) {
+      return result.value as Record<number, Message>;
+    }
+    return {};
   }
 }
 

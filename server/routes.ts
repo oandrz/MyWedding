@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema, ConfigImage, FeatureFlag } from "@shared/schema";
+import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema, insertMessageSchema, ConfigImage, FeatureFlag } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { log } from './vite';
@@ -203,32 +203,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add message board routes that proxy to Flask
+  // Message board routes - now using database storage
   app.post("/api/messages", async (req: Request, res: Response) => {
     try {
-      // Try forwarding to Flask server
-      const flaskUrl = `${FLASK_API_URL}/api/messages`;
-      const flaskOptions = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(req.body),
-      };
-
-      const flaskResponse = await fetch(flaskUrl, flaskOptions).catch(() => null);
-      
-      if (flaskResponse && flaskResponse.ok) {
-        const data = await flaskResponse.json();
-        return res.status(flaskResponse.status).json(data);
-      }
-      
-      // If Flask is not available, return an error
-      return res.status(503).json({ 
-        message: "Message board service is temporarily unavailable."
+      const validatedData = insertMessageSchema.parse(req.body);
+      const message = await storage.createMessage(validatedData);
+      return res.status(201).json({
+        message: "Message submitted successfully!",
+        data: message
       });
     } catch (error) {
-      log(`Error proxying to Flask message board: ${error}`, 'flask-proxy');
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      log(`Error creating message: ${error}`, 'messages');
       return res.status(500).json({ 
         message: "Failed to submit message."
       });
@@ -237,21 +226,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/messages", async (req: Request, res: Response) => {
     try {
-      // Try forwarding to Flask server
-      const flaskUrl = `${FLASK_API_URL}/api/messages`;
-      const flaskResponse = await fetch(flaskUrl).catch(() => null);
-      
-      if (flaskResponse && flaskResponse.ok) {
-        const data = await flaskResponse.json();
-        return res.status(flaskResponse.status).json(data);
-      }
-      
-      // If Flask is not available, return an empty array
-      return res.status(200).json({ 
-        messages: []
-      });
+      const messages = await storage.getAllMessages();
+      return res.status(200).json({ messages });
     } catch (error) {
-      log(`Error proxying to Flask message board: ${error}`, 'flask-proxy');
+      log(`Error fetching messages: ${error}`, 'messages');
       return res.status(500).json({ 
         message: "Failed to fetch messages."
       });
