@@ -16,7 +16,6 @@ import { fadeIn, staggerContainer } from '@/lib/animations';
 
 const messageSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
   content: z.string().min(3, "Message must be at least 3 characters").max(500, "Message cannot exceed 500 characters")
 });
 
@@ -55,7 +54,6 @@ const MessagesSection = () => {
     resolver: zodResolver(messageSchema),
     defaultValues: {
       name: "",
-      email: "",
       content: ""
     }
   });
@@ -257,36 +255,19 @@ const MessagesSection = () => {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-montserrat text-foreground mb-1.5">
-                          Your Name
-                        </label>
-                        <input
-                          type="text"
-                          {...register("name")}
-                          className="w-full px-4 py-2.5 border border-input rounded-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          placeholder="Enter your name"
-                        />
-                        {errors.name && (
-                          <p className="text-destructive text-xs mt-1">{errors.name.message}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-montserrat text-foreground mb-1.5">
-                          Your Email
-                        </label>
-                        <input
-                          type="email"
-                          {...register("email")}
-                          className="w-full px-4 py-2.5 border border-input rounded-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          placeholder="Enter your email"
-                        />
-                        {errors.email && (
-                          <p className="text-destructive text-xs mt-1">{errors.email.message}</p>
-                        )}
-                      </div>
+                    <div>
+                      <label className="block text-sm font-montserrat text-foreground mb-1.5">
+                        Your Name
+                      </label>
+                      <input
+                        type="text"
+                        {...register("name")}
+                        className="w-full px-4 py-2.5 border border-input rounded-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        placeholder="Enter your name"
+                      />
+                      {errors.name && (
+                        <p className="text-destructive text-xs mt-1">{errors.name.message}</p>
+                      )}
                     </div>
                     
                     <div>
