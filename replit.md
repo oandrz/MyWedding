@@ -6,6 +6,16 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 ## Recent Changes
 
+**Message Board Database Migration:**
+
+**January 21, 2026:**
+- ✓ Migrated message board from in-memory storage to database persistence
+- ✓ Added messages table schema with id, name, email, content, and createdAt fields
+- ✓ Implemented message methods in all storage classes (MemStorage, DatabaseStorage, KeyValueStorage)
+- ✓ Updated message routes to use storage interface directly instead of Flask proxy
+- ✓ Fixed ID generation in KeyValueStorage to calculate from existing data for restart persistence
+- Messages now persist across server restarts
+
 **Production Configuration Fixes:**
 
 **October 21, 2025:**
