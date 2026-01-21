@@ -54,6 +54,7 @@ export interface IStorage {
   createMessage(messageData: InsertMessage): Promise<Message>;
   getMessageById(id: number): Promise<Message | undefined>;
   getAllMessages(): Promise<Message[]>;
+  deleteMessage(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -515,6 +516,14 @@ export class MemStorage implements IStorage {
     return Array.from(this.messagesData.values())
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
+
+  async deleteMessage(id: number): Promise<boolean> {
+    if (this.messagesData.has(id)) {
+      this.messagesData.delete(id);
+      return true;
+    }
+    return false;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -796,6 +805,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(messages)
       .orderBy(desc(messages.createdAt));
+  }
+
+  async deleteMessage(id: number): Promise<boolean> {
+    const result = await getDb()
+      .delete(messages)
+      .where(eq(messages.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 
@@ -1399,6 +1416,18 @@ export class KeyValueStorage implements IStorage {
       return result.value as Record<number, Message>;
     }
     return {};
+  }
+
+  async deleteMessage(id: number): Promise<boolean> {
+    const kv = this.ensureKvAvailable();
+    const messagesData = await this.getAllMessagesData();
+    
+    if (messagesData[id]) {
+      delete messagesData[id];
+      await kv.set('messages', messagesData);
+      return true;
+    }
+    return false;
   }
 }
 

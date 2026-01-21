@@ -236,6 +236,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to delete a message
+  app.delete("/api/messages/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid message ID" });
+      }
+      
+      const deleted = await storage.deleteMessage(id);
+      if (deleted) {
+        return res.status(200).json({ message: "Message deleted successfully" });
+      } else {
+        return res.status(404).json({ message: "Message not found" });
+      }
+    } catch (error) {
+      log(`Error deleting message: ${error}`, 'messages');
+      return res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
   // Add individual RSVP lookup by email
   app.get("/api/rsvp/:email", async (req: Request, res: Response) => {
     const email = req.params.email;

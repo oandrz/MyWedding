@@ -7,8 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Users, BarChart3, LogOut, Settings, Calendar, Flag, Music, Mail, Zap, Image, Gift } from "lucide-react";
-import { Rsvp, WelcomeScreen } from "@shared/schema";
+import { Loader2, CheckCircle, XCircle, Users, BarChart3, LogOut, Settings, Calendar, Flag, Music, Mail, Zap, Image, Gift, MessageSquare, Trash2 } from "lucide-react";
+import { Rsvp, WelcomeScreen, Message } from "@shared/schema";
 import { useLocation } from "wouter";
 import ImageManager from "@/components/ImageManager";
 import MusicManager from "@/components/MusicManager";
@@ -90,6 +90,57 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  // Fetch all messages for admin
+  const {
+    data: messagesData,
+    isLoading: messagesLoading,
+    error: messagesError
+  } = useQuery<{ messages: Message[] }>({
+    queryKey: ["/api/messages"],
+    retry: (failureCount, error) => {
+      if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+        handleAutoLogout(error);
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+
+  // Mutation for deleting messages
+  const deleteMessageMutation = useMutation({
+    mutationFn: (messageId: number) => {
+      return apiRequest("DELETE", `/api/messages/${messageId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        title: "Success",
+        description: "Message deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to delete message: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [messageToDelete, setMessageToDelete] = useState<number | null>(null);
+
+  const handleDeleteMessage = (messageId: number) => {
+    setMessageToDelete(messageId);
+  };
+
+  const confirmDeleteMessage = () => {
+    if (messageToDelete !== null) {
+      deleteMessageMutation.mutate(messageToDelete);
+      setMessageToDelete(null);
+    }
+  };
 
 
   const handleFeatureFlagToggle = (featureKey: string, enabled: boolean) => {
@@ -334,7 +385,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="rsvps" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="config" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Configuration</span>
@@ -342,6 +393,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="rsvps" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Users className="h-4 w-4" />
               <span className="hidden md:inline">RSVP</span>
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
+              <MessageSquare className="h-4 w-4" />
+              <span className="hidden md:inline">Messages</span>
             </TabsTrigger>
             <TabsTrigger value="welcome" className="gap-1 md:gap-2 text-xs md:text-sm px-1 md:px-3">
               <Mail className="h-4 w-4" />
@@ -660,6 +715,96 @@ export default function AdminDashboard() {
                       <p className="text-sm text-gray-400">Responses will appear here when guests submit their RSVPs</p>
                     </div>
                   )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Messages Tab */}
+        <TabsContent value="messages">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-6 w-6 text-rose-600" />
+                <div>
+                  <CardTitle className="text-xl">Message Wall</CardTitle>
+                  <CardDescription>View and manage guest messages</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {messagesLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-3" />
+                  <p className="text-gray-500">Loading messages...</p>
+                </div>
+              ) : messagesError ? (
+                <div className="text-center py-16">
+                  <p className="text-red-500">Failed to load messages</p>
+                </div>
+              ) : messagesData?.messages && messagesData.messages.length > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Total messages: {messagesData.messages.length}
+                  </p>
+                  {messagesData.messages.map((msg) => (
+                    <div key={msg.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium text-gray-900">{msg.name}</h4>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-sm text-gray-500">{msg.email}</span>
+                          </div>
+                          <p className="text-gray-700 mb-2">{msg.content}</p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(msg.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="ml-4">
+                          {messageToDelete === msg.id ? (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={confirmDeleteMessage}
+                                disabled={deleteMessageMutation.isPending}
+                              >
+                                {deleteMessageMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  "Confirm"
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setMessageToDelete(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No messages yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Messages from your guests will appear here</p>
                 </div>
               )}
             </CardContent>
