@@ -6,7 +6,7 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 
 ## Recent Changes
 
-**Message Board Database Migration:**
+**Message Board Database Migration & Admin Management:**
 
 **January 21, 2026:**
 - ✓ Migrated message board from in-memory storage to database persistence
@@ -14,6 +14,10 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Implemented message methods in all storage classes (MemStorage, DatabaseStorage, KeyValueStorage)
 - ✓ Updated message routes to use storage interface directly instead of Flask proxy
 - ✓ Fixed ID generation in KeyValueStorage to calculate from existing data for restart persistence
+- ✓ Added Message Wall tab to admin dashboard for viewing all guest messages
+- ✓ Implemented DELETE /api/messages/:id endpoint with admin authentication
+- ✓ Added inline delete confirmation UI with proper error handling
+- ✓ Integrated 401/auto-logout handling for expired admin sessions
 - Messages now persist across server restarts
 
 **Production Configuration Fixes:**
