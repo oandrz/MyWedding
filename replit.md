@@ -18,6 +18,10 @@ This is a comprehensive wedding e-invitation platform that creates an interactiv
 - ✓ Implemented DELETE /api/messages/:id endpoint with admin authentication
 - ✓ Added inline delete confirmation UI with proper error handling
 - ✓ Integrated 401/auto-logout handling for expired admin sessions
+- ✓ Moved messages section to home page for better discoverability
+- ✓ Created compact MessagesSection component showing 3 recent messages with form
+- ✓ Updated navigation to scroll to messages section instead of separate page
+- ✓ Renamed "Messages" to "Wishes" in navigation for clearer purpose
 - Messages now persist across server restarts
 
 **Production Configuration Fixes:**
