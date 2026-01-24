@@ -11,7 +11,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle, Heart, Send } from 'lucide-react';
-import { Link } from 'wouter';
 import { fadeIn, staggerContainer } from '@/lib/animations';
 
 const messageSchema = z.object({
@@ -40,6 +39,7 @@ const getInitials = (name: string) => {
 
 const MessagesSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const formRef = useRef(null);
@@ -106,7 +106,7 @@ const MessagesSection = () => {
     }
   };
 
-  const recentMessages = data.messages.slice(0, 3);
+  const displayedMessages = showAll ? data.messages : data.messages.slice(0, 3);
 
   return (
     <section 
@@ -174,7 +174,7 @@ const MessagesSection = () => {
               <MessageCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
               <p className="text-muted-foreground">Couldn't load messages. Please try again.</p>
             </div>
-          ) : recentMessages.length > 0 ? (
+          ) : displayedMessages.length > 0 ? (
             <motion.div 
               initial="hidden"
               animate={isSectionInView ? "visible" : "hidden"}
@@ -182,7 +182,7 @@ const MessagesSection = () => {
               className="mb-8"
             >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {recentMessages.map((message) => (
+                {displayedMessages.map((message) => (
                   <motion.div key={message.id} variants={fadeIn}>
                     <Card className="h-full hover:shadow-md transition-shadow duration-300">
                       <CardContent className="p-5">
@@ -212,12 +212,13 @@ const MessagesSection = () => {
               
               {data.messages.length > 3 && (
                 <div className="text-center">
-                  <Link href="/messages">
-                    <a className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-montserrat text-sm transition-colors">
-                      <MessageCircle className="w-4 h-4" />
-                      See all {data.messages.length} wishes
-                    </a>
-                  </Link>
+                  <button
+                    onClick={() => setShowAll(!showAll)}
+                    className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-montserrat text-sm transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    {showAll ? "Show less" : `See all ${data.messages.length} wishes`}
+                  </button>
                 </div>
               )}
             </motion.div>
