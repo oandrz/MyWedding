@@ -21,6 +21,23 @@ const NavBar = () => {
     setIsOpen(false);
   };
 
+  // Helper function to scroll to a section with a delay
+  // This prevents the menu closing animation from interrupting the scroll
+  const scrollToSection = (sectionId: string) => {
+    closeMenu();
+    setActiveSection(sectionId);
+    // Use requestAnimationFrame + setTimeout to ensure the scroll happens
+    // after the menu closing state change and re-render complete
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+    });
+  };
+
   // Add shadow to navbar on scroll and track active section
   useEffect(() => {
     const handleScroll = () => {
@@ -30,11 +47,11 @@ const NavBar = () => {
       } else {
         setIsScrolled(false);
       }
-      
+
       // Handle active section highlighting
       if (location === '/') {
         const sections = ['couple', 'details', 'gallery', 'rsvp', 'messages'];
-        
+
         // Find the section that is currently in view
         for (const section of sections) {
           const element = document.getElementById(section);
@@ -47,7 +64,7 @@ const NavBar = () => {
             }
           }
         }
-        
+
         // If we're at the top of the page, clear the active section
         if (window.scrollY < 100) {
           setActiveSection('');
@@ -67,25 +84,25 @@ const NavBar = () => {
         <Link href="/" className="text-2xl font-cormorant font-semibold text-primary">
           {GROOM_NAME.charAt(0)} & {BRIDE_NAME.charAt(0)}
         </Link>
-        
+
         {/* Mobile menu button */}
-        <button 
+        <button
           className="md:hidden text-foreground focus:outline-none"
           onClick={toggleMenu}
           aria-label="Toggle menu"
         >
           <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'}`}></i>
         </button>
-        
+
         {/* Desktop menu */}
         <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
           >
             Home
             {location === '/' && !activeSection && (
-              <motion.span 
+              <motion.span
                 className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                 layoutId="navbar-underline"
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -94,8 +111,8 @@ const NavBar = () => {
           </Link>
           {location === '/' && (
             <>
-              <a 
-                href="#couple" 
+              <a
+                href="#couple"
                 className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
                 onClick={(e) => {
                   e.preventDefault();
@@ -108,15 +125,15 @@ const NavBar = () => {
               >
                 Our Story
                 {activeSection === 'couple' && (
-                  <motion.span 
+                  <motion.span
                     className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                     layoutId="navbar-underline"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
               </a>
-              <a 
-                href="#details" 
+              <a
+                href="#details"
                 className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
                 onClick={(e) => {
                   e.preventDefault();
@@ -129,7 +146,7 @@ const NavBar = () => {
               >
                 Wedding Details
                 {activeSection === 'details' && (
-                  <motion.span 
+                  <motion.span
                     className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                     layoutId="navbar-underline"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -137,8 +154,8 @@ const NavBar = () => {
                 )}
               </a>
               {isFeatureEnabled('gallery') && (
-                <a 
-                  href="#gallery" 
+                <a
+                  href="#gallery"
                   className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
                   onClick={(e) => {
                     e.preventDefault();
@@ -151,7 +168,7 @@ const NavBar = () => {
                 >
                   Gallery
                   {activeSection === 'gallery' && (
-                    <motion.span 
+                    <motion.span
                       className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                       layoutId="navbar-underline"
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -160,8 +177,8 @@ const NavBar = () => {
                 </a>
               )}
               {isFeatureEnabled('rsvp') && (
-                <a 
-                  href="#rsvp" 
+                <a
+                  href="#rsvp"
                   className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
                   onClick={(e) => {
                     e.preventDefault();
@@ -174,7 +191,7 @@ const NavBar = () => {
                 >
                   RSVP
                   {activeSection === 'rsvp' && (
-                    <motion.span 
+                    <motion.span
                       className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                       layoutId="navbar-underline"
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -185,8 +202,8 @@ const NavBar = () => {
             </>
           )}
           {isFeatureEnabled('messages') && (
-            <a 
-              href="#messages" 
+            <a
+              href="#messages"
               className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'messages' ? 'text-primary' : ''}`}
               onClick={(e) => {
                 e.preventDefault();
@@ -199,7 +216,7 @@ const NavBar = () => {
             >
               Wishes
               {activeSection === 'messages' && (
-                <motion.span 
+                <motion.span
                   className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                   layoutId="navbar-underline"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -212,11 +229,11 @@ const NavBar = () => {
           )}
         </div>
       </div>
-      
+
       {/* Mobile menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             className="bg-background md:hidden px-4 py-2 shadow-inner"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -224,97 +241,78 @@ const NavBar = () => {
             transition={{ duration: 0.3 }}
           >
             <div className="flex flex-col space-y-3 font-montserrat text-sm pb-3">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
                 onClick={() => {
                   closeMenu();
                   setActiveSection('');
+                  // Scroll to top with the same timing pattern to avoid race conditions
+                  requestAnimationFrame(() => {
+                    setTimeout(() => {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 50);
+                  });
                 }}
               >
                 Home
               </Link>
               {location === '/' && (
                 <>
-                  <a 
-                    href="#couple" 
+                  <a
+                    href="#couple"
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      closeMenu();
-                      const element = document.getElementById('couple');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                      setActiveSection('couple');
+                      scrollToSection('couple');
                     }}
                   >
                     Our Story
                   </a>
-                  <a 
-                    href="#details" 
+                  <a
+                    href="#details"
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      closeMenu();
-                      const element = document.getElementById('details');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                      setActiveSection('details');
+                      scrollToSection('details');
                     }}
                   >
                     Wedding Details
                   </a>
-                  <a 
-                    href="#gallery" 
+                  <a
+                    href="#gallery"
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      closeMenu();
-                      const element = document.getElementById('gallery');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                      setActiveSection('gallery');
+                      scrollToSection('gallery');
                     }}
                   >
                     Gallery
                   </a>
-                  <a 
-                    href="#rsvp" 
+                  <a
+                    href="#rsvp"
                     className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      closeMenu();
-                      const element = document.getElementById('rsvp');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                      setActiveSection('rsvp');
+                      scrollToSection('rsvp');
                     }}
                   >
                     RSVP
                   </a>
                 </>
               )}
-              <a 
-                href="#messages" 
+              <a
+                href="#messages"
                 className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${activeSection === 'messages' ? 'text-primary' : ''}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  closeMenu();
-                  const element = document.getElementById('messages');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                  setActiveSection('messages');
+                  scrollToSection('messages');
                 }}
               >
                 Wishes
               </a>
-              <Link 
-                href="/gallery" 
+              <Link
+                href="/gallery"
                 className={`py-2 ${location !== '/gallery' ? 'border-b border-gray-200' : ''} hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}
                 onClick={closeMenu}
               >

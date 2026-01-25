@@ -20,7 +20,7 @@ export default function Home() {
   useImagePreloader();
 
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-x-hidden">
       <NavBar />
       <HeroSection />
       <BibleVerseSection />
