@@ -21,7 +21,7 @@ export const GROOM_NAME = "Andreas";
 // Wedding Details
 export const WEDDING_SCHEDULE = [
   {
-    title: "Ceremony",
+    title: "Holy Matrimony",
     time: "2:00 PM - 3:30 PM",
     description: "Exchange of vows and rings in a beautiful ceremony at St. Mary's Cathedral"
   },
@@ -45,7 +45,7 @@ export const WEDDING_SCHEDULE = [
 // Venue Information
 export const VENUES = [
   {
-    title: "Ceremony",
+    title: "Holy Matrimony",
     date: FORMATTED_WEDDING_DATE,
     time: "2:00 PM - 3:30 PM",
     location: "Casakhasa Kemang",
