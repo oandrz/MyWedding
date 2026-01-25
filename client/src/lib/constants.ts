@@ -47,7 +47,7 @@ export const VENUES = [
   {
     title: "Holy Matrimony",
     date: FORMATTED_WEDDING_DATE,
-    time: "2:00 PM - 3:30 PM",
+    time: "2:00 PM - 8:00 PM",
     location: "Casakhasa Kemang",
     address: "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia",
     icon: "fas fa-rings-wedding"
