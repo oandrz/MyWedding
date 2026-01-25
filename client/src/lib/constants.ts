@@ -26,13 +26,13 @@ export const WEDDING_SCHEDULE = [
     description: "Exchange of vows and rings in a beautiful ceremony at St. Mary's Cathedral"
   },
   {
-    title: "Cocktail Hour",
-    time: "4:00 PM - 5:00 PM",
-    description: "Enjoy hors d'oeuvres and drinks while the wedding party takes photos"
+    title: "Teapai",
+    time: "4:30 PM - 5:30 PM",
+    description: "Traditional tea ceremony with family members"
   },
   {
     title: "Dinner Reception",
-    time: "5:30 PM - 7:30 PM",
+    time: "6:15 PM - 8:00 PM",
     description: "Elegant dinner, toasts, and speeches celebrating the newlyweds"
   },
   {
