@@ -109,7 +109,7 @@ const CoupleSection = () => {
             <p className="font-montserrat text-sm italic mb-1 text-[#dba9a9]">
               the daughter of
             </p>
-            <p className="text-foreground font-montserrat text-sm">Mr. Jacob Serena</p>
+            <p className="text-foreground font-montserrat text-sm">Mr. Jacob Serena / Chai Ko Kiun</p>
             <p className="text-muted-foreground font-montserrat text-sm">&</p>
             <p className="text-foreground font-montserrat text-sm">Mrs. Bong Teresia</p>
           </motion.div>
