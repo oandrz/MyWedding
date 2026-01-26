@@ -18,6 +18,8 @@ export interface IStorage {
   updateRsvp(id: number, rsvpData: InsertRsvp): Promise<Rsvp>;
   getRsvps(): Promise<Rsvp[]>;
   getRsvpByEmail(email: string): Promise<Rsvp | undefined>;
+  getRsvpByName(name: string): Promise<Rsvp | undefined>;
+  deleteRsvp(id: number): Promise<boolean>;
   
   // Media methods
   createMedia(mediaData: InsertMedia): Promise<Media>;
@@ -198,6 +200,16 @@ export class MemStorage implements IStorage {
     return Array.from(this.rsvps.values()).find(
       (rsvp) => rsvp.email.toLowerCase() === email.toLowerCase(),
     );
+  }
+  
+  async getRsvpByName(name: string): Promise<Rsvp | undefined> {
+    return Array.from(this.rsvps.values()).find(
+      (rsvp) => rsvp.name.toLowerCase() === name.toLowerCase(),
+    );
+  }
+  
+  async deleteRsvp(id: number): Promise<boolean> {
+    return this.rsvps.delete(id);
   }
   
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
@@ -573,6 +585,23 @@ export class DatabaseStorage implements IStorage {
       .from(rsvp)
       .where(sql`LOWER(${rsvp.email}) = ${normalizedEmail}`);
     return rsvpEntry || undefined;
+  }
+
+  async getRsvpByName(name: string): Promise<Rsvp | undefined> {
+    const normalizedName = name.toLowerCase();
+    const [rsvpEntry] = await getDb()
+      .select()
+      .from(rsvp)
+      .where(sql`LOWER(${rsvp.name}) = ${normalizedName}`);
+    return rsvpEntry || undefined;
+  }
+
+  async deleteRsvp(id: number): Promise<boolean> {
+    const result = await getDb()
+      .delete(rsvp)
+      .where(eq(rsvp.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
@@ -1033,6 +1062,26 @@ export class KeyValueStorage implements IStorage {
       }
     }
     return undefined;
+  }
+
+  async getRsvpByName(name: string): Promise<Rsvp | undefined> {
+    const kv = this.ensureKvAvailable();
+    const keysResult = await kv.list("rsvp:");
+    if (!keysResult.ok) return undefined;
+    
+    for (const key of keysResult.value) {
+      const rsvpResult = await kv.get(key);
+      if (rsvpResult.ok && rsvpResult.value && rsvpResult.value.name.toLowerCase() === name.toLowerCase()) {
+        return rsvpResult.value;
+      }
+    }
+    return undefined;
+  }
+
+  async deleteRsvp(id: number): Promise<boolean> {
+    const kv = this.ensureKvAvailable();
+    const deleteResult = await kv.delete(`rsvp:${id}`);
+    return deleteResult.ok;
   }
 
   // Media methods

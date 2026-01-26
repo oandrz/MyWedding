@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import confetti from "canvas-confetti";
@@ -23,6 +23,7 @@ type RsvpFormValues = z.infer<typeof rsvpSchema>;
 const RsvpSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showGuestOptions, setShowGuestOptions] = useState(true);
+  const [guestName, setGuestName] = useState<string>("");
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const formRef = useRef(null);
@@ -32,6 +33,28 @@ const RsvpSection = () => {
   const isFormInView = useInView(formRef, { once: true, amount: 0.3 });
   
   const { toast } = useToast();
+  
+  // Get guest name from URL param on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const toParam = urlParams.get("to");
+      if (toParam) {
+        setGuestName(decodeURIComponent(toParam));
+      }
+    }
+  }, []);
+  
+  // Check if this guest has already submitted an RSVP
+  const { data: rsvpCheck, isLoading: isCheckingRsvp } = useQuery<{ exists: boolean; rsvp: any }>({
+    queryKey: ['/api/rsvp/check', guestName],
+    queryFn: async () => {
+      if (!guestName) return { exists: false, rsvp: null };
+      const response = await fetch(`/api/rsvp/check?name=${encodeURIComponent(guestName)}`);
+      return response.json();
+    },
+    enabled: !!guestName,
+  });
   
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<RsvpFormValues>({
     resolver: zodResolver(rsvpSchema),
@@ -67,6 +90,9 @@ const RsvpSection = () => {
     onSuccess: (data) => {
       console.log("RSVP submitted successfully:", data);
       setIsSubmitted(true);
+      
+      // Invalidate RSVP check query so UI updates correctly
+      queryClient.invalidateQueries({ queryKey: ['/api/rsvp/check', guestName] });
       
       // Trigger confetti celebration
       const duration = 3 * 1000;
@@ -153,7 +179,32 @@ const RsvpSection = () => {
           initial="hidden"
           animate={isFormInView ? "visible" : "hidden"}
         >
-          {!isSubmitted ? (
+          {isCheckingRsvp ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground font-montserrat">Checking your RSVP status...</p>
+            </div>
+          ) : rsvpCheck?.exists ? (
+            <motion.div 
+              className="p-8 bg-secondary bg-opacity-20 text-center rounded-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="mb-4"
+              >
+                <i className="fas fa-heart text-primary text-4xl"></i>
+              </motion.div>
+              <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You!</h3>
+              <p className="text-foreground font-montserrat">
+                We've already received your RSVP{rsvpCheck.rsvp?.attending ? " and look forward to celebrating with you" : ""}.
+              </p>
+            </motion.div>
+          ) : !isSubmitted ? (
             <motion.form 
               className="space-y-6"
               onSubmit={handleSubmit(onSubmit)}

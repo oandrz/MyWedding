@@ -147,6 +147,41 @@ export default function AdminDashboard() {
     featureFlagMutation.mutate({ featureKey, enabled });
   };
 
+  // Mutation for deleting RSVPs
+  const deleteRsvpMutation = useMutation({
+    mutationFn: (rsvpId: number) => {
+      return apiRequest("DELETE", `/api/rsvp/${rsvpId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rsvp"] });
+      toast({
+        title: "Success",
+        description: "RSVP deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to delete RSVP: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [rsvpToDelete, setRsvpToDelete] = useState<number | null>(null);
+
+  const handleDeleteRsvp = (rsvpId: number) => {
+    setRsvpToDelete(rsvpId);
+  };
+
+  const confirmDeleteRsvp = () => {
+    if (rsvpToDelete !== null) {
+      deleteRsvpMutation.mutate(rsvpToDelete);
+      setRsvpToDelete(null);
+    }
+  };
+
   // Welcome screen state and hooks
   const [welcomeForm, setWelcomeForm] = useState({
     headingText: "",
@@ -698,12 +733,48 @@ export default function AdminDashboard() {
                           </Badge>
                         </div>
                         
-                        {rsvp.attending && rsvp.guestCount && (
-                          <div className="bg-blue-50 p-3 rounded-lg">
-                            <p className="text-sm font-medium text-blue-900">Number of Guests</p>
-                            <p className="text-lg font-semibold text-blue-700">{rsvp.guestCount}</p>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-between">
+                          {rsvp.attending && rsvp.guestCount ? (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <p className="text-sm font-medium text-blue-900">Number of Guests</p>
+                              <p className="text-lg font-semibold text-blue-700">{rsvp.guestCount}</p>
+                            </div>
+                          ) : <div />}
+                          
+                          {rsvpToDelete === rsvp.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500">Delete?</span>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={confirmDeleteRsvp}
+                                disabled={deleteRsvpMutation.isPending}
+                              >
+                                {deleteRsvpMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  "Yes"
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setRsvpToDelete(null)}
+                              >
+                                No
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteRsvp(rsvp.id)}
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}

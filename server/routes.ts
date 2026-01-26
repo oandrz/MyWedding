@@ -1241,6 +1241,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Check if RSVP exists by name (for guest uniqueness check)
+  app.get("/api/rsvp/check", async (req: Request, res: Response) => {
+    try {
+      const name = req.query.name as string;
+      if (!name) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      
+      const rsvp = await storage.getRsvpByName(name);
+      return res.status(200).json({ exists: !!rsvp, rsvp: rsvp || null });
+    } catch (error) {
+      console.error("Error checking RSVP:", error);
+      res.status(500).json({ message: "Failed to check RSVP" });
+    }
+  });
+
+  // Delete RSVP (admin only)
+  app.delete("/api/rsvp/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid RSVP ID" });
+      }
+      
+      const deleted = await storage.deleteRsvp(id);
+      if (deleted) {
+        return res.status(200).json({ message: "RSVP deleted successfully" });
+      } else {
+        return res.status(404).json({ message: "RSVP not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting RSVP:", error);
+      res.status(500).json({ message: "Failed to delete RSVP" });
+    }
+  });
+
   // Fallback API handlers for getting all RSVPs (used if Flask server is not available)
   async function handleGetRsvps(_req: Request, res: Response) {
     try {
