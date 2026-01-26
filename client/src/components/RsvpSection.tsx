@@ -34,16 +34,29 @@ const RsvpSection = () => {
   
   const { toast } = useToast();
   
-  // Get guest name from URL param on mount
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RsvpFormValues>({
+    resolver: zodResolver(rsvpSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      attending: true,
+      guestCount: 1
+    }
+  });
+
+  // Get guest name from URL param on mount and pre-fill form
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const toParam = urlParams.get("to");
       if (toParam) {
-        setGuestName(decodeURIComponent(toParam));
+        const decodedName = decodeURIComponent(toParam);
+        setGuestName(decodedName);
+        // Pre-fill the form name field to prevent typos
+        setValue("name", decodedName);
       }
     }
-  }, []);
+  }, [setValue]);
   
   // Check if this guest has already submitted an RSVP
   const { data: rsvpCheck, isLoading: isCheckingRsvp } = useQuery<{ exists: boolean; rsvp: any }>({
@@ -54,16 +67,6 @@ const RsvpSection = () => {
       return response.json();
     },
     enabled: !!guestName,
-  });
-  
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RsvpFormValues>({
-    resolver: zodResolver(rsvpSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      attending: true,
-      guestCount: 1
-    }
   });
 
   // Handle radio button changes

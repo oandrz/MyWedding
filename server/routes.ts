@@ -261,11 +261,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/rsvp/check", async (req: Request, res: Response) => {
     try {
       const name = req.query.name as string;
+      log(`RSVP check request for name: "${name}"`, 'rsvp-check');
       if (!name) {
         return res.status(400).json({ message: "Name is required" });
       }
       
+      // Try to get RSVPs from Flask first (Flask has its own storage)
+      try {
+        const flaskUrl = `${FLASK_API_URL}/api/rsvp`;
+        const flaskResponse = await fetch(flaskUrl);
+        if (flaskResponse && flaskResponse.ok) {
+          const data = await flaskResponse.json();
+          // Search for matching name (case-insensitive) in Flask's RSVPs
+          const matchingRsvp = data.rsvps?.find((r: any) => 
+            r.name.toLowerCase() === name.toLowerCase()
+          );
+          if (matchingRsvp) {
+            log(`RSVP check result for "${name}": found in Flask`, 'rsvp-check');
+            return res.status(200).json({ exists: true, rsvp: matchingRsvp });
+          }
+        }
+      } catch (flaskError) {
+        log(`Flask not available for RSVP check, falling back to Node.js storage`, 'rsvp-check');
+      }
+      
+      // Fallback to Node.js storage
       const rsvp = await storage.getRsvpByName(name);
+      log(`RSVP check result for "${name}": ${rsvp ? 'found in Node.js' : 'not found'}`, 'rsvp-check');
       return res.status(200).json({ exists: !!rsvp, rsvp: rsvp || null });
     } catch (error) {
       console.error("Error checking RSVP:", error);
