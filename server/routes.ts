@@ -256,6 +256,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if RSVP exists by name (for guest uniqueness check)
+  // NOTE: This route MUST be defined before /api/rsvp/:email to avoid route conflicts
+  app.get("/api/rsvp/check", async (req: Request, res: Response) => {
+    try {
+      const name = req.query.name as string;
+      if (!name) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      
+      const rsvp = await storage.getRsvpByName(name);
+      return res.status(200).json({ exists: !!rsvp, rsvp: rsvp || null });
+    } catch (error) {
+      console.error("Error checking RSVP:", error);
+      res.status(500).json({ message: "Failed to check RSVP" });
+    }
+  });
+
   // Add individual RSVP lookup by email
   app.get("/api/rsvp/:email", async (req: Request, res: Response) => {
     const email = req.params.email;
@@ -1240,22 +1257,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   }
-
-  // Check if RSVP exists by name (for guest uniqueness check)
-  app.get("/api/rsvp/check", async (req: Request, res: Response) => {
-    try {
-      const name = req.query.name as string;
-      if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-      }
-      
-      const rsvp = await storage.getRsvpByName(name);
-      return res.status(200).json({ exists: !!rsvp, rsvp: rsvp || null });
-    } catch (error) {
-      console.error("Error checking RSVP:", error);
-      res.status(500).json({ message: "Failed to check RSVP" });
-    }
-  });
 
   // Delete RSVP (admin only)
   app.delete("/api/rsvp/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
