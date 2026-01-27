@@ -189,7 +189,7 @@ const RsvpSection = () => {
             </div>
           ) : rsvpCheck?.exists ? (
             <motion.div 
-              className="p-8 bg-secondary bg-opacity-20 text-center rounded-md"
+              className="p-8 text-center rounded-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -306,7 +306,7 @@ const RsvpSection = () => {
             </motion.form>
           ) : (
             <motion.div 
-              className="p-8 bg-secondary bg-opacity-20 text-center rounded-md"
+              className="p-8 text-center rounded-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
