@@ -83,6 +83,13 @@ class MemoryRsvpRepository(IRsvpRepository):
         rsvp = Rsvp(id=id, **insert_rsvp.dict())
         self.rsvps[id] = rsvp
         return rsvp
+    
+    def delete(self, id: int) -> bool:
+        """Delete an RSVP by ID. Returns True if deleted, False if not found."""
+        if id in self.rsvps:
+            del self.rsvps[id]
+            return True
+        return False
 
 
 class MemoryMessageRepository(IMessageRepository):

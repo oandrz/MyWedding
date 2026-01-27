@@ -1288,6 +1288,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid RSVP ID" });
       }
       
+      // Try to delete from Flask first (Flask has its own storage)
+      try {
+        const flaskUrl = `${FLASK_API_URL}/api/rsvp/${id}`;
+        const flaskResponse = await fetch(flaskUrl, { method: 'DELETE' });
+        if (flaskResponse && flaskResponse.ok) {
+          const data = await flaskResponse.json();
+          log(`RSVP ${id} deleted from Flask`, 'rsvp-delete');
+          return res.status(200).json(data);
+        } else if (flaskResponse && flaskResponse.status === 404) {
+          // Flask didn't find it, try Node.js storage
+          log(`RSVP ${id} not found in Flask, trying Node.js storage`, 'rsvp-delete');
+        }
+      } catch (flaskError) {
+        log(`Flask not available for RSVP delete, falling back to Node.js storage`, 'rsvp-delete');
+      }
+      
+      // Fallback to Node.js storage
       const deleted = await storage.deleteRsvp(id);
       if (deleted) {
         return res.status(200).json({ message: "RSVP deleted successfully" });

@@ -52,3 +52,14 @@ def register_rsvp_routes(app: Flask) -> None:
         except Exception as e:
             print(f"Error fetching RSVP: {str(e)}")
             return jsonify({"message": f"Failed to fetch RSVP: {str(e)}"}), 500
+    
+    @app.route('/api/rsvp/<int:id>', methods=['DELETE'])
+    def delete_rsvp(id):
+        """Delete an RSVP by ID."""
+        try:
+            response_data, status_code = rsvp_service.delete_rsvp(id)
+            return jsonify(response_data), status_code
+        
+        except Exception as e:
+            print(f"Error deleting RSVP: {str(e)}")
+            return jsonify({"message": f"Failed to delete RSVP: {str(e)}"}), 500

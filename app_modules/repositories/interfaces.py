@@ -58,6 +58,11 @@ class IRsvpRepository(ABC):
     def update(self, id: int, insert_rsvp: InsertRsvp) -> Rsvp:
         """Update an existing RSVP."""
         pass
+    
+    @abstractmethod
+    def delete(self, id: int) -> bool:
+        """Delete an RSVP by ID. Returns True if deleted, False if not found."""
+        pass
 
 
 class IMessageRepository(ABC):

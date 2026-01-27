@@ -91,3 +91,20 @@ class RsvpService:
             return {"rsvp": rsvp.dict()}, 200
         else:
             return {"message": "RSVP not found"}, 404
+    
+    def delete_rsvp(self, id: int) -> Tuple[Dict[str, Any], int]:
+        """
+        Delete an RSVP by ID.
+        
+        Args:
+            id: The RSVP ID to delete
+            
+        Returns:
+            A tuple containing the response data and HTTP status code
+        """
+        deleted = self.repository.delete(id)
+        
+        if deleted:
+            return {"message": "RSVP deleted successfully"}, 200
+        else:
+            return {"message": "RSVP not found"}, 404
