@@ -191,11 +191,11 @@ const MessagesSection = () => {
                             <AvatarFallback>{getInitials(message.name)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start mb-1">
-                              <p className="font-montserrat text-foreground font-medium text-sm truncate">
+                            <div className="mb-1">
+                              <p className="font-montserrat text-foreground font-medium text-sm">
                                 {message.name}
                               </p>
-                              <span className="text-muted-foreground text-xs whitespace-nowrap ml-2">
+                              <span className="text-muted-foreground text-xs">
                                 {formatMessageDate(message.createdAt)}
                               </span>
                             </div>
