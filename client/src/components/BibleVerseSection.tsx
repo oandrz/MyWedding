@@ -58,9 +58,7 @@ const BibleVerseSection = () => {
             <motion.p 
               className="text-xl md:text-2xl font-cormorant italic text-gray-700 leading-relaxed mb-8"
               variants={fadeIn}
-            >
-              "And over all these virtues put on love, which binds them all together in perfect unity."
-            </motion.p>
+            >"We love because He first loved us."</motion.p>
             
             <motion.p 
               className="text-sm font-montserrat text-gray-500 tracking-widest uppercase"
