@@ -63,9 +63,7 @@ const BibleVerseSection = () => {
             <motion.p 
               className="text-sm font-montserrat text-gray-500 tracking-widest uppercase"
               variants={fadeIn}
-            >
-              Colossians 3:14
-            </motion.p>
+            >1 John 4:19</motion.p>
           </motion.div>
         </div>
       </div>
