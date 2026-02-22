@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertRsvpSchema, insertMediaSchema, insertConfigImageSchema, insertFeatureFlagSchema, insertAppSettingSchema, insertWelcomeScreenSchema, insertMessageSchema, ConfigImage, FeatureFlag } from "@shared/schema";
@@ -68,8 +68,6 @@ function setCachedFeatureFlags(flags: FeatureFlag[]): void {
 function invalidateFeatureFlagsCache(): void {
   cache.featureFlags = null;
 }
-
-const FLASK_API_URL = "http://localhost:5001";
 
 // Keep uploads directory for backward compatibility (existing files)
 const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
@@ -151,55 +149,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     log(`Failed to start Flask server: ${err}`, 'flask');
   }
 
-  // Try using the Flask API first, if available
-  app.post("/api/rsvp", async (req: Request, res: Response, next: NextFunction) => {
+  app.post("/api/rsvp", async (req: Request, res: Response) => {
     try {
-      // Try forwarding to Flask server
-      const flaskUrl = `${FLASK_API_URL}/api/rsvp`;
-      const flaskOptions = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(req.body),
-      };
-
-      const flaskResponse = await fetch(flaskUrl, flaskOptions).catch((err) => {
-        log(`Failed to connect to Flask server: ${err.message}`, 'flask-proxy');
-        return null;
-      });
+      const validatedData = insertRsvpSchema.parse(req.body);
       
-      if (flaskResponse && flaskResponse.ok) {
-        const data = await flaskResponse.json();
-        return res.status(flaskResponse.status).json(data);
+      const existingRsvp = await storage.getRsvpByEmail(validatedData.email);
+      
+      if (existingRsvp) {
+        const updated = await storage.updateRsvp(existingRsvp.id, validatedData);
+        return res.status(200).json({ 
+          message: "Your RSVP has been updated successfully!",
+          rsvp: updated 
+        });
       }
       
-      // If Flask is not available, use the Node.js implementation
-      log("Flask server not available, using Node.js implementation", 'flask-proxy');
-      return handleRsvpSubmission(req, res);
+      const rsvpEntry = await storage.createRsvp(validatedData);
+      res.status(201).json({ 
+        message: "Thank you for your RSVP!",
+        rsvp: rsvpEntry 
+      });
     } catch (error) {
-      log(`Error proxying to Flask: ${error}`, 'flask-proxy');
-      return handleRsvpSubmission(req, res);
+      if (error instanceof z.ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ message: validationError.message });
+      } else {
+        console.error("RSVP submission error:", error);
+        res.status(500).json({ message: "Failed to submit RSVP" });
+      }
     }
   });
 
-  app.get("/api/rsvp", async (req: Request, res: Response, next: NextFunction) => {
+  app.get("/api/rsvp", async (req: Request, res: Response) => {
     try {
-      // Try forwarding to Flask server
-      const flaskUrl = `${FLASK_API_URL}/api/rsvp`;
-      const flaskResponse = await fetch(flaskUrl).catch(() => null);
+      const rsvps = await storage.getRsvps();
       
-      if (flaskResponse && flaskResponse.ok) {
-        const data = await flaskResponse.json();
-        return res.status(flaskResponse.status).json(data);
-      }
+      const attending = rsvps.filter(r => r.attending).length;
+      const notAttending = rsvps.filter(r => !r.attending).length;
+      const totalGuests = rsvps
+        .filter(r => r.attending)
+        .reduce((sum, current) => sum + (current.guestCount || 1), 0);
       
-      // If Flask is not available, use the Node.js implementation
-      log("Flask server not available for GET /api/rsvp, using Node.js implementation", 'flask-proxy');
-      return handleGetRsvps(req, res);
+      res.status(200).json({ 
+        rsvps,
+        stats: {
+          total: rsvps.length,
+          attending,
+          notAttending,
+          guestCount: totalGuests
+        }
+      });
     } catch (error) {
-      log(`Error proxying to Flask: ${error}`, 'flask-proxy');
-      return handleGetRsvps(req, res);
+      console.error("Error fetching RSVPs:", error);
+      res.status(500).json({ message: "Failed to fetch RSVPs" });
     }
   });
 
@@ -266,61 +267,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Name is required" });
       }
       
-      // Try to get RSVPs from Flask first (Flask has its own storage)
-      try {
-        const flaskUrl = `${FLASK_API_URL}/api/rsvp`;
-        const flaskResponse = await fetch(flaskUrl);
-        if (flaskResponse && flaskResponse.ok) {
-          const data = await flaskResponse.json();
-          // Search for matching name (case-insensitive) in Flask's RSVPs
-          const matchingRsvp = data.rsvps?.find((r: any) => 
-            r.name.toLowerCase() === name.toLowerCase()
-          );
-          if (matchingRsvp) {
-            log(`RSVP check result for "${name}": found in Flask`, 'rsvp-check');
-            return res.status(200).json({ exists: true, rsvp: matchingRsvp });
-          }
-        }
-      } catch (flaskError) {
-        log(`Flask not available for RSVP check, falling back to Node.js storage`, 'rsvp-check');
-      }
-      
-      // Fallback to Node.js storage
-      const rsvp = await storage.getRsvpByName(name);
-      log(`RSVP check result for "${name}": ${rsvp ? 'found in Node.js' : 'not found'}`, 'rsvp-check');
-      return res.status(200).json({ exists: !!rsvp, rsvp: rsvp || null });
+      const rsvpEntry = await storage.getRsvpByName(name);
+      log(`RSVP check result for "${name}": ${rsvpEntry ? 'found' : 'not found'}`, 'rsvp-check');
+      return res.status(200).json({ exists: !!rsvpEntry, rsvp: rsvpEntry || null });
     } catch (error) {
       console.error("Error checking RSVP:", error);
       res.status(500).json({ message: "Failed to check RSVP" });
     }
   });
 
-  // Add individual RSVP lookup by email
   app.get("/api/rsvp/:email", async (req: Request, res: Response) => {
     const email = req.params.email;
     try {
-      // Try forwarding to Flask server
-      const flaskUrl = `${FLASK_API_URL}/api/rsvp/${email}`;
-      const flaskResponse = await fetch(flaskUrl).catch(() => null);
+      const rsvpEntry = await storage.getRsvpByEmail(email);
       
-      if (flaskResponse) {
-        const data = await flaskResponse.json();
-        return res.status(flaskResponse.status).json(data);
-      }
-      
-      // If Flask is not available, use the Node.js implementation
-      const rsvp = await storage.getRsvpByEmail(email);
-      
-      if (rsvp) {
-        return res.status(200).json({ rsvp });
+      if (rsvpEntry) {
+        return res.status(200).json({ rsvp: rsvpEntry });
       } else {
         return res.status(404).json({ message: "RSVP not found" });
       }
     } catch (error) {
-      log(`Error getting RSVP by email: ${error}`, 'flask-proxy');
-      return res.status(500).json({ 
-        message: "Failed to fetch RSVP."
-      });
+      console.error("Error getting RSVP by email:", error);
+      return res.status(500).json({ message: "Failed to fetch RSVP." });
     }
   });
   
@@ -1244,43 +1212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fallback API handlers for RSVP submission (used if Flask server is not available)
-  async function handleRsvpSubmission(req: Request, res: Response) {
-    try {
-      // Validate the request body using zod
-      const validatedData = insertRsvpSchema.parse(req.body);
-      
-      // Check if this email has already RSVP'd
-      const existingRsvp = await storage.getRsvpByEmail(validatedData.email);
-      
-      if (existingRsvp) {
-        // Update existing RSVP instead of creating a new one
-        // But for now, let's just return a message
-        return res.status(200).json({ 
-          message: "Your RSVP has been updated successfully!",
-          rsvp: existingRsvp 
-        });
-      }
-      
-      // Store the RSVP
-      const rsvp = await storage.createRsvp(validatedData);
-      
-      res.status(201).json({ 
-        message: "Thank you for your RSVP!",
-        rsvp 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ message: validationError.message });
-      } else {
-        console.error("RSVP submission error:", error);
-        res.status(500).json({ message: "Failed to submit RSVP" });
-      }
-    }
-  }
 
-  // Delete RSVP (admin only)
   app.delete("/api/rsvp/:id", adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
@@ -1288,23 +1220,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid RSVP ID" });
       }
       
-      // Try to delete from Flask first (Flask has its own storage)
-      try {
-        const flaskUrl = `${FLASK_API_URL}/api/rsvp/${id}`;
-        const flaskResponse = await fetch(flaskUrl, { method: 'DELETE' });
-        if (flaskResponse && flaskResponse.ok) {
-          const data = await flaskResponse.json();
-          log(`RSVP ${id} deleted from Flask`, 'rsvp-delete');
-          return res.status(200).json(data);
-        } else if (flaskResponse && flaskResponse.status === 404) {
-          // Flask didn't find it, try Node.js storage
-          log(`RSVP ${id} not found in Flask, trying Node.js storage`, 'rsvp-delete');
-        }
-      } catch (flaskError) {
-        log(`Flask not available for RSVP delete, falling back to Node.js storage`, 'rsvp-delete');
-      }
-      
-      // Fallback to Node.js storage
       const deleted = await storage.deleteRsvp(id);
       if (deleted) {
         return res.status(200).json({ message: "RSVP deleted successfully" });
@@ -1317,34 +1232,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fallback API handlers for getting all RSVPs (used if Flask server is not available)
-  async function handleGetRsvps(_req: Request, res: Response) {
-    try {
-      const rsvps = await storage.getRsvps();
-      
-      // Calculate attendance stats
-      const attending = rsvps.filter(rsvp => rsvp.attending).length;
-      const notAttending = rsvps.filter(rsvp => !rsvp.attending).length;
-      
-      // Calculate total guests (including the main attendee + additional guests)
-      const totalGuests = rsvps
-        .filter(rsvp => rsvp.attending)
-        .reduce((sum, current) => sum + (current.guestCount || 1), 0);
-      
-      res.status(200).json({ 
-        rsvps,
-        stats: {
-          total: rsvps.length,
-          attending,
-          notAttending,
-          guestCount: totalGuests
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching RSVPs:", error);
-      res.status(500).json({ message: "Failed to fetch RSVPs" });
-    }
-  }
 
   // Admin login endpoint - creates session and sets HttpOnly cookie
   app.post("/api/admin/login", (req: Request, res: Response) => {

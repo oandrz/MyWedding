@@ -1508,20 +1508,11 @@ function getReplitDatabaseUrl(): string | null {
 
 // Conditional storage initialization based on environment
 function createStorage(): IStorage {
-  // Check if we're in a Replit environment (has REPLIT_DB_URL)
-  const replitDbUrl = getReplitDatabaseUrl();
-  if (replitDbUrl) {
-    console.log('Using Replit Database storage');
-    return new KeyValueStorage();
-  }
-  
-  // Check if we have a PostgreSQL database URL (local development)
   if (process.env.DATABASE_URL) {
     console.log('Using PostgreSQL Database storage');
     return new DatabaseStorage();
   }
   
-  // Fallback to in-memory storage for testing
   console.log('Using in-memory storage (no database configured)');
   return new MemStorage();
 }

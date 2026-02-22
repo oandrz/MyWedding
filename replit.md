@@ -2,135 +2,7 @@
 
 ## Overview
 
-This is a comprehensive wedding e-invitation platform that creates an interactive digital experience for wedding guests. The application combines a React frontend with multiple backend options (Flask and Express.js) to provide features like RSVP management, message boards, photo galleries, and admin functionality.
-
-## Recent Changes
-
-**Message Board Database Migration & Admin Management:**
-
-**January 21, 2026:**
-- ✓ Migrated message board from in-memory storage to database persistence
-- ✓ Added messages table schema with id, name, email, content, and createdAt fields
-- ✓ Implemented message methods in all storage classes (MemStorage, DatabaseStorage, KeyValueStorage)
-- ✓ Updated message routes to use storage interface directly instead of Flask proxy
-- ✓ Fixed ID generation in KeyValueStorage to calculate from existing data for restart persistence
-- ✓ Added Message Wall tab to admin dashboard for viewing all guest messages
-- ✓ Implemented DELETE /api/messages/:id endpoint with admin authentication
-- ✓ Added inline delete confirmation UI with proper error handling
-- ✓ Integrated 401/auto-logout handling for expired admin sessions
-- ✓ Moved messages section to home page for better discoverability
-- ✓ Created compact MessagesSection component showing 3 recent messages with form
-- ✓ Updated navigation to scroll to messages section instead of separate page
-- ✓ Renamed "Messages" to "Wishes" in navigation for clearer purpose
-- Messages now persist across server restarts
-
-**Production Configuration Fixes:**
-
-**October 21, 2025:**
-- ✓ Fixed critical production deployment issue where music uploads and other features failed with PostgreSQL errors
-- ✓ Implemented production-aware Replit Database URL detection
-- ✓ Created helper function to read REPLIT_DB_URL from /tmp/replitdb file (production) or environment variable (development)
-- ✓ Fixed storage selection to properly use Replit Database in both development and production environments
-- ✓ Added detailed logging showing database source (file vs env var) for debugging
-- ✓ Fixed critical database initialization crash preventing production deployment
-- ✓ Implemented lazy-loading database connection with getDb() function
-- ✓ Decoupled DatabaseStorage from eager PostgreSQL import to prevent crashes
-- Root cause: In production, REPLIT_DB_URL is stored in /tmp/replitdb file instead of environment variable, causing app to fall through to PostgreSQL (which had no tables)
-- Solution: Check both /tmp/replitdb file and environment variable following Replit's recommended pattern
-
-**October 7, 2025:**
-- ✓ Fixed critical production deployment issues causing all features to fail
-- ✓ Added CORS middleware configuration for cross-origin requests in production
-- ✓ Updated session cookie sameSite setting from 'strict' to 'none' for production compatibility
-- ✓ Configured credentials support for cross-site authentication
-- ✓ All API endpoints (music-upload, feature-flags, config-images) now work correctly in production
-- Root cause: sameSite 'strict' was blocking cookies in cross-origin production requests
-- Solution: sameSite 'none' (with secure) in production, 'lax' in development
-
-**Local Development Configuration:**
-
-**August 14, 2025:**
-- ✓ Implemented comprehensive Docker setup for seamless local development
-- ✓ Created complete Docker containerization with automatic dependency management
-- ✓ Added Dockerfile with multi-stage builds for development and production
-- ✓ Enhanced docker-compose.local.yml with PostgreSQL, Redis, and optional PgAdmin
-- ✓ Created DOCKER_SETUP.md with one-command setup instructions
-- ✓ Added docker-run.sh script for easy Docker management
-- ✓ Configured automatic database initialization and health checks
-- ✓ Manual setup files: .env.example, LOCAL_DEVELOPMENT_SETUP.md, setup-local.sh
-- ✓ Added package.local.json and vite.config.local.ts for non-Docker development
-- ✓ Embedded Google Drive folder directly in wedding memories gallery
-- ✓ Fixed photo upload integration to show images in real-time via iframe embed
-
-**Core System Improvements:**
-
-**August 12, 2025:**
-- ✓ Completely redesigned wedding memories gallery with guest-friendly interface
-- ✓ Embedded live Google Drive folder (1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC) directly in wedding invitation
-- ✓ Removed all business language - now uses wedding-themed copy with hearts and rose colors
-- ✓ Integrated drag-and-drop photo sharing directly in memories page (no separate pages)
-- ✓ Real-time photo viewing - uploaded photos appear instantly in embedded Google Drive
-- ✓ Simplified upload experience: optional guest name field, instant sharing
-- ✓ Beautiful wedding-themed animations and interactions with Framer Motion
-- ✓ Added direct link to open full Google Drive gallery in new window
-- ✓ Photos now visible immediately after upload without database sync issues
-
-**January 31, 2025:**
-- ✓ Fixed admin dashboard tabs breaking on mobile - now shows icon-only tabs on small screens
-- ✓ Integrated actual Google Drive folder for guest uploads (ID: 1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC)
-- ✓ Fixed navigation scrolling issues - all menu links now smoothly scroll to sections
-- ✓ Removed "Add Banner Image" button when banner exists - replace-only model
-- ✓ Created comprehensive issues.md documentation for all resolved problems
-- ✓ Simplified RSVP form - replaced firstName/lastName with single name field
-- ✓ Removed dietary restrictions and message fields from RSVP for streamlined experience
-- ✓ Created direct Google Drive upload page (/memories-upload) with drag-and-drop functionality
-- ✓ Enhanced Google Drive integration with embedded folder view always visible
-- ✓ Updated backend schema and routes to handle simplified RSVP structure
-- ✓ Implemented Google Drive API service with secure credential handling
-- ✓ Added guest name input field for personalized photo identification  
-- ✓ Created seamless upload flow that guides users to Google Drive folder
-- ✓ Configured service account authentication for real file uploads
-- ✓ Fixed critical upload simulation issue - now performs actual Google Drive uploads
-- ✓ Implemented OAuth2 authentication to solve Google Drive personal folder restriction
-- ✓ Added automatic authorization flow for seamless one-time setup
-- ✓ Enabled true direct uploads to personal Google Drive folders
-
-**January 18, 2025:**
-- ✓ Fixed critical RSVP count calculation bug - now correctly counts main attendee + additional guests
-- ✓ Separated admin uploads from guest memories gallery to prevent confusion
-- ✓ Auto-approve admin uploads while requiring approval for guest submissions
-- ✓ Simplified memory sharing flow - made name and email optional for faster uploads during events
-- ✓ Fixed banner image glitch with preloading to eliminate flash of previous image
-- ✓ Improved gallery image performance with better lazy loading and error handling
-- ✓ Enhanced admin interface with visible Approve/Reject buttons and better button placement
-- ✓ Clarified messages section purpose as congratulations and well-wishes platform
-- ✓ Relocated "Add Image" buttons within tabs for more natural admin experience
-- ✓ Removed delete button for banner images to encourage consistent hero section presence
-- ✓ Auto-hide gallery section when no images configured to prevent empty content
-- ✓ Updated admin button colors to match wedding theme (rose/pink) instead of generic colors
-- ✓ Implemented Google Drive A/B testing for memory uploads with embedded folder view
-- ✓ Added cross-linking between traditional upload and Google Drive options for testing
-
-**Image Management System Enhancements:**
-
-**January 16, 2025:**
-- ✓ Created Google Drive-style image upload interface with drag-and-drop functionality
-- ✓ Added dual upload options: file upload and URL-based image addition
-- ✓ Removed confusing "Image Key" field - now auto-generated for better UX
-- ✓ Fixed file upload API integration with proper required fields
-- ✓ Implemented modal-based image management for cleaner interface
-- ✓ Added visual feedback for drag operations and file selection
-- ✓ Fixed accessibility warnings with proper dialog descriptions
-
-**Security Updates:**
-- ✓ Fixed critical security vulnerability CVE-2025-48997 in Multer
-- ✓ Upgraded Multer from 1.4.5-lts.2 to 2.0.1 (patched DoS vulnerability)
-- ✓ Updated @types/multer to 2.0.0 for compatibility
-- ✓ Verified file upload functionality remains working after upgrade
-
-- ✓ Fixed critical security vulnerability CVE-2025-30208 in Vite
-- ✓ Upgraded Vite from 5.4.14 to 5.4.15 (patched file access bypass vulnerability)
-- ✓ Vulnerability was exploitable due to network-exposed dev server (host: 0.0.0.0)
+This project is a comprehensive wedding e-invitation platform designed to provide an interactive digital experience for wedding guests. It features RSVP management, message boards for well-wishes, photo galleries with guest upload capabilities, and an administrative dashboard for content management. The platform aims to streamline wedding planning by digitizing guest interactions and memory collection, offering a modern alternative to traditional paper invitations.
 
 ## User Preferences
 
@@ -138,113 +10,59 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-The application follows a full-stack architecture with separate frontend and backend components:
+The application utilizes a full-stack architecture with distinct frontend and backend components.
 
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Styling**: Tailwind CSS with ShadCN UI component library
-- **Animations**: Framer Motion for smooth interactions
-- **Routing**: Wouter for lightweight client-side routing
-- **State Management**: React Query (TanStack Query) for server state
-- **Form Handling**: React Hook Form with Zod validation
+- **Framework**: React 18 with TypeScript.
+- **Styling**: Tailwind CSS, enhanced with ShadCN UI components.
+- **Animations**: Framer Motion for dynamic user interfaces.
+- **Routing**: Wouter for client-side navigation.
+- **State Management**: React Query (TanStack Query) for server state handling.
+- **Form Handling**: React Hook Form with Zod for validation.
 
 ### Backend Architecture
-The project supports dual backend implementations:
-1. **Flask Backend** (Python) - Main production backend
-2. **Express.js Backend** (Node.js) - Development server and static file serving
+The system supports a dual-backend approach:
+- **Flask Backend (Python)**: Serves as the primary production backend.
+- **Express.js Backend (Node.js)**: Used for development and serving static assets.
 
 ### Database Strategy
-- **Development**: In-memory storage using Python dictionaries and JavaScript Maps
-- **Production Ready**: Drizzle ORM configured for PostgreSQL (schema defined but not yet connected)
-- **Migration Path**: The application is structured to easily migrate from in-memory to PostgreSQL
+- **Development**: Utilizes in-memory storage for rapid development cycles.
+- **Production**: Configured with Drizzle ORM for PostgreSQL, allowing for robust data persistence. RSVP and message board data are persisted via PostgreSQL.
 
-## Key Components
+### UI/UX Decisions
+- The design incorporates wedding-themed aesthetics, utilizing heart motifs and rose/pink color palettes.
+- Guest-friendly interfaces for photo galleries and RSVP forms.
+- Admin dashboard features icon-only tabs on mobile for improved responsiveness.
 
-### Frontend Components
-- **Page Components**: Home, Messages, Gallery, Admin Dashboard, Admin Login
-- **Feature Components**: 
-  - Hero section with background music
-  - Countdown timer to wedding date
-  - RSVP form with validation
-  - Message board for guest wishes
-  - Photo gallery with upload functionality
-  - Admin dashboard for content management
+### Core Features
+- **Hero Section**: Includes background music and a countdown timer.
+- **RSVP Management**: Allows guests to respond with attendance details.
+- **Message Board**: Guests can post congratulatory messages.
+- **Photo Gallery**: Supports guest photo uploads directly to an embedded Google Drive folder with real-time display and admin approval.
+- **Admin Dashboard**: Provides tools for managing RSVPs, moderating content, and overseeing platform settings.
 
-### Backend Services
-- **RSVP Service**: Handles guest responses and attendance tracking
-- **Message Service**: Manages guest messages and well-wishes
-- **Media Service**: Handles photo/video uploads and approval workflow
-- **Admin Service**: Provides administrative functions
-
-### Repository Pattern
-- **Interface-based Design**: Abstract repository interfaces for data access
-- **Multiple Implementations**: In-memory repositories for development, ready for database repositories
-- **Easy Testing**: Repository pattern enables easy mocking and testing
-
-## Data Flow
-
-### Guest Interaction Flow
-1. **Landing Page**: Guests arrive at the wedding invitation
-2. **RSVP Submission**: Guests fill out attendance form with validation
-3. **Message Board**: Guests can leave congratulatory messages
-4. **Gallery Upload**: Guests can submit photos/videos for approval
-5. **Real-time Updates**: Content updates dynamically via React Query
-
-### Admin Management Flow
-1. **Authentication**: Simple password-based admin access
-2. **RSVP Management**: View all responses and attendance statistics
-3. **Content Moderation**: Approve/reject user-submitted media
-4. **Dashboard Analytics**: Overview of engagement metrics
-
-### Data Persistence
-- **Development**: All data stored in memory (resets on restart)
-- **Production Ready**: Database schema defined for PostgreSQL migration
-- **API Design**: RESTful endpoints support both storage strategies
+### Design Patterns
+- **Repository Pattern**: Utilizes abstract repository interfaces for data access, supporting multiple implementations (in-memory, database) for flexibility and testing.
 
 ## External Dependencies
 
-### Core Dependencies
-- **React Ecosystem**: React, React DOM, React Query
-- **UI Framework**: Radix UI primitives, ShadCN components
-- **Animation**: Framer Motion
-- **Form Management**: React Hook Form, Zod validation
-- **Styling**: Tailwind CSS, PostCSS
+### Frontend Dependencies
+- **React Ecosystem**: React, React DOM, React Query.
+- **UI Libraries**: Radix UI, ShadCN UI.
+- **Animation**: Framer Motion.
+- **Form Management**: React Hook Form, Zod.
+- **Styling**: Tailwind CSS, PostCSS.
 
 ### Backend Dependencies
-- **Python**: Flask, Flask-CORS, Pydantic
-- **Node.js**: Express, Multer (file uploads), http-proxy-middleware
-- **Database**: Drizzle ORM, @neondatabase/serverless
+- **Python**: Flask, Flask-CORS, Pydantic.
+- **Node.js**: Express, Multer (for file uploads), http-proxy-middleware.
+- **Database**: Drizzle ORM, @neondatabase/serverless, PostgreSQL.
 
 ### Development Tools
-- **Build System**: Vite with React plugin
-- **TypeScript**: Full type safety across frontend and shared schemas
-- **Linting**: ESLint configuration
-- **Package Management**: npm with lockfile
+- **Build Tool**: Vite.
+- **Language**: TypeScript.
+- **Linting**: ESLint.
+- **Package Management**: npm.
 
-## Deployment Strategy
-
-### Development Environment
-- **Dual Server Setup**: Flask backend (port 5001) + Express frontend (default Vite port)
-- **Hot Reloading**: Vite HMR for frontend development
-- **Proxy Configuration**: Express proxies API requests to Flask
-- **Asset Serving**: Express serves static assets and uploads
-
-### Production Considerations
-- **Database Migration**: Switch from in-memory to PostgreSQL using existing Drizzle schema
-- **File Storage**: Currently using local filesystem, ready for cloud storage integration
-- **Authentication**: Basic password auth suitable for private family events
-- **Scaling**: Repository pattern and service layer support horizontal scaling
-
-### Build Process
-- **Frontend Build**: Vite builds to `dist/public` directory
-- **Backend Build**: esbuild bundles Express server
-- **Static Assets**: Images, music, and uploads served from public directories
-- **Environment Configuration**: Support for environment-specific settings
-
-### Security Features
-- **Input Validation**: Zod schemas validate all user inputs
-- **File Upload Security**: Multer with file type and size restrictions
-- **Admin Protection**: Password-based access to administrative functions
-- **CORS Configuration**: Properly configured for cross-origin requests
-
-The architecture prioritizes maintainability and scalability while keeping the complexity appropriate for a wedding invitation application. The modular design allows for easy feature additions and backend migrations as needed.
+### Integrated Services
+- **Google Drive API**: Used for guest photo uploads and gallery management.
