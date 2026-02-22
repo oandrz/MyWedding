@@ -115,7 +115,7 @@ export const welcomeScreen = pgTable("welcome_screen", {
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  email: text("email").notNull(),
+  email: text("email"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull()
 });
