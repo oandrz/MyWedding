@@ -364,7 +364,7 @@ export default function AdminDashboard() {
       if (rsvp.attending) {
         attending++;
         // Add additional guests if present
-        totalGuests += 1 + (rsvp.guestCount || 0);
+        totalGuests += rsvp.guestCount || 1;
       } else {
         notAttending++;
       }
