@@ -34,33 +34,10 @@ const Footer = () => {
           </motion.p>
           
           <motion.div 
-            className="flex justify-center space-x-6 mb-8"
+            className="mb-8"
             variants={fadeIn}
           >
-            <motion.a 
-              href="#" 
-              className="text-[#F9F5F0] hover:text-accent transition-colors duration-300"
-              whileHover={{ scale: 1.2 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <i className="fab fa-instagram text-xl"></i>
-            </motion.a>
-            <motion.a 
-              href="#" 
-              className="text-[#F9F5F0] hover:text-accent transition-colors duration-300"
-              whileHover={{ scale: 1.2 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <i className="fab fa-facebook text-xl"></i>
-            </motion.a>
-            <motion.a 
-              href="#" 
-              className="text-[#F9F5F0] hover:text-accent transition-colors duration-300"
-              whileHover={{ scale: 1.2 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <i className="fa fa-envelope text-xl"></i>
-            </motion.a>
+            <span className="font-cormorant text-5xl italic text-white text-opacity-90 tracking-widest">A&C</span>
           </motion.div>
           
           <motion.p 
