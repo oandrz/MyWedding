@@ -128,12 +128,14 @@ const CoupleSection = () => {
           >
             How We Met
           </motion.h3>
-          <motion.p 
-            className="text-muted-foreground font-montserrat leading-relaxed mb-8"
+          <motion.div 
+            className="text-muted-foreground font-montserrat leading-relaxed mb-8 space-y-4"
             variants={fadeIn}
           >
-            Our story began five years ago at a mutual friend's birthday party. {BRIDE_NAME} was helping with decorations when she accidentally spilled punch on {GROOM_NAME}'s new shoes. What started as an awkward apology turned into hours of conversation, laughter, and the exchange of phone numbers. Three years, countless adventures, and one rescue dog later, {GROOM_NAME} proposed during a sunrise hike to our favorite mountain lookout.
-          </motion.p>
+            <p>In 2019, Andreas applied for a job. Christine, the recruiter at the time, was hiring an Android Developer. She reviewed his CV, scheduled the interviews, and successfully closed the role. KPI achieved. But apparently, Andreas had a different target. Shortly after joining the company, he began to do "Personal Outreach." Under the very professional excuse of conducting user research for his side project, he invited Christine to be an interviewee.</p>
+            <p>One research session somehow turned into an escape room invite. Very subtle. Very strategic. Christine? Not impressed and rejected the invite. She sensed something was up.</p>
+            <p>Instead of giving up, Andreas asked for one last call after deciding to resign and move overseas. But this time, it wasn't about work. He used the opportunity to confess his feelings. Well, that honesty changed everything. What started as a recruitment process turned into long Google Meet calls, lots of laughter, and a love story neither of them expected. The candidate and the recruiter have officially agreed to a lifetime contract. And now, we would love for you to be part of the day we make it official! 😊</p>
+          </motion.div>
           <motion.div 
             className="italic text-primary font-cormorant text-xl"
             variants={fadeIn}
