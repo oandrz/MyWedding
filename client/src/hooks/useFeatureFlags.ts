@@ -94,6 +94,11 @@ export function useCountdownEnabled() {
   return isFeatureEnabled('countdown');
 }
 
+export function useMemoriesEnabled() {
+  const { isFeatureEnabled } = useFeatureFlags();
+  return isFeatureEnabled('memories');
+}
+
 export function useEGiftEnabled() {
   const { isFeatureEnabled } = useFeatureFlags();
   return isFeatureEnabled('egift');

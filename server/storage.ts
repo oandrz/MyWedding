@@ -340,6 +340,12 @@ export class MemStorage implements IStorage {
         enabled: true
       },
       {
+        featureKey: 'memories',
+        featureName: 'Memories Page',
+        description: 'Show/hide the Memories page link in navigation',
+        enabled: true
+      },
+      {
         featureKey: 'egift',
         featureName: 'E-Gift / Bank Transfer',
         description: 'Allow guests to send monetary gifts via bank transfer',
@@ -921,6 +927,12 @@ export class KeyValueStorage implements IStorage {
         featureName: 'Wedding Countdown',
         description: 'Show countdown timer to wedding date',
         enabled: false
+      },
+      {
+        featureKey: 'memories',
+        featureName: 'Memories Page',
+        description: 'Show/hide the Memories page link in navigation',
+        enabled: true
       },
       {
         featureKey: 'egift',
