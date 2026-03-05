@@ -709,6 +709,61 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  async ensureDefaultFeatureFlags(): Promise<void> {
+    const defaultFeatures = [
+      {
+        featureKey: 'rsvp',
+        featureName: 'RSVP Form',
+        description: 'Allow guests to submit their attendance confirmation',
+        enabled: true
+      },
+      {
+        featureKey: 'messages',
+        featureName: 'Message Board',
+        description: 'Allow guests to leave congratulatory messages',
+        enabled: true
+      },
+      {
+        featureKey: 'gallery',
+        featureName: 'Photo Gallery',
+        description: 'Display wedding memories and allow photo uploads',
+        enabled: true
+      },
+      {
+        featureKey: 'music',
+        featureName: 'Background Music',
+        description: 'Play background music on the invitation page',
+        enabled: false
+      },
+      {
+        featureKey: 'countdown',
+        featureName: 'Wedding Countdown',
+        description: 'Show countdown timer to wedding date',
+        enabled: false
+      },
+      {
+        featureKey: 'memories',
+        featureName: 'Memories Page',
+        description: 'Show/hide the Memories page link in navigation',
+        enabled: true
+      },
+      {
+        featureKey: 'egift',
+        featureName: 'E-Gift / Bank Transfer',
+        description: 'Allow guests to send monetary gifts via bank transfer',
+        enabled: true
+      }
+    ];
+
+    for (const feature of defaultFeatures) {
+      await getDb()
+        .insert(featureFlags)
+        .values(feature)
+        .onConflictDoNothing({ target: featureFlags.featureKey });
+    }
+    console.log('Default feature flags initialized in PostgreSQL');
+  }
+
   // Feature flag methods
   async createFeatureFlag(insertFeatureFlag: InsertFeatureFlag): Promise<FeatureFlag> {
     const [featureFlag] = await getDb()
@@ -1530,3 +1585,9 @@ function createStorage(): IStorage {
 }
 
 export const storage = createStorage();
+
+export async function initializeStorage() {
+  if (storage instanceof DatabaseStorage) {
+    await storage.ensureDefaultFeatureFlags();
+  }
+}

@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initializeStorage } from "./storage";
 import path from "path";
 
 const app = express();
@@ -65,6 +66,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await initializeStorage();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
