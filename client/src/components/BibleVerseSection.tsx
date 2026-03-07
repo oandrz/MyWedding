@@ -58,7 +58,7 @@ const BibleVerseSection = () => {
             <motion.p 
               className="text-xl md:text-2xl font-cormorant italic text-gray-700 leading-relaxed mb-8"
               variants={fadeIn}
-            >"We love because He first loved us."</motion.p>
+            >"We love, because He first loved us."</motion.p>
             
             <motion.p 
               className="text-sm font-montserrat text-gray-500 tracking-widest uppercase"
