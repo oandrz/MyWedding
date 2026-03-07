@@ -129,7 +129,7 @@ const CoupleSection = () => {
             variants={fadeIn}
           >
             <p>In 2019, Andreas applied for a job. Christine, the recruiter at the time, was hiring a Software Engineer. She reviewed his CV, scheduled the interviews, and successfully closed the role. But apparently, Andreas had a different target. Shortly after joining the company, he began what we call "Personal Outreach." Under the very professional excuse of conducting user research for his side project, he invited her to be an interviewee.</p>
-            <p>One research session somehow turned into an escape room invite. Very subtle. Very strategic. But Christine not impressed lol. She declined the invite and something felt suspicious.</p>
+            <p>One research session somehow turned into an escape room invite. Very subtle. Very strategic. But Christine not impressed. She declined the invite and something felt suspicious.</p>
             <p>Instead of giving up, Andreas asked for one last call after deciding to resign and move overseas. This time, it wasn't about work. He used the opportunity to confess something. Surprisingly, that honesty changed everything. What started as a recruitment process turned into long Google Meet calls, lots of laughter, and a story neither of them planned for. The recruiter and the candidate eventually agreed to a lifetime contract. So here we are, making it official and inviting you to be part of our important days! 😊</p>
           </motion.div>
           <motion.div 
