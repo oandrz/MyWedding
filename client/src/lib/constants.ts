@@ -34,11 +34,6 @@ export const WEDDING_SCHEDULE = [
     title: "Dinner Reception",
     time: "6:15 PM - 8:00 PM",
     description: "Elegant dinner, toasts, and speeches celebrating the newlyweds"
-  },
-  {
-    title: "Dancing & Celebration",
-    time: "8:00 PM - 10:00 PM",
-    description: "Dance the night away with music, cake cutting, and joyous celebration"
   }
 ];
 
