@@ -67,6 +67,7 @@ The system supports a dual-backend approach:
 
 ### Drag-and-Drop
 - **@dnd-kit/core**, **@dnd-kit/sortable**, **@dnd-kit/utilities**: Used for gallery image reordering in the admin panel.
+- Performance optimized: `SortableGalleryItem` is wrapped in `React.memo` with stable `useCallback` handlers, uses thumbnail images in the grid, applies simplified CSS during active drag, and uses optimistic cache updates (TanStack Query `onMutate`) for instant reorder feedback.
 
 ### Integrated Services
 - **Google Drive API**: Used for guest photo uploads and gallery management.

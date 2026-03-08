@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,14 +47,16 @@ const imageConfigSchema = z.object({
 
 type ImageConfigForm = z.infer<typeof imageConfigSchema>;
 
-function SortableGalleryItem({
+const SortableGalleryItem = memo(function SortableGalleryItem({
   image,
   onEdit,
   onDelete,
+  isDragActive,
 }: {
   image: ConfigImage;
   onEdit: (image: ConfigImage) => void;
   onDelete: (image: ConfigImage) => void;
+  isDragActive: boolean;
 }) {
   const {
     attributes,
@@ -67,20 +69,26 @@ function SortableGalleryItem({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragActive && !isDragging ? "none" : transition,
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 50 : undefined,
   };
+
+  const cardClassName = isDragging
+    ? "overflow-hidden ring-2 ring-pink-400 shadow-lg"
+    : isDragActive
+      ? "overflow-hidden transition-none"
+      : "overflow-hidden";
 
   return (
     <Card
       ref={setNodeRef}
       style={style}
-      className={`overflow-hidden ${isDragging ? "ring-2 ring-pink-400 shadow-lg" : ""}`}
+      className={cardClassName}
     >
       <div className="relative h-48">
         <img
-          src={image.imageUrl}
+          src={image.thumbnailUrl || image.imageUrl}
           alt={image.title || "Config image"}
           className="w-full h-full object-cover"
           loading="lazy"
@@ -124,7 +132,7 @@ function SortableGalleryItem({
       </CardContent>
     </Card>
   );
-}
+});
 
 const ImageManager = () => {
   const [activeTab, setActiveTab] = useState("banner");
@@ -204,11 +212,11 @@ const ImageManager = () => {
     updateImageMutation.mutate(data);
   };
 
-  const handleEdit = (image: ConfigImage) => {
+  const handleEdit = useCallback((image: ConfigImage) => {
     setUploadModalType(image.imageType as "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image");
     setEditingImage(image);
     setShowUploadModal(true);
-  };
+  }, []);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -241,20 +249,45 @@ const ImageManager = () => {
         orderedKeys,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
-      toast({
-        title: "Success",
-        description: "Gallery order updated!",
-      });
+    onMutate: async (orderedKeys: string[]) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/config-images"] });
+
+      const previousData = queryClient.getQueryData<{ images: ConfigImage[] }>(["/api/config-images"]);
+
+      if (previousData) {
+        const imageMap = new Map(
+          previousData.images.map((img) => [img.imageKey, img])
+        );
+        const reorderedGallery = orderedKeys
+          .map((key, index) => {
+            const img = imageMap.get(key);
+            if (!img) return null;
+            return { ...img, displayOrder: index };
+          })
+          .filter(Boolean) as ConfigImage[];
+        const nonGallery = previousData.images.filter(
+          (img) => img.imageType !== "gallery"
+        );
+        queryClient.setQueryData(["/api/config-images"], {
+          images: [...nonGallery, ...reorderedGallery],
+        });
+      }
+
+      return { previousData };
     },
-    onError: (error: any) => {
+    onError: (error: any, _orderedKeys, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/config-images"], context.previousData);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to reorder gallery",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
     },
   });
 
@@ -263,9 +296,15 @@ const ImageManager = () => {
     [galleryImages]
   );
 
+  const handleDeleteClick = useCallback((image: ConfigImage) => {
+    setShowDeleteDialog(image);
+  }, []);
+
   const activeDragImage = activeDragId
     ? galleryImages.find((img) => img.imageKey === activeDragId) ?? null
     : null;
+
+  const isDragActive = activeDragId !== null;
 
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(event.active.id as string);
@@ -428,7 +467,8 @@ const ImageManager = () => {
                     key={image.imageKey}
                     image={image}
                     onEdit={handleEdit}
-                    onDelete={setShowDeleteDialog}
+                    onDelete={handleDeleteClick}
+                    isDragActive={isDragActive}
                   />
                 ))}
 
@@ -460,7 +500,7 @@ const ImageManager = () => {
                 <Card className="overflow-hidden ring-2 ring-pink-400 shadow-xl rotate-2">
                   <div className="relative h-48">
                     <img
-                      src={activeDragImage.imageUrl}
+                      src={activeDragImage.thumbnailUrl || activeDragImage.imageUrl}
                       alt={activeDragImage.title || "Dragging image"}
                       className="w-full h-full object-cover"
                       style={{ backgroundColor: "#f3f4f6", minHeight: "192px" }}
