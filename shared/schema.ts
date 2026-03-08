@@ -48,6 +48,7 @@ export const configImages = pgTable("config_images", {
   title: text("title"),
   description: text("description"),
   isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0).notNull(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
 });
 
@@ -68,7 +69,8 @@ export const insertConfigImageSchema = createInsertSchema(configImages).pick({
   imageType: true,
   title: true,
   description: true,
-  isActive: true
+  isActive: true,
+  displayOrder: true
 });
 
 export const featureFlags = pgTable("feature_flags", {

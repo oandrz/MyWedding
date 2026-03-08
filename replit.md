@@ -38,8 +38,8 @@ The system supports a dual-backend approach:
 - **Hero Section**: Includes background music and a countdown timer.
 - **RSVP Management**: Allows guests to respond with attendance details.
 - **Message Board**: Guests can post congratulatory messages.
-- **Photo Gallery**: Supports guest photo uploads directly to an embedded Google Drive folder with real-time display and admin approval.
-- **Admin Dashboard**: Provides tools for managing RSVPs, moderating content, and overseeing platform settings.
+- **Photo Gallery**: Supports guest photo uploads directly to an embedded Google Drive folder with real-time display and admin approval. Gallery images have a `displayOrder` field for custom ordering.
+- **Admin Dashboard**: Provides tools for managing RSVPs, moderating content, and overseeing platform settings. Gallery images support drag-and-drop reordering via `@dnd-kit`.
 
 ### Design Patterns
 - **Repository Pattern**: Utilizes abstract repository interfaces for data access, supporting multiple implementations (in-memory, database) for flexibility and testing.
@@ -63,6 +63,10 @@ The system supports a dual-backend approach:
 - **Language**: TypeScript.
 - **Linting**: ESLint.
 - **Package Management**: npm.
+- **Testing**: Vitest (config at `vitest.config.ts`, tests in `tests/` directory).
+
+### Drag-and-Drop
+- **@dnd-kit/core**, **@dnd-kit/sortable**, **@dnd-kit/utilities**: Used for gallery image reordering in the admin panel.
 
 ### Integrated Services
 - **Google Drive API**: Used for guest photo uploads and gallery management.

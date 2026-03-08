@@ -35,6 +35,7 @@ export interface IStorage {
   getConfigImage(imageKey: string): Promise<ConfigImage | undefined>;
   getConfigImagesByType(imageType: string): Promise<ConfigImage[]>;
   getAllConfigImages(): Promise<ConfigImage[]>;
+  reorderConfigImages(imageType: string, orderedKeys: string[]): Promise<void>;
   
   // Feature flag methods
   createFeatureFlag(featureFlagData: InsertFeatureFlag): Promise<FeatureFlag>;
@@ -122,6 +123,7 @@ export class MemStorage implements IStorage {
       title: 'Main Banner',
       description: 'Hero section background image',
       isActive: true,
+      displayOrder: 0,
       updatedAt: new Date().toISOString()
     };
     this.configImages.set('banner', bannerImage);
@@ -148,6 +150,7 @@ export class MemStorage implements IStorage {
         title: `Gallery Image ${index + 1}`,
         description: `Default gallery image ${index + 1}`,
         isActive: true,
+        displayOrder: index,
         updatedAt: new Date().toISOString()
       };
       this.configImages.set(`gallery_default_${index + 1}`, galleryImage);
@@ -257,6 +260,15 @@ export class MemStorage implements IStorage {
   async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
     const id = this.currentConfigImageId++;
     const now = new Date();
+    let displayOrder = insertConfigImage.displayOrder;
+    if (displayOrder === undefined || displayOrder === null) {
+      const existingImages = Array.from(this.configImages.values())
+        .filter(img => img.imageType === insertConfigImage.imageType);
+      const maxOrder = existingImages.length > 0
+        ? Math.max(...existingImages.map(img => img.displayOrder))
+        : -1;
+      displayOrder = maxOrder + 1;
+    }
     const configImage: ConfigImage = {
       ...insertConfigImage,
       id,
@@ -264,6 +276,7 @@ export class MemStorage implements IStorage {
       title: insertConfigImage.title ?? null,
       description: insertConfigImage.description ?? null,
       isActive: insertConfigImage.isActive ?? true,
+      displayOrder,
       updatedAt: now.toISOString()
     };
     this.configImages.set(configImage.imageKey, configImage);
@@ -282,6 +295,7 @@ export class MemStorage implements IStorage {
       title: insertConfigImage.title ?? null,
       description: insertConfigImage.description ?? null,
       isActive: insertConfigImage.isActive ?? true,
+      displayOrder: insertConfigImage.displayOrder ?? existing?.displayOrder ?? 0,
       updatedAt: now.toISOString()
     };
     this.configImages.set(imageKey, configImage);
@@ -295,16 +309,31 @@ export class MemStorage implements IStorage {
   async getConfigImagesByType(imageType: string): Promise<ConfigImage[]> {
     return Array.from(this.configImages.values())
       .filter(image => image.imageType === imageType && image.isActive)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      .sort((a, b) => {
+        if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
   }
 
   async getAllConfigImages(): Promise<ConfigImage[]> {
     return Array.from(this.configImages.values())
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      .sort((a, b) => {
+        if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
   }
 
   async deleteConfigImage(imageKey: string): Promise<boolean> {
     return this.configImages.delete(imageKey);
+  }
+
+  async reorderConfigImages(imageType: string, orderedKeys: string[]): Promise<void> {
+    orderedKeys.forEach((key, index) => {
+      const image = this.configImages.get(key);
+      if (image && image.imageType === imageType) {
+        this.configImages.set(key, { ...image, displayOrder: index });
+      }
+    });
   }
 
   private initializeDefaultFeatureFlags() {
@@ -652,9 +681,17 @@ export class DatabaseStorage implements IStorage {
 
   // Configurable images methods
   async createConfigImage(insertConfigImage: InsertConfigImage): Promise<ConfigImage> {
+    let displayOrder = insertConfigImage.displayOrder;
+    if (displayOrder === undefined || displayOrder === null) {
+      const [result] = await getDb()
+        .select({ maxOrder: sql<number>`COALESCE(MAX(${configImages.displayOrder}), -1)` })
+        .from(configImages)
+        .where(eq(configImages.imageType, insertConfigImage.imageType));
+      displayOrder = (result?.maxOrder ?? -1) + 1;
+    }
     const [configImage] = await getDb()
       .insert(configImages)
-      .values(insertConfigImage)
+      .values({ ...insertConfigImage, displayOrder })
       .returning();
     return configImage;
   }
@@ -692,14 +729,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(configImages)
       .where(sql`${configImages.imageType} = ${imageType} AND ${configImages.isActive} = true`)
-      .orderBy(desc(configImages.updatedAt));
+      .orderBy(configImages.displayOrder, desc(configImages.updatedAt));
   }
 
   async getAllConfigImages(): Promise<ConfigImage[]> {
     return getDb()
       .select()
       .from(configImages)
-      .orderBy(desc(configImages.updatedAt));
+      .orderBy(configImages.displayOrder, desc(configImages.updatedAt));
   }
 
   async deleteConfigImage(imageKey: string): Promise<boolean> {
@@ -707,6 +744,18 @@ export class DatabaseStorage implements IStorage {
       .delete(configImages)
       .where(eq(configImages.imageKey, imageKey));
     return (result.rowCount || 0) > 0;
+  }
+
+  async reorderConfigImages(imageType: string, orderedKeys: string[]): Promise<void> {
+    const db = getDb();
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedKeys.length; i++) {
+        await tx
+          .update(configImages)
+          .set({ displayOrder: i })
+          .where(sql`${configImages.imageKey} = ${orderedKeys[i]} AND ${configImages.imageType} = ${imageType}`);
+      }
+    });
   }
 
   async ensureDefaultFeatureFlags(): Promise<void> {

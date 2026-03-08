@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,10 +13,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Trash2, Edit, Plus, GripVertical } from "lucide-react";
 import type { ConfigImage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import ImageUploadModal from "./ImageUploadModal";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const imageConfigSchema = z.object({
   imageKey: z.string().min(1, "Image key is required"),
@@ -29,14 +47,102 @@ const imageConfigSchema = z.object({
 
 type ImageConfigForm = z.infer<typeof imageConfigSchema>;
 
+function SortableGalleryItem({
+  image,
+  onEdit,
+  onDelete,
+}: {
+  image: ConfigImage;
+  onEdit: (image: ConfigImage) => void;
+  onDelete: (image: ConfigImage) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.imageKey });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`overflow-hidden ${isDragging ? "ring-2 ring-pink-400 shadow-lg" : ""}`}
+    >
+      <div className="relative h-48">
+        <img
+          src={image.imageUrl}
+          alt={image.title || "Config image"}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          style={{ backgroundColor: "#f3f4f6", minHeight: "192px" }}
+          onLoad={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.style.backgroundColor = "transparent";
+          }}
+        />
+        <div className="absolute top-2 left-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing bg-white/80 hover:bg-white rounded p-1.5 shadow-sm"
+            title="Drag to reorder"
+          >
+            <GripVertical className="h-4 w-4 text-gray-600" />
+          </div>
+        </div>
+        <div className="absolute top-2 right-2 flex gap-2">
+          <Button size="sm" variant="secondary" onClick={() => onEdit(image)}>
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => onDelete(image)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <CardContent className="p-4">
+        <h3 className="font-semibold text-sm">
+          {image.title || image.imageKey}
+        </h3>
+        {image.description && (
+          <p className="text-xs text-gray-600 mt-1">{image.description}</p>
+        )}
+        <p className="text-xs text-gray-500 mt-2">Key: {image.imageKey}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 const ImageManager = () => {
   const [activeTab, setActiveTab] = useState("banner");
   const [editingImage, setEditingImage] = useState<ConfigImage | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image">("banner");
   const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 8 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: { delay: 250, tolerance: 5 },
+  });
+  const sensors = useSensors(pointerSensor, touchSensor);
 
   // Fetch all configurable images - force fresh data
   const { data: imagesData, isLoading } = useQuery<{ images: ConfigImage[] }>({
@@ -127,6 +233,61 @@ const ImageManager = () => {
       });
     }
   });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (orderedKeys: string[]) => {
+      return apiRequest("PUT", "/api/admin/config-images-reorder", {
+        imageType: "gallery",
+        orderedKeys,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] });
+      toast({
+        title: "Success",
+        description: "Gallery order updated!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reorder gallery",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const galleryItemIds = useMemo(
+    () => galleryImages.map((img) => img.imageKey),
+    [galleryImages]
+  );
+
+  const activeDragImage = activeDragId
+    ? galleryImages.find((img) => img.imageKey === activeDragId) ?? null
+    : null;
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(event.active.id as string);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = galleryImages.findIndex(
+      (img) => img.imageKey === active.id
+    );
+    const newIndex = galleryImages.findIndex(
+      (img) => img.imageKey === over.id
+    );
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(galleryImages, oldIndex, newIndex);
+    const orderedKeys = reordered.map((img) => img.imageKey);
+    reorderMutation.mutate(orderedKeys);
+  }
 
   const handleNewImage = (type: "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image") => {
     setEditingImage(null); // Clear editing state for new image
@@ -245,37 +406,75 @@ const ImageManager = () => {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold">Gallery Images</h3>
-              <p className="text-sm text-gray-600">Images showcased in the gallery section</p>
+              <p className="text-sm text-gray-600">
+                Images showcased in the gallery section — drag the grip icon to reorder
+              </p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {galleryImages.map((image) => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-            
-            {/* Add Image Card - Integrated into grid */}
-            <Card className="overflow-hidden border-2 border-dashed border-pink-300 hover:border-pink-400 transition-colors cursor-pointer group">
-              <div 
-                className="relative h-48 flex items-center justify-center bg-pink-50 hover:bg-pink-100 transition-colors"
-                onClick={() => handleNewImage("gallery")}
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-pink-600 flex items-center justify-center group-hover:bg-pink-700 transition-colors">
-                    <Plus className="h-6 w-6 text-white" />
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={galleryItemIds}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {galleryImages.map((image) => (
+                  <SortableGalleryItem
+                    key={image.imageKey}
+                    image={image}
+                    onEdit={handleEdit}
+                    onDelete={setShowDeleteDialog}
+                  />
+                ))}
+
+                <Card className="overflow-hidden border-2 border-dashed border-pink-300 hover:border-pink-400 transition-colors cursor-pointer group">
+                  <div
+                    className="relative h-48 flex items-center justify-center bg-pink-50 hover:bg-pink-100 transition-colors"
+                    onClick={() => handleNewImage("gallery")}
+                  >
+                    <div className="text-center">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-pink-600 flex items-center justify-center group-hover:bg-pink-700 transition-colors">
+                        <Plus className="h-6 w-6 text-white" />
+                      </div>
+                      <p className="text-pink-700 font-medium">Add Gallery Image</p>
+                      <p className="text-pink-600 text-sm mt-1">Click to upload</p>
+                    </div>
                   </div>
-                  <p className="text-pink-700 font-medium">Add Gallery Image</p>
-                  <p className="text-pink-600 text-sm mt-1">Click to upload</p>
-                </div>
+                </Card>
+
+                {galleryImages.length === 0 && (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No gallery images configured. Default images will be used.
+                  </div>
+                )}
               </div>
-            </Card>
-            
-            {galleryImages.length === 0 && (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                No gallery images configured. Default images will be used.
-              </div>
-            )}
-          </div>
+            </SortableContext>
+
+            <DragOverlay>
+              {activeDragImage ? (
+                <Card className="overflow-hidden ring-2 ring-pink-400 shadow-xl rotate-2">
+                  <div className="relative h-48">
+                    <img
+                      src={activeDragImage.imageUrl}
+                      alt={activeDragImage.title || "Dragging image"}
+                      className="w-full h-full object-cover"
+                      style={{ backgroundColor: "#f3f4f6", minHeight: "192px" }}
+                    />
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-sm">
+                      {activeDragImage.title || activeDragImage.imageKey}
+                    </h3>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </TabsContent>
 
         <TabsContent value="bride-profile" className="space-y-6">

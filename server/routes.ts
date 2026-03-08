@@ -822,6 +822,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete configurable image (admin only)
+  app.put("/api/admin/config-images-reorder", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const bodySchema = z.object({
+        imageType: z.string().min(1),
+        orderedKeys: z.array(z.string().min(1)).min(1),
+      });
+
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+      }
+
+      const { imageType, orderedKeys } = parsed.data;
+      await storage.reorderConfigImages(imageType, orderedKeys);
+      invalidateConfigImagesCache();
+
+      res.status(200).json({ message: "Images reordered successfully" });
+    } catch (error) {
+      console.error("Config images reorder error:", error);
+      res.status(500).json({ message: "Failed to reorder images" });
+    }
+  });
+
   app.delete("/api/admin/config-images/:imageKey", adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const imageKey = req.params.imageKey;
