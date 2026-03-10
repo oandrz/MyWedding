@@ -1,5 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { Car, ParkingSquare } from "lucide-react";
 import { WEDDING_SCHEDULE, VENUES, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
 
@@ -8,12 +9,14 @@ const DetailsSection = () => {
   const titleRef = useRef(null);
   const venuesRef = useRef(null);
   const mapRef = useRef(null);
+  const parkingRef = useRef(null);
   const scheduleRef = useRef(null);
   
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
   const areVenuesInView = useInView(venuesRef, { once: true, amount: 0.3 });
   const isMapInView = useInView(mapRef, { once: true, amount: 0.3 });
+  const isParkingInView = useInView(parkingRef, { once: true, amount: 0.3 });
   const isScheduleInView = useInView(scheduleRef, { once: true, amount: 0.3 });
   
   // Format wedding date
@@ -131,9 +134,55 @@ const DetailsSection = () => {
           </motion.div>
         </motion.div>
         
+        {/* Transportation & Parking Notice */}
+        <motion.div
+          ref={parkingRef}
+          className="max-w-3xl mx-auto mb-20 glass-card rounded-3xl p-8 md:p-10"
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isParkingInView ? "visible" : "hidden"}
+        >
+          <motion.h3
+            className="text-3xl md:text-4xl font-cormorant font-bold text-center text-foreground mb-8"
+            variants={fadeIn}
+          >
+            Getting There
+          </motion.h3>
+
+          <div className="space-y-6">
+            <motion.div className="flex items-start gap-4" variants={fadeIn}>
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Car className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">
+                  Ride-Hailing Recommended
+                </h4>
+                <p className="font-montserrat text-sm text-muted-foreground leading-relaxed">
+                  Due to limited parking space at the venue, we kindly recommend using online ride-hailing services such as Grab or Gojek for a more convenient arrival experience.
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div className="flex items-start gap-4" variants={fadeIn}>
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <ParkingSquare className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">
+                  Valet Parking Available
+                </h4>
+                <p className="font-montserrat text-sm text-muted-foreground leading-relaxed">
+                  For guests who prefer to bring their own car, please be advised that due to the limited parking space, your vehicle will be managed by our valet parking service.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+
         {/* Schedule */}
         <motion.div 
-          className="mt-20 max-w-3xl mx-auto"
+          className="max-w-3xl mx-auto"
           ref={scheduleRef}
           variants={staggerContainer}
           initial="hidden"
