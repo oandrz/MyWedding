@@ -169,9 +169,7 @@ const DetailsSection = () => {
                 <ParkingSquare className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">
-                  Valet Parking Available
-                </h4>
+                <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">Free Valet Parking Service Available</h4>
                 <p className="font-montserrat text-sm text-muted-foreground leading-relaxed">For guests who prefer to bring their own car, please be advised that due to the limited parking space, your vehicle will be managed by Casakhasa's valet parking service (Free).</p>
               </div>
             </motion.div>
