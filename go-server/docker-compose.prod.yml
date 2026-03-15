@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - GO_ENV=production
+      - DATABASE_URL=postgresql://wedding_user:wedding_password@postgres:5432/wedding_invitation_db
+      - REDIS_URL=redis://redis:6379
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - GCS_BUCKET_ID=${GCS_BUCKET_ID}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: wedding_invitation_db
+      POSTGRES_USER: wedding_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wedding_password}
+    volumes:
+      - postgres-data-prod:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wedding_user -d wedding_invitation_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis-data-prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data-prod:
+  redis-data-prod:

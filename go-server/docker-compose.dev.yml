@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+      - "2345:2345"  # Delve debugger
+    volumes:
+      - .:/app
+      - go-modules:/go/pkg/mod
+    environment:
+      - GO_ENV=development
+      - DATABASE_URL=postgresql://wedding_user:wedding_password@postgres:5432/wedding_invitation_db
+      - REDIS_URL=redis://redis:6379
+      - ADMIN_PASSWORD=admin123
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: wedding_invitation_db
+      POSTGRES_USER: wedding_user
+      POSTGRES_PASSWORD: wedding_password
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wedding_user -d wedding_invitation_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data-dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data-dev:
+  redis-data-dev:
+  go-modules:
