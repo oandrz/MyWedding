@@ -130,13 +130,15 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 		// Login does not require auth
 		r.Post("/login", auth.Login)
 
+		// Validate requires auth but NOT CSRF (enables CSRF token recovery)
+		r.With(middleware.Auth(sessions)).Post("/validate", auth.Validate)
+
 		// All other admin routes require auth + CSRF
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(sessions))
 			r.Use(middleware.CSRFProtection(csrf))
 
 			r.Post("/logout", auth.Logout)
-			r.Post("/validate", auth.Validate)
 
 			r.Get("/media", media.ListAll)
 			r.Patch("/media/{id}", media.UpdateApproval)

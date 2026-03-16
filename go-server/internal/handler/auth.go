@@ -82,9 +82,19 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // Validate handles POST /api/admin/validate.
+// Returns the existing CSRF token or generates a new one if missing (e.g. after server restart).
 func (h *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
+	sessionID := middleware.GetSessionID(r)
+
+	// Reuse existing token if available; generate only if missing (server restart recovery)
+	csrfToken, ok := h.CSRF.GetToken(sessionID)
+	if !ok {
+		csrfToken = h.CSRF.GenerateToken(sessionID)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message": "Admin session is valid",
-		"valid":   true,
+		"message":   "Admin session is valid",
+		"valid":     true,
+		"csrfToken": csrfToken,
 	})
 }

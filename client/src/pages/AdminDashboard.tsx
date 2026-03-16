@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   
   // Auto-logout helper function
   const handleAutoLogout = (error: Error) => {
-    if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+    if (error.message.includes("401") || error.message.includes("403")) {
       sessionStorage.removeItem("csrfToken");
       toast({
         title: "Session expired",
@@ -42,6 +42,28 @@ export default function AdminDashboard() {
     }
   };
 
+  // Validate session and refresh CSRF token on mount (recovers from server restart / new tab)
+  useEffect(() => {
+    const validateSession = async () => {
+      try {
+        const res = await fetch("/api/admin/validate", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.csrfToken) {
+            sessionStorage.setItem("csrfToken", data.csrfToken);
+          }
+        } else if (res.status === 401) {
+          navigate("/admin-login");
+        }
+      } catch {
+        // Network error — queries will surface errors
+      }
+    };
+    validateSession();
+  }, [navigate]);
 
   // Fetch all RSVPs
   const {

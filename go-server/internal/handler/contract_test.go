@@ -336,7 +336,8 @@ func assertConfigImageObject(t *testing.T, obj map[string]interface{}) {
 // ---------------------------------------------------------------------------
 // 1. POST /api/admin/login
 // Contract: { "message": "Login successful", "csrfToken": "<string>" }
-//           + Set-Cookie: admin_session=...
+//   - Set-Cookie: admin_session=...
+//
 // ---------------------------------------------------------------------------
 func TestContract_AdminLogin(t *testing.T) {
 	env := newTestEnv()
@@ -406,9 +407,10 @@ func TestContract_AdminValidate(t *testing.T) {
 
 	assertStringValue(t, result, "message", "Admin session is valid")
 	assertBoolValue(t, result, "valid", true)
+	assertKeyType(t, result, "csrfToken", "string")
 
-	if len(result) != 2 {
-		t.Fatalf("expected exactly 2 keys (message, valid), got %d: %v", len(result), mapKeys(result))
+	if len(result) != 3 {
+		t.Fatalf("expected exactly 3 keys (message, valid, csrfToken), got %d: %v", len(result), mapKeys(result))
 	}
 }
 
@@ -434,8 +436,10 @@ func TestContract_Health(t *testing.T) {
 // ---------------------------------------------------------------------------
 // 5. POST /api/rsvp (new)
 // Contract: { "message": "Thank you for your RSVP!",
-//             "rsvp": { "id": <int>, "name": "...", "email": "...",
-//                       "attending": <bool>, "guestCount": <int|null> } }
+//
+//	"rsvp": { "id": <int>, "name": "...", "email": "...",
+//	          "attending": <bool>, "guestCount": <int|null> } }
+//
 // Status: 201
 // ---------------------------------------------------------------------------
 func TestContract_RsvpCreate(t *testing.T) {
@@ -485,7 +489,9 @@ func TestContract_RsvpCreateNullGuestCount(t *testing.T) {
 // ---------------------------------------------------------------------------
 // 6. POST /api/rsvp (existing email → update)
 // Contract: { "message": "Your RSVP has been updated successfully!",
-//             "rsvp": { ... } }
+//
+//	"rsvp": { ... } }
+//
 // Status: 200
 // ---------------------------------------------------------------------------
 func TestContract_RsvpUpdate(t *testing.T) {
@@ -514,7 +520,9 @@ func TestContract_RsvpUpdate(t *testing.T) {
 // ---------------------------------------------------------------------------
 // 7. GET /api/rsvp
 // Contract: { "rsvps": [...], "stats": { "total": <int>, "attending": <int>,
-//             "notAttending": <int>, "guestCount": <int> } }
+//
+//	"notAttending": <int>, "guestCount": <int> } }
+//
 // ---------------------------------------------------------------------------
 func TestContract_RsvpList(t *testing.T) {
 	env := newTestEnv()
@@ -637,8 +645,10 @@ func TestContract_RsvpGetByEmailNotFound(t *testing.T) {
 // ---------------------------------------------------------------------------
 // 10. POST /api/messages
 // Contract: { "message": "Message submitted successfully!",
-//             "data": { "id": <int>, "name": "...", "email": "..."|null,
-//                       "content": "...", "createdAt": "<RFC3339>" } }
+//
+//	"data": { "id": <int>, "name": "...", "email": "..."|null,
+//	          "content": "...", "createdAt": "<RFC3339>" } }
+//
 // Status: 201
 // ---------------------------------------------------------------------------
 func TestContract_MessageCreate(t *testing.T) {
@@ -742,10 +752,12 @@ func TestContract_MessageListEmpty(t *testing.T) {
 // ---------------------------------------------------------------------------
 // 12. POST /api/media
 // Contract: { "message": "Thank you for sharing your memory!",
-//             "media": { "id": <int>, "name": "...", "email": "...",
-//                        "mediaUrl": "...", "mediaType": "...",
-//                        "caption": "..."|null, "approved": <bool>,
-//                        "createdAt": "<RFC3339>" } }
+//
+//	"media": { "id": <int>, "name": "...", "email": "...",
+//	           "mediaUrl": "...", "mediaType": "...",
+//	           "caption": "..."|null, "approved": <bool>,
+//	           "createdAt": "<RFC3339>" } }
+//
 // Status: 201
 // ---------------------------------------------------------------------------
 func TestContract_MediaCreate(t *testing.T) {
@@ -1133,8 +1145,10 @@ func TestContract_SettingsGetByKeyNotFound(t *testing.T) {
 // ---------------------------------------------------------------------------
 // 22. GET /api/welcome-screen
 // Contract: { "welcomeScreen": { "id": <int>, "headingText": "...",
-//             "deliveryLabel": "...", "fallbackName": "...",
-//             "enabled": <bool>, "updatedAt": "..." } }
+//
+//	"deliveryLabel": "...", "fallbackName": "...",
+//	"enabled": <bool>, "updatedAt": "..." } }
+//
 // ---------------------------------------------------------------------------
 func TestContract_WelcomeScreenDefault(t *testing.T) {
 	env := newTestEnv()

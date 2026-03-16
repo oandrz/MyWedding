@@ -1313,6 +1313,110 @@ func TestConfigImageDeleteNotFound(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// CSRF Token Recovery (validate without CSRF)
+// ---------------------------------------------------------------------------
+
+func TestValidateWithoutCSRF(t *testing.T) {
+	env := newTestEnv()
+	cookie, _ := adminLogin(t, env)
+
+	// Call validate with only auth cookie, NO CSRF token
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/validate", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestValidateReturnsCSRFToken(t *testing.T) {
+	env := newTestEnv()
+	cookie, _ := adminLogin(t, env)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/validate", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	result := parseResponse(t, rec)
+	csrfToken, ok := result["csrfToken"].(string)
+	if !ok || csrfToken == "" {
+		t.Fatal("validate should return a csrfToken")
+	}
+}
+
+func TestValidateReusesExistingToken(t *testing.T) {
+	env := newTestEnv()
+	cookie, originalToken := adminLogin(t, env)
+
+	// Call validate — should return the same token, not a new one
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/validate", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	result := parseResponse(t, rec)
+	returnedToken := result["csrfToken"].(string)
+	if returnedToken != originalToken {
+		t.Fatalf("validate should reuse existing token, got different token")
+	}
+}
+
+func TestValidateGeneratesTokenWhenMissing(t *testing.T) {
+	env := newTestEnv()
+	cookie, _ := adminLogin(t, env)
+
+	// Simulate server restart: delete CSRF token from store
+	env.csrf.DeleteToken(cookie.Value)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/validate", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	result := parseResponse(t, rec)
+	csrfToken, ok := result["csrfToken"].(string)
+	if !ok || csrfToken == "" {
+		t.Fatal("validate should generate a new csrfToken when missing")
+	}
+
+	// The new token should work for subsequent PATCH requests
+	// First create a feature flag to update
+	createBody := jsonBody(map[string]interface{}{
+		"featureKey": "dark_mode", "featureName": "Dark Mode", "description": "Enable dark mode",
+	})
+	reqCreate := adminRequest(http.MethodPost, "/api/admin/feature-flags", createBody, cookie, csrfToken)
+	recCreate := httptest.NewRecorder()
+	env.handler.ServeHTTP(recCreate, reqCreate)
+	if recCreate.Code != http.StatusCreated {
+		t.Fatalf("create flag: expected 201, got %d: %s", recCreate.Code, recCreate.Body.String())
+	}
+
+	// Now PATCH with the recovered token
+	updateBody := jsonBody(map[string]interface{}{"enabled": true})
+	req2 := adminRequest(http.MethodPatch, "/api/admin/feature-flags/dark_mode", updateBody, cookie, csrfToken)
+	rec2 := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("PATCH with recovered token: expected 200, got %d: %s", rec2.Code, rec2.Body.String())
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Protected routes 401 tests
 // ---------------------------------------------------------------------------
 
