@@ -14,6 +14,14 @@ type Session struct {
 	IP             string    `json:"ip,omitempty"`
 }
 
+// Sessions defines the interface for session management.
+// Both SessionStore (in-memory) and RedisSessionStore implement this.
+type Sessions interface {
+	CreateSession(ip string) *Session
+	GetSession(sessionID string) *Session
+	DeleteSession(sessionID string) bool
+}
+
 type SessionStore struct {
 	mu              sync.Mutex
 	sessions        map[string]*Session

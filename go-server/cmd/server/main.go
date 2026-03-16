@@ -53,7 +53,20 @@ func main() {
 		slog.Warn("No DATABASE_URL set — using in-memory repository (data will not persist)")
 	}
 
-	sessions := middleware.NewSessionStore(time.Duration(cfg.SessionMaxAge) * time.Second)
+	var sessions middleware.Sessions
+	sessionDuration := time.Duration(cfg.SessionMaxAge) * time.Second
+	if cfg.RedisURL != "" {
+		redisSessions, err := middleware.NewRedisSessionStore(cfg.RedisURL, sessionDuration)
+		if err != nil {
+			slog.Error("Failed to connect to Redis", "error", err)
+			os.Exit(1)
+		}
+		sessions = redisSessions
+		slog.Info("Using Redis session store")
+	} else {
+		sessions = middleware.NewSessionStore(sessionDuration)
+		slog.Info("Using in-memory session store")
+	}
 	csrf := middleware.NewCSRFStore()
 	cache := service.NewCache(30 * time.Second)
 

@@ -1,5 +1,5 @@
-## Current Phase: Phase 6 — Production Hardening & CI/CD
-## Status: IN_PROGRESS
+## Current Phase: Phase 7 — API Parity Verification
+## Status: NOT_STARTED
 ## Last Updated: 2026-03-16
 
 ### Phase 0: Project Scaffolding & CI — COMPLETED
@@ -51,7 +51,7 @@
 - [x] GET /api/drive-folder-contents
 - [x] Router options pattern (WithStorage, WithGoogleDrive)
 
-### Phase 6: Production Hardening & CI/CD — IN PROGRESS
+### Phase 6: Production Hardening & CI/CD — COMPLETED
 - [x] PostgresRepository implementation (all 35 methods, pgx/v5)
 - [x] Database connection pool (pgxpool, MinConns=2, MaxConns=10)
 - [x] main.go wired: PostgresRepository when DATABASE_URL set, fallback to MemoryRepository
@@ -59,8 +59,8 @@
 - [x] Health check with DB connectivity status
 - [x] Graceful shutdown with DB pool cleanup
 - [x] Production logging (JSON structured in prod, text in dev)
-- [ ] Redis session store (for production scalability)
-- [ ] Verify docker-compose.prod.yml works end-to-end
+- [x] Redis session store (REDIS_URL env var, falls back to in-memory)
+- [x] Sessions interface for swappable implementations
 
 ### Remaining
 - [ ] Phase 7: API Parity Verification

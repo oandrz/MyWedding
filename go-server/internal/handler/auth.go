@@ -11,7 +11,7 @@ import (
 // AuthHandler handles authentication-related endpoints.
 type AuthHandler struct {
 	Config   *config.Config
-	Sessions *middleware.SessionStore
+	Sessions middleware.Sessions
 	CSRF     *middleware.CSRFStore
 }
 

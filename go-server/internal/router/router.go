@@ -17,7 +17,7 @@ import (
 
 // New creates and configures the application router with all routes.
 // storage may be nil if file uploads are not configured.
-func New(cfg *config.Config, repo repository.Repository, sessions *middleware.SessionStore, csrf *middleware.CSRFStore, cache *service.Cache, opts ...Option) *chi.Mux {
+func New(cfg *config.Config, repo repository.Repository, sessions middleware.Sessions, csrf *middleware.CSRFStore, cache *service.Cache, opts ...Option) *chi.Mux {
 	o := options{}
 	for _, opt := range opts {
 		opt(&o)

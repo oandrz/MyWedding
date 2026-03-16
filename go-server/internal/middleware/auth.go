@@ -10,7 +10,7 @@ type contextKey string
 
 const SessionIDKey contextKey = "sessionID"
 
-func Auth(sessions *SessionStore) func(http.Handler) http.Handler {
+func Auth(sessions Sessions) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("admin_session")
