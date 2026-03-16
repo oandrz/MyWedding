@@ -41,13 +41,18 @@ func main() {
 	if cfg.DatabaseURL != "" {
 		pool, err := database.Connect(ctx, cfg.DatabaseURL)
 		if err != nil {
-			slog.Error("Failed to connect to database", "error", err)
-			os.Exit(1)
+			if cfg.IsProduction() {
+				slog.Error("Failed to connect to database", "error", err)
+				os.Exit(1)
+			}
+			slog.Warn("Database unavailable, falling back to in-memory repository", "error", err)
+			repo = repository.NewMemoryRepository()
+		} else {
+			dbPool = pool
+			repo = repository.NewPostgresRepository(pool)
+			routerOpts = append(routerOpts, router.WithDBPool(pool))
+			slog.Info("Using PostgreSQL repository")
 		}
-		dbPool = pool
-		repo = repository.NewPostgresRepository(pool)
-		routerOpts = append(routerOpts, router.WithDBPool(pool))
-		slog.Info("Using PostgreSQL repository")
 	} else {
 		repo = repository.NewMemoryRepository()
 		slog.Warn("No DATABASE_URL set — using in-memory repository (data will not persist)")
@@ -60,11 +65,16 @@ func main() {
 		var err error
 		redisSessions, err = middleware.NewRedisSessionStore(cfg.RedisURL, sessionDuration)
 		if err != nil {
-			slog.Error("Failed to connect to Redis", "error", err)
-			os.Exit(1)
+			if cfg.IsProduction() {
+				slog.Error("Failed to connect to Redis", "error", err)
+				os.Exit(1)
+			}
+			slog.Warn("Redis unavailable, falling back to in-memory session store", "error", err)
+			sessions = middleware.NewSessionStore(sessionDuration)
+		} else {
+			sessions = redisSessions
+			slog.Info("Using Redis session store")
 		}
-		sessions = redisSessions
-		slog.Info("Using Redis session store")
 	} else {
 		sessions = middleware.NewSessionStore(sessionDuration)
 		slog.Info("Using in-memory session store")
