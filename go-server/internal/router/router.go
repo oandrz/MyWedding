@@ -92,6 +92,18 @@ func New(cfg *config.Config, repo repository.Repository, sessions *middleware.Se
 		r.Get("/storage/*", upload.ServeStorage)
 	}
 
+	// Google Drive routes (if configured)
+	if o.drive != nil {
+		gdrive := &handler.GoogleDriveHandler{
+			Repo:  repo,
+			Drive: o.drive,
+		}
+		r.Get("/api/google-auth-url", gdrive.GetAuthURL)
+		r.Get("/auth/google/callback", gdrive.AuthCallback)
+		r.Post("/api/upload-to-drive", gdrive.UploadToDrive)
+		r.Get("/api/drive-folder-contents", gdrive.GetDriveFolderContents)
+	}
+
 	// Routes that need auth but aren't under /api/admin prefix
 	authCSRF := chi.Chain(
 		middleware.Auth(sessions),
@@ -144,11 +156,19 @@ type Option func(*options)
 
 type options struct {
 	storage service.ObjectStorage
+	drive   *service.GoogleDriveService
 }
 
 // WithStorage sets the object storage for file upload routes.
 func WithStorage(s service.ObjectStorage) Option {
 	return func(o *options) {
 		o.storage = s
+	}
+}
+
+// WithGoogleDrive sets the Google Drive service for drive integration routes.
+func WithGoogleDrive(d *service.GoogleDriveService) Option {
+	return func(o *options) {
+		o.drive = d
 	}
 }
