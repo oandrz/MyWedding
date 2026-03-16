@@ -16,26 +16,6 @@ import (
 	"github.com/andreasronaldo/wedding-server/internal/service"
 )
 
-// testSetup creates a fresh test environment with all dependencies.
-func testSetup() *http.Handler {
-	cfg := &config.Config{
-		Env:           "development",
-		Port:          5000,
-		AdminPassword: "testpass123",
-		SessionMaxAge: 1800,
-		CORSOrigins:   []string{"*"},
-	}
-
-	repo := repository.NewMemoryRepository()
-	sessions := middleware.NewSessionStore(30 * time.Minute)
-	csrf := middleware.NewCSRFStore()
-	cache := service.NewCache(5 * time.Minute)
-
-	r := router.New(cfg, repo, sessions, csrf, cache)
-	var h http.Handler = r
-	return &h
-}
-
 type testEnv struct {
 	handler  http.Handler
 	cfg      *config.Config

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -24,7 +25,9 @@ func (c *CSRFStore) GenerateToken(sessionID string) string {
 	defer c.mu.Unlock()
 
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	token := hex.EncodeToString(b)
 	c.tokens[sessionID] = token
 	return token
@@ -72,7 +75,7 @@ func CSRFProtection(csrf *CSRFStore) func(http.Handler) http.Handler {
 			}
 
 			providedToken := r.Header.Get("X-CSRF-Token")
-			if providedToken == "" || providedToken != expectedToken {
+			if providedToken == "" || subtle.ConstantTimeCompare([]byte(providedToken), []byte(expectedToken)) != 1 {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				json.NewEncoder(w).Encode(map[string]string{"message": "Invalid CSRF token"})

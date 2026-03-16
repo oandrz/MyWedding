@@ -29,7 +29,9 @@ func NewSessionStore(maxAge time.Duration) *SessionStore {
 
 func (s *SessionStore) GenerateSessionID() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	return hex.EncodeToString(b)
 }
 

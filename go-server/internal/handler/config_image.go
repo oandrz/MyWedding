@@ -200,7 +200,5 @@ func (h *ConfigImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // invalidateCache clears all config image cache entries.
 func (h *ConfigImageHandler) invalidateCache() {
-	h.Cache.Invalidate("config_images_all")
-	// Also invalidate any type-specific caches by clearing all cache
 	h.Cache.InvalidateAll()
 }

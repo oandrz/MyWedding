@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"net/http"
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
@@ -29,7 +30,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.Password != h.Config.AdminPassword {
+	if subtle.ConstantTimeCompare([]byte(body.Password), []byte(h.Config.AdminPassword)) != 1 {
 		writeError(w, http.StatusUnauthorized, "Invalid admin password")
 		return
 	}
