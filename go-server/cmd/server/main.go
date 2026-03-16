@@ -54,9 +54,11 @@ func main() {
 	}
 
 	var sessions middleware.Sessions
+	var redisSessions *middleware.RedisSessionStore
 	sessionDuration := time.Duration(cfg.SessionMaxAge) * time.Second
 	if cfg.RedisURL != "" {
-		redisSessions, err := middleware.NewRedisSessionStore(cfg.RedisURL, sessionDuration)
+		var err error
+		redisSessions, err = middleware.NewRedisSessionStore(cfg.RedisURL, sessionDuration)
 		if err != nil {
 			slog.Error("Failed to connect to Redis", "error", err)
 			os.Exit(1)
@@ -131,6 +133,15 @@ func main() {
 	if dbPool != nil {
 		dbPool.Close()
 		slog.Info("Database connection pool closed")
+	}
+
+	// Close Redis client
+	if redisSessions != nil {
+		if err := redisSessions.Close(); err != nil {
+			slog.Error("Redis close error", "error", err)
+		} else {
+			slog.Info("Redis connection closed")
+		}
 	}
 
 	slog.Info("Server stopped")

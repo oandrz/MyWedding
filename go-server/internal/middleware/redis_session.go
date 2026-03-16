@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,8 +12,10 @@ import (
 
 const sessionPrefix = "session:"
 
+// Compile-time check that RedisSessionStore implements Sessions.
+var _ Sessions = (*RedisSessionStore)(nil)
+
 // RedisSessionStore implements session storage backed by Redis.
-// It exposes the same API as SessionStore so auth/CSRF middleware work unchanged.
 type RedisSessionStore struct {
 	client   *redis.Client
 	duration time.Duration
@@ -39,16 +42,10 @@ func NewRedisSessionStore(redisURL string, maxAge time.Duration) (*RedisSessionS
 	}, nil
 }
 
-func (s *RedisSessionStore) GenerateSessionID() string {
-	// Reuse the crypto/rand helper from the in-memory store.
-	tmp := &SessionStore{}
-	return tmp.GenerateSessionID()
-}
-
 func (s *RedisSessionStore) CreateSession(ip string) *Session {
 	ctx := context.Background()
 
-	sessionID := s.GenerateSessionID()
+	sessionID := generateSessionID()
 	now := time.Now()
 	session := &Session{
 		SessionID:      sessionID,
@@ -57,8 +54,14 @@ func (s *RedisSessionStore) CreateSession(ip string) *Session {
 		IP:             ip,
 	}
 
-	data, _ := json.Marshal(session)
-	s.client.Set(ctx, sessionPrefix+sessionID, data, s.duration)
+	data, err := json.Marshal(session)
+	if err != nil {
+		slog.Error("Failed to marshal session", "error", err)
+		return session
+	}
+	if err := s.client.Set(ctx, sessionPrefix+sessionID, data, s.duration).Err(); err != nil {
+		slog.Error("Failed to store session in Redis", "error", err)
+	}
 
 	return session
 }
@@ -78,8 +81,11 @@ func (s *RedisSessionStore) GetSession(sessionID string) *Session {
 
 	// Refresh TTL on access
 	session.LastAccessedAt = time.Now()
-	updated, _ := json.Marshal(&session)
-	s.client.Set(ctx, sessionPrefix+sessionID, updated, s.duration)
+	if updated, err := json.Marshal(&session); err == nil {
+		if err := s.client.Set(ctx, sessionPrefix+sessionID, updated, s.duration).Err(); err != nil {
+			slog.Warn("Failed to refresh session TTL in Redis", "error", err)
+		}
+	}
 
 	return &session
 }

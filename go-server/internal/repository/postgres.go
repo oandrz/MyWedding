@@ -76,7 +76,7 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user models.InsertU
 func (r *PostgresRepository) CreateRsvp(ctx context.Context, data models.InsertRsvp) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO rsvps (name, email, attending, guest_count)
+		`INSERT INTO rsvp (name, email, attending, guest_count)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING id, name, email, attending, guest_count`,
 		data.Name, data.Email, data.Attending, data.GuestCount,
@@ -90,7 +90,7 @@ func (r *PostgresRepository) CreateRsvp(ctx context.Context, data models.InsertR
 func (r *PostgresRepository) UpdateRsvp(ctx context.Context, id int, data models.InsertRsvp) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`UPDATE rsvps SET name = $1, email = $2, attending = $3, guest_count = $4
+		`UPDATE rsvp SET name = $1, email = $2, attending = $3, guest_count = $4
 		 WHERE id = $5
 		 RETURNING id, name, email, attending, guest_count`,
 		data.Name, data.Email, data.Attending, data.GuestCount, id,
@@ -106,7 +106,7 @@ func (r *PostgresRepository) UpdateRsvp(ctx context.Context, id int, data models
 
 func (r *PostgresRepository) GetRsvps(ctx context.Context) ([]models.Rsvp, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, name, email, attending, guest_count FROM rsvps`)
+		`SELECT id, name, email, attending, guest_count FROM rsvp`)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (r *PostgresRepository) GetRsvps(ctx context.Context) ([]models.Rsvp, error
 func (r *PostgresRepository) GetRsvpByEmail(ctx context.Context, email string) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, email, attending, guest_count FROM rsvps WHERE email = $1`, email,
+		`SELECT id, name, email, attending, guest_count FROM rsvp WHERE email = $1`, email,
 	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -140,7 +140,7 @@ func (r *PostgresRepository) GetRsvpByEmail(ctx context.Context, email string) (
 func (r *PostgresRepository) GetRsvpByName(ctx context.Context, name string) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, email, attending, guest_count FROM rsvps WHERE name = $1`, name,
+		`SELECT id, name, email, attending, guest_count FROM rsvp WHERE name = $1`, name,
 	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -152,7 +152,7 @@ func (r *PostgresRepository) GetRsvpByName(ctx context.Context, name string) (*m
 }
 
 func (r *PostgresRepository) DeleteRsvp(ctx context.Context, id int) (bool, error) {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM rsvps WHERE id = $1`, id)
+	tag, err := r.pool.Exec(ctx, `DELETE FROM rsvp WHERE id = $1`, id)
 	if err != nil {
 		return false, err
 	}

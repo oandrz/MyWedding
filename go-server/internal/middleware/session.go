@@ -22,6 +22,15 @@ type Sessions interface {
 	DeleteSession(sessionID string) bool
 }
 
+// generateSessionID produces a cryptographically random 64-character hex string.
+func generateSessionID() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
+	return hex.EncodeToString(b)
+}
+
 type SessionStore struct {
 	mu              sync.Mutex
 	sessions        map[string]*Session
@@ -35,19 +44,11 @@ func NewSessionStore(maxAge time.Duration) *SessionStore {
 	}
 }
 
-func (s *SessionStore) GenerateSessionID() string {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand failed: " + err.Error())
-	}
-	return hex.EncodeToString(b)
-}
-
 func (s *SessionStore) CreateSession(ip string) *Session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	sessionID := s.GenerateSessionID()
+	sessionID := generateSessionID()
 	now := time.Now()
 	session := &Session{
 		SessionID:      sessionID,
