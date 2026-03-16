@@ -6,15 +6,28 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
+	"github.com/andreasronaldo/wedding-server/internal/middleware"
+	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/andreasronaldo/wedding-server/internal/router"
+	"github.com/andreasronaldo/wedding-server/internal/service"
 )
 
-func TestHealthEndpoint(t *testing.T) {
+func testRouter() http.Handler {
 	os.Clearenv()
 	os.Setenv("GO_ENV", "development")
 	cfg := config.Load()
-	r := newRouter(cfg)
+	repo := repository.NewMemoryRepository()
+	sessions := middleware.NewSessionStore(30 * time.Minute)
+	csrf := middleware.NewCSRFStore()
+	cache := service.NewCache(30 * time.Second)
+	return router.New(cfg, repo, sessions, csrf, cache)
+}
+
+func TestHealthEndpoint(t *testing.T) {
+	r := testRouter()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	w := httptest.NewRecorder()
@@ -39,18 +52,14 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Errorf("expected status=ok, got %s", body["status"])
 	}
 
-	if body["time"] == "" {
-		t.Error("expected time field in response")
+	if body["timestamp"] == "" {
+		t.Error("expected timestamp field in response")
 	}
 }
 
 func TestHealthEndpointMethod(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("GO_ENV", "development")
-	cfg := config.Load()
-	r := newRouter(cfg)
+	r := testRouter()
 
-	// POST should return 405
 	req := httptest.NewRequest(http.MethodPost, "/api/health", nil)
 	w := httptest.NewRecorder()
 

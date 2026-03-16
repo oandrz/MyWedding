@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,8 +11,10 @@ import (
 	"time"
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
-	"github.com/go-chi/chi/v5"
-	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/andreasronaldo/wedding-server/internal/middleware"
+	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/andreasronaldo/wedding-server/internal/router"
+	"github.com/andreasronaldo/wedding-server/internal/service"
 )
 
 func main() {
@@ -28,7 +29,13 @@ func main() {
 	}
 	slog.SetDefault(slog.New(handler))
 
-	r := newRouter(cfg)
+	// Initialize dependencies
+	repo := repository.NewMemoryRepository() // TODO: Phase 1 PostgresRepository when DB is connected
+	sessions := middleware.NewSessionStore(time.Duration(cfg.SessionMaxAge) * time.Second)
+	csrf := middleware.NewCSRFStore()
+	cache := service.NewCache(30 * time.Second)
+
+	r := router.New(cfg, repo, sessions, csrf, cache)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
@@ -60,42 +67,4 @@ func main() {
 		slog.Error("Server shutdown error", "error", err)
 	}
 	slog.Info("Server stopped")
-}
-
-func newRouter(cfg *config.Config) *chi.Mux {
-	r := chi.NewRouter()
-
-	// Built-in middleware
-	r.Use(chimw.RequestID)
-	r.Use(chimw.RealIP)
-	r.Use(chimw.Recoverer)
-
-	// Request logging
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			ww := chimw.NewWrapResponseWriter(w, r.ProtoMajor)
-			next.ServeHTTP(ww, r)
-			slog.Debug("Request",
-				"method", r.Method,
-				"path", r.URL.Path,
-				"status", ww.Status(),
-				"duration", time.Since(start).String(),
-			)
-		})
-	})
-
-	// Health check
-	r.Get("/api/health", healthHandler)
-
-	return r
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "ok",
-		"time":   time.Now().UTC().Format(time.RFC3339),
-	})
 }
