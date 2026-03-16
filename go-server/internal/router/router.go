@@ -15,7 +15,13 @@ import (
 )
 
 // New creates and configures the application router with all routes.
-func New(cfg *config.Config, repo repository.Repository, sessions *middleware.SessionStore, csrf *middleware.CSRFStore, cache *service.Cache) *chi.Mux {
+// storage may be nil if file uploads are not configured.
+func New(cfg *config.Config, repo repository.Repository, sessions *middleware.SessionStore, csrf *middleware.CSRFStore, cache *service.Cache, opts ...Option) *chi.Mux {
+	o := options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -53,7 +59,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions *middleware.Se
 	// Public routes
 	r.Post("/api/rsvp", rsvp.Create)
 	r.Get("/api/rsvp", rsvp.List)
-	r.Get("/api/rsvp/check", rsvp.Check) // Must be before /{email}
+	r.Get("/api/rsvp/check", rsvp.Check)
 	r.Get("/api/rsvp/{email}", rsvp.GetByEmail)
 
 	r.Post("/api/messages", message.Create)
@@ -73,6 +79,18 @@ func New(cfg *config.Config, repo repository.Repository, sessions *middleware.Se
 	r.Get("/api/settings/{settingKey}", appSetting.Get)
 
 	r.Get("/api/welcome-screen", welcomeScreen.Get)
+
+	// File upload routes (if storage is configured)
+	var upload *handler.UploadHandler
+	if o.storage != nil {
+		upload = &handler.UploadHandler{
+			Repo:    repo,
+			Storage: o.storage,
+			Cache:   cache,
+		}
+		r.Post("/api/upload", upload.Upload)
+		r.Get("/storage/*", upload.ServeStorage)
+	}
 
 	// Routes that need auth but aren't under /api/admin prefix
 	authCSRF := chi.Chain(
@@ -103,6 +121,12 @@ func New(cfg *config.Config, repo repository.Repository, sessions *middleware.Se
 			r.Put("/config-images-reorder", configImage.Reorder)
 			r.Delete("/config-images/{imageKey}", configImage.Delete)
 
+			// Upload routes (admin)
+			if upload != nil {
+				r.Post("/config-images-upload", upload.ConfigImageUpload)
+				r.Post("/settings/music-upload", upload.MusicUpload)
+			}
+
 			r.Patch("/feature-flags/{featureKey}", featureFlag.Update)
 			r.Post("/feature-flags", featureFlag.CreateFlag)
 
@@ -113,4 +137,18 @@ func New(cfg *config.Config, repo repository.Repository, sessions *middleware.Se
 	})
 
 	return r
+}
+
+// Option configures the router.
+type Option func(*options)
+
+type options struct {
+	storage service.ObjectStorage
+}
+
+// WithStorage sets the object storage for file upload routes.
+func WithStorage(s service.ObjectStorage) Option {
+	return func(o *options) {
+		o.storage = s
+	}
 }
