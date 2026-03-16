@@ -1,5 +1,5 @@
 ## Current Phase: Phase 7 — API Parity Verification
-## Status: NOT_STARTED
+## Status: COMPLETED
 ## Last Updated: 2026-03-16
 
 ### Phase 0: Project Scaffolding & CI — COMPLETED
@@ -62,11 +62,15 @@
 - [x] Redis session store (REDIS_URL env var, falls back to in-memory)
 - [x] Sessions interface for swappable implementations
 
-### Remaining
-- [ ] Phase 7: API Parity Verification
+### Phase 7: API Parity Verification — COMPLETED
+- [x] Contract test suite (74 tests across all 22 endpoint groups)
+- [x] JSON response structure verification (correct keys, types, camelCase)
+- [x] HTTP status code verification (201 for creates, 200 for reads, 404 for missing)
+- [x] Cross-cutting tests: error shape, no snake_case keys, Content-Type headers
 
 ### Notes for Next Agent
-- **Total tests**: 100+ across 6 packages, all passing
+- **All 7 phases complete**
+- **Total tests**: 140+ across 6 packages, all passing (74 contract tests + 63 handler tests + middleware/repo/service tests)
 - **Binary builds**: `go build -o bin/wedding-server ./cmd/server`
 - **Architecture**: Chi router, handler structs with dependency injection, repository pattern
 - **Main.go**: Auto-selects PostgresRepository (if DATABASE_URL set) or MemoryRepository
