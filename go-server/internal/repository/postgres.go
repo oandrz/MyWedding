@@ -1,0 +1,676 @@
+package repository
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/andreasronaldo/wedding-server/internal/models"
+)
+
+// Compile-time check that PostgresRepository implements Repository.
+var _ Repository = (*PostgresRepository)(nil)
+
+// PostgresRepository implements the Repository interface using a pgx connection pool.
+type PostgresRepository struct {
+	pool *pgxpool.Pool
+}
+
+// NewPostgresRepository creates a new PostgreSQL-backed repository.
+func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{pool: pool}
+}
+
+// ---------------------------------------------------------------------------
+// User
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) GetUser(ctx context.Context, id int) (*models.User, error) {
+	var u models.User
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, username, password FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Username, &u.Password)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *PostgresRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+	var u models.User
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, username, password FROM users WHERE username = $1`, username,
+	).Scan(&u.ID, &u.Username, &u.Password)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *PostgresRepository) CreateUser(ctx context.Context, user models.InsertUser) (*models.User, error) {
+	var u models.User
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username, password`,
+		user.Username, user.Password,
+	).Scan(&u.ID, &u.Username, &u.Password)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// ---------------------------------------------------------------------------
+// RSVP
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateRsvp(ctx context.Context, data models.InsertRsvp) (*models.Rsvp, error) {
+	var rv models.Rsvp
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO rsvps (name, email, attending, guest_count)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, name, email, attending, guest_count`,
+		data.Name, data.Email, data.Attending, data.GuestCount,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount)
+	if err != nil {
+		return nil, err
+	}
+	return &rv, nil
+}
+
+func (r *PostgresRepository) UpdateRsvp(ctx context.Context, id int, data models.InsertRsvp) (*models.Rsvp, error) {
+	var rv models.Rsvp
+	err := r.pool.QueryRow(ctx,
+		`UPDATE rsvps SET name = $1, email = $2, attending = $3, guest_count = $4
+		 WHERE id = $5
+		 RETURNING id, name, email, attending, guest_count`,
+		data.Name, data.Email, data.Attending, data.GuestCount, id,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rv, nil
+}
+
+func (r *PostgresRepository) GetRsvps(ctx context.Context) ([]models.Rsvp, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, attending, guest_count FROM rsvps`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Rsvp, 0)
+	for rows.Next() {
+		var rv models.Rsvp
+		if err := rows.Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount); err != nil {
+			return nil, err
+		}
+		result = append(result, rv)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) GetRsvpByEmail(ctx context.Context, email string) (*models.Rsvp, error) {
+	var rv models.Rsvp
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, name, email, attending, guest_count FROM rsvps WHERE email = $1`, email,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rv, nil
+}
+
+func (r *PostgresRepository) GetRsvpByName(ctx context.Context, name string) (*models.Rsvp, error) {
+	var rv models.Rsvp
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, name, email, attending, guest_count FROM rsvps WHERE name = $1`, name,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Attending, &rv.GuestCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rv, nil
+}
+
+func (r *PostgresRepository) DeleteRsvp(ctx context.Context, id int) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM rsvps WHERE id = $1`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateMedia(ctx context.Context, data models.InsertMedia) (*models.Media, error) {
+	mediaType := "image"
+	if data.MediaType != nil {
+		mediaType = *data.MediaType
+	}
+
+	var md models.Media
+	var createdAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO media (name, email, media_url, media_type, caption, approved)
+		 VALUES ($1, $2, $3, $4, $5, false)
+		 RETURNING id, name, email, media_url, media_type, caption, approved, created_at`,
+		data.Name, data.Email, data.MediaURL, mediaType, data.Caption,
+	).Scan(&md.ID, &md.Name, &md.Email, &md.MediaURL, &md.MediaType, &md.Caption, &md.Approved, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+	md.CreatedAt = createdAt.Format(time.RFC3339)
+	return &md, nil
+}
+
+func (r *PostgresRepository) GetMediaByID(ctx context.Context, id int) (*models.Media, error) {
+	var md models.Media
+	var createdAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, name, email, media_url, media_type, caption, approved, created_at
+		 FROM media WHERE id = $1`, id,
+	).Scan(&md.ID, &md.Name, &md.Email, &md.MediaURL, &md.MediaType, &md.Caption, &md.Approved, &createdAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	md.CreatedAt = createdAt.Format(time.RFC3339)
+	return &md, nil
+}
+
+func (r *PostgresRepository) GetAllMedia(ctx context.Context) ([]models.Media, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, media_url, media_type, caption, approved, created_at FROM media`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Media, 0)
+	for rows.Next() {
+		var md models.Media
+		var createdAt time.Time
+		if err := rows.Scan(&md.ID, &md.Name, &md.Email, &md.MediaURL, &md.MediaType, &md.Caption, &md.Approved, &createdAt); err != nil {
+			return nil, err
+		}
+		md.CreatedAt = createdAt.Format(time.RFC3339)
+		result = append(result, md)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) GetApprovedMedia(ctx context.Context) ([]models.Media, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, media_url, media_type, caption, approved, created_at
+		 FROM media WHERE approved = true`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Media, 0)
+	for rows.Next() {
+		var md models.Media
+		var createdAt time.Time
+		if err := rows.Scan(&md.ID, &md.Name, &md.Email, &md.MediaURL, &md.MediaType, &md.Caption, &md.Approved, &createdAt); err != nil {
+			return nil, err
+		}
+		md.CreatedAt = createdAt.Format(time.RFC3339)
+		result = append(result, md)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) UpdateMediaApproval(ctx context.Context, id int, approved bool) (*models.Media, error) {
+	var md models.Media
+	var createdAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE media SET approved = $1 WHERE id = $2
+		 RETURNING id, name, email, media_url, media_type, caption, approved, created_at`,
+		approved, id,
+	).Scan(&md.ID, &md.Name, &md.Email, &md.MediaURL, &md.MediaType, &md.Caption, &md.Approved, &createdAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	md.CreatedAt = createdAt.Format(time.RFC3339)
+	return &md, nil
+}
+
+// ---------------------------------------------------------------------------
+// Config Images
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateConfigImage(ctx context.Context, data models.InsertConfigImage) (*models.ConfigImage, error) {
+	isActive := true
+	if data.IsActive != nil {
+		isActive = *data.IsActive
+	}
+
+	displayOrder := 0
+	if data.DisplayOrder != nil {
+		displayOrder = *data.DisplayOrder
+	}
+
+	var ci models.ConfigImage
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO config_images (image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		 RETURNING id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at`,
+		data.ImageKey, data.ImageURL, data.ThumbnailURL, data.ImageType, data.Title, data.Description, isActive, displayOrder,
+	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	ci.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ci, nil
+}
+
+func (r *PostgresRepository) UpdateConfigImage(ctx context.Context, imageKey string, data models.InsertConfigImage) (*models.ConfigImage, error) {
+	var ci models.ConfigImage
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE config_images
+		 SET image_url = $1, thumbnail_url = $2, image_type = $3, title = $4, description = $5,
+		     is_active = COALESCE($6, is_active), display_order = COALESCE($7, display_order),
+		     updated_at = NOW()
+		 WHERE image_key = $8
+		 RETURNING id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at`,
+		data.ImageURL, data.ThumbnailURL, data.ImageType, data.Title, data.Description, data.IsActive, data.DisplayOrder, imageKey,
+	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ci.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ci, nil
+}
+
+func (r *PostgresRepository) DeleteConfigImage(ctx context.Context, imageKey string) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM config_images WHERE image_key = $1`, imageKey)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *PostgresRepository) GetConfigImage(ctx context.Context, imageKey string) (*models.ConfigImage, error) {
+	var ci models.ConfigImage
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at
+		 FROM config_images WHERE image_key = $1`, imageKey,
+	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ci.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ci, nil
+}
+
+func (r *PostgresRepository) GetConfigImagesByType(ctx context.Context, imageType string) ([]models.ConfigImage, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at
+		 FROM config_images WHERE image_type = $1 ORDER BY display_order`, imageType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.ConfigImage, 0)
+	for rows.Next() {
+		var ci models.ConfigImage
+		var updatedAt time.Time
+		if err := rows.Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt); err != nil {
+			return nil, err
+		}
+		ci.UpdatedAt = updatedAt.Format(time.RFC3339)
+		result = append(result, ci)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) GetAllConfigImages(ctx context.Context) ([]models.ConfigImage, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at
+		 FROM config_images ORDER BY display_order`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.ConfigImage, 0)
+	for rows.Next() {
+		var ci models.ConfigImage
+		var updatedAt time.Time
+		if err := rows.Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt); err != nil {
+			return nil, err
+		}
+		ci.UpdatedAt = updatedAt.Format(time.RFC3339)
+		result = append(result, ci)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) ReorderConfigImages(ctx context.Context, imageType string, orderedKeys []string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for i, key := range orderedKeys {
+		_, err := tx.Exec(ctx,
+			`UPDATE config_images SET display_order = $1, updated_at = NOW()
+			 WHERE image_key = $2 AND image_type = $3`,
+			i, key, imageType)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+// ---------------------------------------------------------------------------
+// Feature Flags
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateFeatureFlag(ctx context.Context, data models.InsertFeatureFlag) (*models.FeatureFlag, error) {
+	enabled := false
+	if data.Enabled != nil {
+		enabled = *data.Enabled
+	}
+
+	var ff models.FeatureFlag
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO feature_flags (feature_key, feature_name, description, enabled)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, feature_key, feature_name, description, enabled, updated_at`,
+		data.FeatureKey, data.FeatureName, data.Description, enabled,
+	).Scan(&ff.ID, &ff.FeatureKey, &ff.FeatureName, &ff.Description, &ff.Enabled, &updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	ff.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ff, nil
+}
+
+func (r *PostgresRepository) UpdateFeatureFlag(ctx context.Context, featureKey string, enabled bool) (*models.FeatureFlag, error) {
+	var ff models.FeatureFlag
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE feature_flags SET enabled = $1, updated_at = NOW()
+		 WHERE feature_key = $2
+		 RETURNING id, feature_key, feature_name, description, enabled, updated_at`,
+		enabled, featureKey,
+	).Scan(&ff.ID, &ff.FeatureKey, &ff.FeatureName, &ff.Description, &ff.Enabled, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ff.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ff, nil
+}
+
+func (r *PostgresRepository) GetFeatureFlag(ctx context.Context, featureKey string) (*models.FeatureFlag, error) {
+	var ff models.FeatureFlag
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, feature_key, feature_name, description, enabled, updated_at
+		 FROM feature_flags WHERE feature_key = $1`, featureKey,
+	).Scan(&ff.ID, &ff.FeatureKey, &ff.FeatureName, &ff.Description, &ff.Enabled, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ff.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ff, nil
+}
+
+func (r *PostgresRepository) GetAllFeatureFlags(ctx context.Context) ([]models.FeatureFlag, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, feature_key, feature_name, description, enabled, updated_at FROM feature_flags`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.FeatureFlag, 0)
+	for rows.Next() {
+		var ff models.FeatureFlag
+		var updatedAt time.Time
+		if err := rows.Scan(&ff.ID, &ff.FeatureKey, &ff.FeatureName, &ff.Description, &ff.Enabled, &updatedAt); err != nil {
+			return nil, err
+		}
+		ff.UpdatedAt = updatedAt.Format(time.RFC3339)
+		result = append(result, ff)
+	}
+	return result, rows.Err()
+}
+
+// ---------------------------------------------------------------------------
+// App Settings
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateAppSetting(ctx context.Context, data models.InsertAppSetting) (*models.AppSetting, error) {
+	var as models.AppSetting
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO app_settings (setting_key, setting_value, setting_type, description)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, setting_key, setting_value, setting_type, description, updated_at`,
+		data.SettingKey, data.SettingValue, data.SettingType, data.Description,
+	).Scan(&as.ID, &as.SettingKey, &as.SettingValue, &as.SettingType, &as.Description, &updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	as.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &as, nil
+}
+
+func (r *PostgresRepository) UpdateAppSetting(ctx context.Context, settingKey string, data models.InsertAppSetting) (*models.AppSetting, error) {
+	var as models.AppSetting
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE app_settings SET setting_value = $1, setting_type = $2, description = $3, updated_at = NOW()
+		 WHERE setting_key = $4
+		 RETURNING id, setting_key, setting_value, setting_type, description, updated_at`,
+		data.SettingValue, data.SettingType, data.Description, settingKey,
+	).Scan(&as.ID, &as.SettingKey, &as.SettingValue, &as.SettingType, &as.Description, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	as.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &as, nil
+}
+
+func (r *PostgresRepository) GetAppSetting(ctx context.Context, settingKey string) (*models.AppSetting, error) {
+	var as models.AppSetting
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, setting_key, setting_value, setting_type, description, updated_at
+		 FROM app_settings WHERE setting_key = $1`, settingKey,
+	).Scan(&as.ID, &as.SettingKey, &as.SettingValue, &as.SettingType, &as.Description, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	as.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &as, nil
+}
+
+func (r *PostgresRepository) GetAllAppSettings(ctx context.Context) ([]models.AppSetting, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, setting_key, setting_value, setting_type, description, updated_at FROM app_settings`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.AppSetting, 0)
+	for rows.Next() {
+		var as models.AppSetting
+		var updatedAt time.Time
+		if err := rows.Scan(&as.ID, &as.SettingKey, &as.SettingValue, &as.SettingType, &as.Description, &updatedAt); err != nil {
+			return nil, err
+		}
+		as.UpdatedAt = updatedAt.Format(time.RFC3339)
+		result = append(result, as)
+	}
+	return result, rows.Err()
+}
+
+// ---------------------------------------------------------------------------
+// Welcome Screen
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) GetWelcomeScreen(ctx context.Context) (*models.WelcomeScreen, error) {
+	var ws models.WelcomeScreen
+	var updatedAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, heading_text, delivery_label, fallback_name, enabled, updated_at
+		 FROM welcome_screen WHERE id = 1`,
+	).Scan(&ws.ID, &ws.HeadingText, &ws.DeliveryLabel, &ws.FallbackName, &ws.Enabled, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ws.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ws, nil
+}
+
+func (r *PostgresRepository) UpdateWelcomeScreen(ctx context.Context, data models.InsertWelcomeScreen) (*models.WelcomeScreen, error) {
+	var ws models.WelcomeScreen
+	var updatedAt time.Time
+
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO welcome_screen (id, heading_text, delivery_label, fallback_name, enabled)
+		 VALUES (1,
+		     COALESCE($1, 'Welcome'),
+		     COALESCE($2, 'Delivery'),
+		     COALESCE($3, 'Guest'),
+		     COALESCE($4, true))
+		 ON CONFLICT (id) DO UPDATE SET
+		     heading_text   = COALESCE($1, welcome_screen.heading_text),
+		     delivery_label = COALESCE($2, welcome_screen.delivery_label),
+		     fallback_name  = COALESCE($3, welcome_screen.fallback_name),
+		     enabled        = COALESCE($4, welcome_screen.enabled),
+		     updated_at     = NOW()
+		 RETURNING id, heading_text, delivery_label, fallback_name, enabled, updated_at`,
+		data.HeadingText, data.DeliveryLabel, data.FallbackName, data.Enabled,
+	).Scan(&ws.ID, &ws.HeadingText, &ws.DeliveryLabel, &ws.FallbackName, &ws.Enabled, &updatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("upsert welcome_screen: %w", err)
+	}
+	ws.UpdatedAt = updatedAt.Format(time.RFC3339)
+	return &ws, nil
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateMessage(ctx context.Context, data models.InsertMessage) (*models.Message, error) {
+	var msg models.Message
+	var createdAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO messages (name, email, content)
+		 VALUES ($1, $2, $3)
+		 RETURNING id, name, email, content, created_at`,
+		data.Name, data.Email, data.Content,
+	).Scan(&msg.ID, &msg.Name, &msg.Email, &msg.Content, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+	msg.CreatedAt = createdAt.Format(time.RFC3339)
+	return &msg, nil
+}
+
+func (r *PostgresRepository) GetMessageByID(ctx context.Context, id int) (*models.Message, error) {
+	var msg models.Message
+	var createdAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, name, email, content, created_at FROM messages WHERE id = $1`, id,
+	).Scan(&msg.ID, &msg.Name, &msg.Email, &msg.Content, &createdAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	msg.CreatedAt = createdAt.Format(time.RFC3339)
+	return &msg, nil
+}
+
+func (r *PostgresRepository) GetAllMessages(ctx context.Context) ([]models.Message, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, content, created_at FROM messages`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Message, 0)
+	for rows.Next() {
+		var msg models.Message
+		var createdAt time.Time
+		if err := rows.Scan(&msg.ID, &msg.Name, &msg.Email, &msg.Content, &createdAt); err != nil {
+			return nil, err
+		}
+		msg.CreatedAt = createdAt.Format(time.RFC3339)
+		result = append(result, msg)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) DeleteMessage(ctx context.Context, id int) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM messages WHERE id = $1`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}

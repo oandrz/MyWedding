@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -48,12 +49,23 @@ func New(cfg *config.Config, repo repository.Repository, sessions *middleware.Se
 
 	// Health check
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		resp := map[string]interface{}{
 			"status":    "ok",
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
-		})
+		}
+
+		if o.dbPool != nil {
+			if err := o.dbPool.Ping(r.Context()); err != nil {
+				resp["database"] = "unhealthy"
+				resp["status"] = "degraded"
+			} else {
+				resp["database"] = "healthy"
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(resp)
 	})
 
 	// Public routes
@@ -157,6 +169,7 @@ type Option func(*options)
 type options struct {
 	storage service.ObjectStorage
 	drive   *service.GoogleDriveService
+	dbPool  interface{ Ping(context.Context) error }
 }
 
 // WithStorage sets the object storage for file upload routes.
@@ -170,5 +183,12 @@ func WithStorage(s service.ObjectStorage) Option {
 func WithGoogleDrive(d *service.GoogleDriveService) Option {
 	return func(o *options) {
 		o.drive = d
+	}
+}
+
+// WithDBPool sets the database pool for health check connectivity reporting.
+func WithDBPool(pool interface{ Ping(context.Context) error }) Option {
+	return func(o *options) {
+		o.dbPool = pool
 	}
 }
