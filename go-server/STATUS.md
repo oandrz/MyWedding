@@ -1,4 +1,4 @@
-## Current Phase: Phase 7 — API Parity Verification
+## Current Phase: Phase 8 — Frontend Switch to Go Backend
 ## Status: COMPLETED
 ## Last Updated: 2026-03-16
 
@@ -68,8 +68,23 @@
 - [x] HTTP status code verification (201 for creates, 200 for reads, 404 for missing)
 - [x] Cross-cutting tests: error shape, no snake_case keys, Content-Type headers
 
+### Phase 8: Frontend Switch to Go Backend — COMPLETED
+- [x] Vite dev proxy: `/api`, `/storage`, `/auth` → Go server (localhost:5000)
+- [x] Package.json scripts: `dev` → `vite`, `build` → `vite build`, removed Express/esbuild
+- [x] Go dev port changed to 5000 (.env.development)
+- [x] Go static file serving: `StaticDir` config + SPA fallback via Chi NotFound handler
+- [x] Multi-stage Dockerfile: node build → go build → alpine runtime with frontend assets
+- [x] docker-compose.prod.yml: build context set to project root, STATIC_DIR configured
+- [x] docker-compose.dev.yml: frontend service added (node:20-alpine, vite --host)
+- [x] Cleanup: deleted server/, app_modules/, Flask files, old Dockerfile, docker-compose.local.yml, docker-run.sh, drizzle.config.ts
+- [x] Pruned 30+ server-side deps from package.json (express, passport, pg, sharp, multer, etc.)
+- [x] All Go tests pass (140+), frontend builds, TypeScript compiles
+
 ### Notes for Next Agent
-- **All 7 phases complete**
+- **All 8 phases complete**
+- **Express/Flask fully removed** — Go is the sole backend
+- **Dev workflow**: Terminal 1: `cd go-server && go run ./cmd/server` (port 5000), Terminal 2: `npm run dev` (port 5173, proxies to Go)
+- **Prod workflow**: `npm run build` then `STATIC_DIR=../dist/public go run ./cmd/server` (serves everything on port 5000)
 - **Total tests**: 140+ across 6 packages, all passing (74 contract tests + 63 handler tests + middleware/repo/service tests)
 - **Binary builds**: `go build -o bin/wedding-server ./cmd/server`
 - **Architecture**: Chi router, handler structs with dependency injection, repository pattern

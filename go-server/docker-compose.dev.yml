@@ -50,7 +50,22 @@ services:
       timeout: 5s
       retries: 5
 
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npx vite --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      - VITE_API_URL=http://app:5000
+    depends_on:
+      - app
+
 volumes:
   postgres-data-dev:
   redis-data-dev:
   go-modules:
+  frontend-node-modules:

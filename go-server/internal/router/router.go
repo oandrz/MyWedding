@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
@@ -159,6 +160,22 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Patch("/welcome-screen", welcomeScreen.Update)
 		})
 	})
+
+	// Serve static files in production (SPA fallback)
+	if cfg.StaticDir != "" {
+		staticFS := http.Dir(cfg.StaticDir)
+		fileServer := http.FileServer(staticFS)
+		r.NotFound(func(w http.ResponseWriter, req *http.Request) {
+			// Try file first, fallback to index.html for SPA routes
+			f, err := staticFS.Open(req.URL.Path)
+			if err == nil {
+				f.Close()
+				fileServer.ServeHTTP(w, req)
+				return
+			}
+			http.ServeFile(w, req, filepath.Join(cfg.StaticDir, "index.html"))
+		})
+	}
 
 	return r
 }

@@ -21,6 +21,7 @@ type Config struct {
 	GoogleClientID string
 	GoogleSecret   string
 	GoogleRefresh  string
+	StaticDir      string
 }
 
 func Load() *Config {
@@ -51,6 +52,7 @@ func Load() *Config {
 		GoogleClientID: getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleSecret:   getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRefresh:  getEnv("GOOGLE_REFRESH_TOKEN", ""),
+		StaticDir:      getEnv("STATIC_DIR", ""),
 	}
 
 	if cfg.IsProduction() {

@@ -1,29 +1,31 @@
-# Stage 1: Build
-FROM golang:1.23-alpine AS builder
-
-RUN apk add --no-cache git
-
+# Stage 1: Build frontend
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app
+COPY package.json pnpm-lock.yaml* package-lock.json* ./
+RUN npm ci || npm install
+COPY client/ ./client/
+COPY shared/ ./shared/
+COPY attached_assets/ ./attached_assets/
+COPY vite.config.ts postcss.config.js tailwind.config.ts theme.json tsconfig.json ./
+RUN npm run build
 
-COPY go.mod go.sum ./
+# Stage 2: Build Go binary
+FROM golang:1.25-alpine AS go-builder
+RUN apk add --no-cache git
+WORKDIR /app
+COPY go-server/go.mod go-server/go.sum ./
 RUN go mod download
-
-COPY . .
+COPY go-server/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /wedding-server ./cmd/server
 
-# Stage 2: Run
+# Stage 3: Runtime
 FROM alpine:3.19
-
 RUN apk add --no-cache ca-certificates tzdata
-
 WORKDIR /app
-
-COPY --from=builder /wedding-server .
-COPY --from=builder /app/.env.production .env.production
-COPY --from=builder /app/migrations ./migrations
-
+COPY --from=go-builder /wedding-server .
+COPY --from=go-builder /app/migrations ./migrations
+COPY --from=frontend-builder /app/dist/public ./dist/public
 EXPOSE 5000
-
 ENV GO_ENV=production
-
+ENV STATIC_DIR=./dist/public
 CMD ["./wedding-server"]

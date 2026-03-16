@@ -25,7 +25,7 @@ This document is for engineers picking up the Go backend for the first time. It 
 
 ## What This Is
 
-A Go rewrite of an Express.js/TypeScript backend (~3,800 lines) for a wedding e-invitation platform. The React frontend is unchanged — this server preserves the exact same API contract (routes, JSON shapes, status codes).
+The **sole backend** for a wedding e-invitation platform. Express.js and Flask have been removed — Go serves both APIs and the React frontend. In production the Go server serves built static assets directly; in development Vite runs separately and proxies API calls to Go.
 
 **Key facts:**
 - **Framework:** Chi (`go-chi/chi/v5`) — lightweight, stdlib-compatible
@@ -47,6 +47,26 @@ cd go-server
 # No database needed — defaults to in-memory storage
 GO_ENV=development go run ./cmd/server
 # Server starts on :5000
+```
+
+### Full-stack dev (two terminals)
+
+```bash
+# Terminal 1: Go API server
+cd go-server && GO_ENV=development go run ./cmd/server
+# API on :5000
+
+# Terminal 2: Vite dev server (from project root)
+npm run dev
+# Frontend on :5173, proxies /api, /storage, /auth to :5000
+```
+
+### Production preview (single process)
+
+```bash
+npm run build
+cd go-server && STATIC_DIR=../dist/public go run ./cmd/server
+# Full app at http://localhost:5000
 ```
 
 ### With Docker (full stack: Postgres + Redis)
@@ -95,7 +115,7 @@ go-server/
 │   └── main.go                  # Entry point — wires everything together
 │
 ├── internal/
-│   ├── config/config.go         # Env-aware configuration loading
+│   ├── config/config.go         # Env-aware configuration loading (includes StaticDir)
 │   ├── database/database.go     # PostgreSQL connection pool setup
 │   │
 │   ├── models/                  # 8 domain structs (one file each)
@@ -140,7 +160,7 @@ go-server/
 │   │   ├── imageopt.go          #   Image resizing / thumbnails
 │   │   └── googledrive.go       #   Google Drive OAuth2 + upload
 │   │
-│   └── router/router.go        # Route registration + middleware wiring
+│   └── router/router.go        # Route registration + middleware wiring + SPA static file fallback
 │
 ├── migrations/
 │   └── 001_init.sql             # Schema (8 tables) + seed data
@@ -148,9 +168,9 @@ go-server/
 ├── .env.development             # Dev defaults
 ├── .env.production              # Prod template
 ├── .env.example                 # All env vars documented
-├── Dockerfile                   # Multi-stage production build
+├── Dockerfile                   # 3-stage production build (frontend + Go + runtime)
 ├── Dockerfile.dev               # Dev build with Air hot-reload
-├── docker-compose.dev.yml       # App + Postgres + Redis (dev)
+├── docker-compose.dev.yml       # App + Postgres + Redis + Frontend (dev)
 ├── docker-compose.prod.yml      # App + Postgres + Redis (prod)
 ├── Makefile                     # Build/run/test shortcuts
 └── STATUS.md                    # Phase completion tracker
@@ -162,36 +182,44 @@ go-server/
 
 ## Architecture Overview
 
+**Development mode** (two processes):
+```
+  Browser → Vite (:5173) ──proxy /api,/storage,/auth──→ Go (:5000) → Repository
+```
+
+**Production mode** (single process):
+```
+  Browser → Go (:5000) ─┬─ /api/*, /storage/*, /auth/* → Handlers → Repository
+                         └─ everything else → static files (SPA fallback to index.html)
+```
+
+**Internal architecture:**
 ```
                     ┌──────────────────────────────┐
-                    │         React Frontend        │
-                    └──────────────┬───────────────┘
-                                   │ HTTP (JSON)
-                    ┌──────────────▼───────────────┐
-                    │          Chi Router           │
+                    │       Chi Router (:5000)      │
                     │  CORS → Logging → Recovery    │
                     └──────────────┬───────────────┘
                                    │
-              ┌────────────────────┼────────────────────┐
-              │                    │                     │
-     Public Routes          Auth + CSRF            Health Check
-              │              (admin only)               │
-              ▼                    ▼                     ▼
-        ┌──────────┐      ┌──────────────┐      ┌────────────┐
-        │ Handlers │      │ Admin Handlers│      │  DB Ping   │
-        └────┬─────┘      └──────┬───────┘      └────────────┘
-             │                   │
-             └─────────┬─────────┘
-                       ▼
-              ┌────────────────┐
-              │   Repository   │◄─── Interface
-              │  (35 methods)  │
-              └───┬────────┬───┘
-                  │        │
-         ┌────────▼──┐  ┌──▼──────────┐
-         │  Memory   │  │  Postgres   │
-         │  (dev)    │  │  (prod)     │
-         └───────────┘  └─────────────┘
+         ┌─────────────────────────┼──────────────────────────┐
+         │                         │                           │
+    Public Routes           Auth + CSRF            Static Files (prod)
+         │                  (admin only)           SPA fallback
+         ▼                         ▼                           ▼
+   ┌──────────┐         ┌──────────────┐          ┌────────────────┐
+   │ Handlers │         │Admin Handlers│          │  STATIC_DIR /  │
+   └────┬─────┘         └──────┬───────┘          │  index.html    │
+        │                      │                  └────────────────┘
+        └──────────┬───────────┘
+                   ▼
+          ┌────────────────┐
+          │   Repository   │◄─── Interface
+          │  (35 methods)  │
+          └───┬────────┬───┘
+              │        │
+     ┌────────▼──┐  ┌──▼──────────┐
+     │  Memory   │  │  Postgres   │
+     │  (dev)    │  │  (prod)     │
+     └───────────┘  └─────────────┘
 ```
 
 **Runtime auto-selection** (in `main.go`):
@@ -224,6 +252,8 @@ All configuration is loaded in `internal/config/config.go`. The server reads fro
 | `GOOGLE_CLIENT_ID` | _(empty)_ | OAuth2 client ID for Google Drive |
 | `GOOGLE_CLIENT_SECRET` | _(empty)_ | OAuth2 client secret |
 | `GOOGLE_REFRESH_TOKEN` | _(empty)_ | Pre-authorized refresh token |
+| `STATIC_DIR` | _(empty)_ | Path to built frontend assets. Set in production to serve SPA from Go. |
+| `VITE_API_URL` | `http://localhost:5000` | Vite dev proxy target (frontend only, not Go) |
 
 **What changes between dev and prod:**
 
@@ -506,7 +536,10 @@ This starts:
 - **App** on `:5000` with Air hot-reload (edit Go files → auto-restart)
 - **PostgreSQL 14** on `:5432` (db: `wedding_invitation_db`, user: `wedding_user`)
 - **Redis 7** on `:6379`
+- **Frontend** on `:5173` (Vite dev server, proxies `/api` to the Go app)
 - **Delve debugger** on `:2345` (attach your IDE for step debugging)
+
+Alternatively, skip Docker for the frontend and use the [two-terminal workflow](#full-stack-dev-two-terminals) described above.
 
 ### Production
 
@@ -515,9 +548,12 @@ make docker-prod
 # or: docker compose -f docker-compose.prod.yml up --build
 ```
 
-Uses a multi-stage Dockerfile:
-1. **Build stage:** `golang:1.23-alpine` → compiles static binary with `-ldflags="-s -w"`
-2. **Run stage:** `alpine:3.19` → minimal image (~15MB) with just the binary
+Uses a 3-stage Dockerfile:
+1. **Frontend build:** `node:20-alpine` → `npm run build` produces React assets in `dist/public`
+2. **Go build:** `golang:1.23-alpine` → compiles static binary with `-ldflags="-s -w"`
+3. **Runtime:** `alpine:3.19` → minimal image with binary + frontend assets + migrations
+
+Note: `docker-compose.prod.yml` sets the build context to `..` (project root) with `dockerfile: go-server/Dockerfile` so both frontend and Go source are available during the build.
 
 ### CI (GitHub Actions)
 
@@ -551,6 +587,8 @@ Workflow at `.github/workflows/go-ci.yml` runs on pushes to `golang_master` or `
 9. **Admin uploads from `admin@wedding.com` are auto-approved.** The `ListApproved` handler filters these out from the public media gallery.
 
 10. **Google Drive folder ID is hardcoded** in `service/googledrive.go` line 16. Change it if you're deploying for a different wedding.
+
+11. **The Go server serves the frontend in production.** When `STATIC_DIR` is set, Chi's `NotFound` handler serves static files with SPA fallback to `index.html`. All `/api/*`, `/storage/*`, `/auth/*` routes take priority over static files.
 
 ### Adding a new endpoint
 

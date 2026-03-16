@@ -1,12 +1,13 @@
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: go-server/Dockerfile
     ports:
       - "5000:5000"
     environment:
       - GO_ENV=production
+      - STATIC_DIR=./dist/public
       - DATABASE_URL=postgresql://wedding_user:wedding_password@postgres:5432/wedding_invitation_db
       - REDIS_URL=redis://redis:6379
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}

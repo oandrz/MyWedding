@@ -9,14 +9,6 @@ export default defineConfig({
     react(),
     runtimeErrorOverlay(),
     themePlugin(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
@@ -29,5 +21,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+  },
+  server: {
+    proxy: {
+      '/api': process.env.VITE_API_URL || 'http://localhost:5000',
+      '/storage': process.env.VITE_API_URL || 'http://localhost:5000',
+      '/auth': process.env.VITE_API_URL || 'http://localhost:5000',
+    },
   },
 });
