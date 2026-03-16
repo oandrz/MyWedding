@@ -1,48 +1,62 @@
-## Current Phase: Phase 0 — Project Scaffolding & CI
+## Current Phase: Phase 3 — Core API Endpoints
 ## Status: COMPLETED
 ## Last Updated: 2026-03-16
 
-### Completed
-- [x] Initialize `go.mod` in `go-server/` (module: github.com/andreasronaldo/wedding-server)
-- [x] Create folder structure (cmd/server, internal/{config,database,models,repository,handler,middleware,service,router}, migrations)
-- [x] `cmd/server/main.go` with `GET /api/health` endpoint (Chi router, graceful shutdown)
-- [x] `internal/config/config.go` — env-aware config loading (`GO_ENV=development|production`)
-- [x] `.env.development`, `.env.production`, `.env.example`
-- [x] `Makefile` (build, test, run, run-dev, lint, docker-dev, docker-prod)
-- [x] `Dockerfile` (multi-stage: golang:1.23-alpine build → alpine:3.19 run)
-- [x] `Dockerfile.dev` (with `air` hot-reload)
-- [x] `.air.toml` (hot-reload configuration)
-- [x] `docker-compose.dev.yml` (Go app + PostgreSQL 14 + Redis 7, debug port 2345)
-- [x] `docker-compose.prod.yml` (optimized binary + PostgreSQL + Redis, restart policies)
-- [x] `.github/workflows/go-ci.yml` (lint, vet, test with coverage, build)
-- [x] SQL migration `001_init.sql` from `shared/schema.ts` (all 8 tables + seed data)
-- [x] Tests: config loading for dev/prod envs, health endpoint 200, method not allowed 405
-- [x] Initialize `STATUS.md`
+### Phase 0: Project Scaffolding & CI — COMPLETED
+- [x] go.mod, folder structure, main.go with health endpoint
+- [x] Env-aware config, .env files, Makefile
+- [x] Docker (prod multi-stage + dev hot-reload), docker-compose (dev + prod)
+- [x] GitHub Actions CI, SQL migration 001_init.sql
+- [x] STATUS.md initialized
+
+### Phase 1: Database Layer & Repository Interface — COMPLETED
+- [x] 8 model structs with json:"camelCase" tags
+- [x] Repository interface (35 methods)
+- [x] MemoryRepository implementation (thread-safe)
+- [x] Comprehensive CRUD tests + JSON serialization tests
+
+### Phase 2: Middleware Layer — COMPLETED
+- [x] Session store (configurable TTL, auto-cleanup)
+- [x] Auth middleware (cookie-based, 401 responses)
+- [x] CSRF middleware (per-session tokens, skips safe methods)
+- [x] CORS middleware (env-aware: all in dev, allowlist in prod)
+- [x] Logging middleware (slog)
+- [x] TTL cache service (30s default)
+
+### Phase 3: Core API Endpoints — COMPLETED
+- [x] Auth: login, logout, validate
+- [x] RSVP: create/update, list with stats, check, get by email, delete
+- [x] Messages: create, list, delete
+- [x] Feature flags: list (cached), get, create, update
+- [x] App settings: list, music, get by key, update
+- [x] Welcome screen: get, update
+- [x] Media: create (auto-detect type), list approved, admin list, approval
+- [x] Config images: list all/type (cached), create, update, reorder, delete
+- [x] Router with public + auth-protected admin routes
+- [x] 63 handler tests, all passing
 
 ### In Progress
 (none)
 
 ### Remaining
-(none — Phase 0 complete)
+- [ ] Phase 4: File Upload & Object Storage
+- [ ] Phase 5: Google Drive Integration
+- [ ] Phase 6: Production Hardening & CI/CD
+- [ ] Phase 7: API Parity Verification
 
 ### Notes for Next Agent
-- **Go version**: 1.23, module path: `github.com/andreasronaldo/wedding-server`
-- **Dependencies**: chi/v5 (router), godotenv (env loading)
-- **Config**: `internal/config/config.go` loads env-specific `.env.{GO_ENV}` files, exposes `IsProduction()` helper
-- **Main**: `cmd/server/main.go` has `newRouter(cfg)` function (exported for testing), graceful shutdown with 10s timeout
-- **SQL migration**: `migrations/001_init.sql` creates all 8 tables with seed data for feature_flags, app_settings, welcome_screen
-- **All 6 tests pass**, binary builds successfully
-- **Docker**: dev uses air hot-reload, prod uses multi-stage alpine build
-- **Next**: Phase 1 (Database Layer & Repository Interface) and Phase 2 (Middleware) can run in parallel
-
-### Files Created
-- `go-server/go.mod`, `go-server/go.sum`
-- `go-server/cmd/server/main.go`, `go-server/cmd/server/main_test.go`
-- `go-server/internal/config/config.go`, `go-server/internal/config/config_test.go`
-- `go-server/.env.development`, `go-server/.env.production`, `go-server/.env.example`
-- `go-server/Makefile`
-- `go-server/Dockerfile`, `go-server/Dockerfile.dev`, `go-server/.air.toml`
-- `go-server/docker-compose.dev.yml`, `go-server/docker-compose.prod.yml`
-- `go-server/.github/workflows/go-ci.yml`
-- `go-server/migrations/001_init.sql`
-- `go-server/STATUS.md`
+- **Total tests**: 100+ across 6 packages, all passing
+- **Binary builds**: `go build -o bin/wedding-server ./cmd/server`
+- **Architecture**: Chi router, handler structs with dependency injection, repository pattern
+- **Main.go**: Uses MemoryRepository for now — Phase 4+ will add PostgresRepository
+- **Cookie settings**: env-aware (secure + sameSite=none in prod, lax in dev)
+- **Cache**: 30s TTL on feature flags and config images, invalidated on writes
+- **Missing from Phase 3**: File upload endpoints (Phase 4), Google Drive (Phase 5), /storage/* serving (Phase 4)
+- **Key files**:
+  - Router: `internal/router/router.go`
+  - Handlers: `internal/handler/*.go`
+  - Models: `internal/models/*.go`
+  - Repository: `internal/repository/repository.go` (interface), `memory.go` (impl)
+  - Middleware: `internal/middleware/*.go`
+  - Config: `internal/config/config.go`
+  - Tests: `internal/handler/handler_test.go` (63 tests), `internal/repository/memory_test.go`, `internal/middleware/*_test.go`
