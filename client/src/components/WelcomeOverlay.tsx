@@ -1,21 +1,30 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import type { WelcomeScreen } from "@shared/schema";
 
 const WelcomeOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [guestName, setGuestName] = useState<string>("");
+  const [location] = useLocation();
+
+  const isAdminPage = location.includes('/admin');
 
   // Fetch welcome screen configuration
   const { data } = useQuery<{ welcomeScreen: WelcomeScreen }>({
     queryKey: ["/api/welcome-screen"],
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    enabled: !isAdminPage,
   });
 
   const welcomeScreen = data?.welcomeScreen;
 
   useEffect(() => {
+    if (isAdminPage) {
+      return;
+    }
+
     // Only run in browser environment
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return;
@@ -45,7 +54,7 @@ const WelcomeOverlay = () => {
       // Lock body scroll while overlay is open
       document.body.style.overflow = "hidden";
     }
-  }, [welcomeScreen]);
+  }, [welcomeScreen, isAdminPage]);
 
   const handleOpen = () => {
     setIsOpen(false);
@@ -61,7 +70,7 @@ const WelcomeOverlay = () => {
     }
   };
 
-  if (!welcomeScreen || !welcomeScreen.enabled) {
+  if (isAdminPage || !welcomeScreen || !welcomeScreen.enabled) {
     return null;
   }
 
