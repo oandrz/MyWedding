@@ -5,7 +5,6 @@ COPY package.json pnpm-lock.yaml* package-lock.json* ./
 RUN npm ci || npm install
 COPY client/ ./client/
 COPY shared/ ./shared/
-COPY attached_assets/ ./attached_assets/
 COPY vite.config.ts postcss.config.js tailwind.config.ts theme.json tsconfig.json ./
 RUN npm run build
 
