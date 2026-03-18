@@ -637,7 +637,7 @@ nano ~/weddingAws/go-server/.env.production
 
 # 5. Configure Nginx
 sudo cp ~/weddingAws/nginx/wedding.conf /etc/nginx/sites-available/wedding
-sudo ln -s /etc/nginx/sites-available/wedding /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/wedding /etc/nginx/sites-enabled/wedding
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 sudo systemctl enable nginx
@@ -678,7 +678,7 @@ An SSH shortcut is configured in `~/.ssh/config`:
 Host wedding
     HostName 13.215.13.47
     User ubuntu
-    IdentityFile ~/Downloads/wedding-key.pem
+    IdentityFile ~/Desktop/oracleCloud/wedding-key.pem
 ```
 
 Connect with: `ssh wedding`
