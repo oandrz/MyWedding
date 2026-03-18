@@ -608,28 +608,44 @@ sudo systemctl enable docker && sudo systemctl start docker
 sudo usermod -aG docker $USER
 # Log out and back in for group changes to take effect
 
-# 2. Clone the repo
-git clone https://github.com/andreasronaldo/wedding-server.git ~/wedding
-cd ~/wedding
+# 2. Clone the repo (SSH — requires GitHub SSH key, see note below)
+git clone git@github.com:oandrz/MyWedding.git ~/weddingAws
+cd ~/weddingAws
+git checkout phase/0-scaffold
+# Note: HTTPS clone won't work with password auth. Set up an SSH key on the
+# EC2 instance (ssh-keygen -t ed25519) and add the public key to GitHub.
 
-# 3. Copy gcs-key.json to server (run from your local machine)
-#    scp -i your-key.pem gcs-key.json ubuntu@<elastic-ip>:~/wedding/gcs-key.json
+# 3. Create .env.production (this file is gitignored — must be created on server)
+cat > ~/weddingAws/go-server/.env.production << 'EOF'
+GO_ENV=production
+PORT=5000
+DB_PASSWORD=CHANGE_ME_strong_db_password
+REDIS_URL=redis://redis:6379
+ADMIN_PASSWORD=CHANGE_ME_strong_admin_password
+SESSION_MAX_AGE=1800
+CORS_ORIGINS=http://YOUR_ELASTIC_IP
+GCS_BUCKET_ID=your-gcs-bucket-name
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REFRESH_TOKEN=your-google-refresh-token
+EOF
+nano ~/weddingAws/go-server/.env.production
+# Replace all placeholder values with real credentials
 
-# 4. Edit production secrets
-nano ~/wedding/go-server/.env.production
-# Replace all CHANGE_ME / placeholder values with real credentials
+# 4. Copy gcs-key.json to server (run from your local machine)
+#    scp -i your-key.pem gcs-key.json ubuntu@<elastic-ip>:~/weddingAws/gcs-key.json
 
 # 5. Configure Nginx
-sudo cp ~/wedding/nginx/wedding.conf /etc/nginx/sites-available/wedding
+sudo cp ~/weddingAws/nginx/wedding.conf /etc/nginx/sites-available/wedding
 sudo ln -s /etc/nginx/sites-available/wedding /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 sudo systemctl enable nginx
 
 # 6. Deploy (first time — run migration)
-cd ~/wedding
+cd ~/weddingAws
 chmod +x deploy.sh
-MIGRATE=1 ./deploy.sh
+APP_DIR=~/weddingAws MIGRATE=1 ./deploy.sh
 ```
 
 ### Post-Deploy Checklist
@@ -644,8 +660,8 @@ MIGRATE=1 ./deploy.sh
   mkdir -p ~/backups
   cat > ~/backup.sh << 'BKEOF'
   #!/bin/bash
-  docker compose --env-file ~/wedding/go-server/.env.production \
-    -f ~/wedding/go-server/docker-compose.prod.yml exec -T postgres \
+  docker compose --env-file ~/weddingAws/go-server/.env.production \
+    -f ~/weddingAws/go-server/docker-compose.prod.yml exec -T postgres \
     pg_dump -U wedding_user wedding_invitation_db | gzip > ~/backups/wedding_$(date +%Y%m%d).sql.gz
   find ~/backups -mtime +30 -delete
   BKEOF
@@ -671,7 +687,7 @@ Connect with: `ssh wedding`
 
 ```bash
 ssh wedding
-cd ~/wedding && ./deploy.sh
+cd ~/weddingAws && APP_DIR=~/weddingAws ./deploy.sh
 ```
 
 The deploy script pulls latest code, rebuilds Docker images, restarts services, and verifies the health check. Add `MIGRATE=1` if the update includes schema changes.
@@ -682,16 +698,16 @@ The deploy script pulls latest code, rebuilds Docker images, restarts services, 
 2. Update `CORS_ORIGINS` in `.env.production` to `https://yourdomain.com`
 3. Install Certbot: `sudo apt install -y certbot python3-certbot-nginx`
 4. Run: `sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com`
-5. Redeploy: `cd ~/wedding && ./deploy.sh`
+5. Redeploy: `cd ~/weddingAws && APP_DIR=~/weddingAws ./deploy.sh`
 
 ### Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| Health check fails | `cd ~/wedding/go-server && docker compose --env-file .env.production -f docker-compose.prod.yml logs app` |
+| Health check fails | `cd ~/weddingAws/go-server && docker compose --env-file .env.production -f docker-compose.prod.yml logs app` |
 | Postgres won't start | Verify `DB_PASSWORD` in `.env.production` hasn't changed after first run |
 | Can't reach site | Check Security Group has port 80 open; check `sudo systemctl status nginx` |
-| GCS upload fails | Verify `gcs-key.json` exists at `~/wedding/gcs-key.json` |
+| GCS upload fails | Verify `gcs-key.json` exists at `~/weddingAws/gcs-key.json` |
 | Out of memory (t3.micro) | Enable swap: `sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
 
 ---
