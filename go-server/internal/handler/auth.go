@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/subtle"
 	"net/http"
+	"strings"
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
 	"github.com/andreasronaldo/wedding-server/internal/middleware"
@@ -39,19 +40,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	session := h.Sessions.CreateSession(r.RemoteAddr)
 	csrfToken := h.CSRF.GenerateToken(session.SessionID)
 
-	// Set cookie
-	sameSite := http.SameSiteLaxMode
-	if h.Config.IsProduction() {
-		sameSite = http.SameSiteNoneMode
-	}
+	// Set cookie — same-origin deployment uses Lax; Secure only when CORS origins use HTTPS
+	secure := hasHTTPSOrigin(h.Config.CORSOrigins)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "admin_session",
 		Value:    session.SessionID,
 		HttpOnly: true,
-		Secure:   h.Config.IsProduction(),
+		Secure:   secure,
 		Path:     "/",
-		SameSite: sameSite,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   h.Config.SessionMaxAge,
 	})
 
@@ -72,7 +70,9 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Name:     "admin_session",
 		Value:    "",
 		HttpOnly: true,
+		Secure:   hasHTTPSOrigin(h.Config.CORSOrigins),
 		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
 
@@ -97,4 +97,14 @@ func (h *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		"valid":     true,
 		"csrfToken": csrfToken,
 	})
+}
+
+// hasHTTPSOrigin returns true if any configured CORS origin uses HTTPS.
+func hasHTTPSOrigin(origins []string) bool {
+	for _, origin := range origins {
+		if strings.HasPrefix(origin, "https://") {
+			return true
+		}
+	}
+	return false
 }

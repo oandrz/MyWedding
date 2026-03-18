@@ -24,9 +24,21 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': process.env.VITE_API_URL || 'http://localhost:5000',
-      '/storage': process.env.VITE_API_URL || 'http://localhost:5000',
-      '/auth': process.env.VITE_API_URL || 'http://localhost:5000',
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/storage': {
+        target: process.env.VITE_API_URL || 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth': {
+        target: process.env.VITE_API_URL || 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

@@ -294,6 +294,89 @@ func TestAuthUnauthorizedInvalidSession(t *testing.T) {
 	}
 }
 
+func TestLoginCookieAttributes(t *testing.T) {
+	tests := []struct {
+		name         string
+		corsOrigins  []string
+		env          string
+		wantSecure   bool
+		wantSameSite http.SameSite
+	}{
+		{
+			name:         "HTTP origins — Secure=false, SameSite=Lax",
+			corsOrigins:  []string{"http://192.168.1.100"},
+			env:          "production",
+			wantSecure:   false,
+			wantSameSite: http.SameSiteLaxMode,
+		},
+		{
+			name:         "HTTPS origins — Secure=true, SameSite=Lax",
+			corsOrigins:  []string{"https://example.com"},
+			env:          "production",
+			wantSecure:   true,
+			wantSameSite: http.SameSiteLaxMode,
+		},
+		{
+			name:         "development — Secure=false, SameSite=Lax",
+			corsOrigins:  []string{"*"},
+			env:          "development",
+			wantSecure:   false,
+			wantSameSite: http.SameSiteLaxMode,
+		},
+		{
+			name:         "mixed origins — Secure=true if any HTTPS",
+			corsOrigins:  []string{"http://localhost:3000", "https://prod.example.com"},
+			env:          "production",
+			wantSecure:   true,
+			wantSameSite: http.SameSiteLaxMode,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{
+				Env:           tc.env,
+				Port:          5000,
+				AdminPassword: "testpass123",
+				SessionMaxAge: 1800,
+				CORSOrigins:   tc.corsOrigins,
+			}
+
+			repo := repository.NewMemoryRepository()
+			sessions := middleware.NewSessionStore(30 * time.Minute)
+			csrf := middleware.NewCSRFStore()
+			cache := service.NewCache(5 * time.Minute)
+			r := router.New(cfg, repo, sessions, csrf, cache)
+
+			body := jsonBody(map[string]string{"password": "testpass123"})
+			req := httptest.NewRequest(http.MethodPost, "/api/admin/login", body)
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+			}
+
+			var found bool
+			for _, c := range rec.Result().Cookies() {
+				if c.Name == "admin_session" {
+					found = true
+					if c.Secure != tc.wantSecure {
+						t.Errorf("Secure: got %v, want %v", c.Secure, tc.wantSecure)
+					}
+					if c.SameSite != tc.wantSameSite {
+						t.Errorf("SameSite: got %v, want %v", c.SameSite, tc.wantSameSite)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("expected admin_session cookie")
+			}
+		})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // RSVP
 // ---------------------------------------------------------------------------

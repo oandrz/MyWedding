@@ -28,6 +28,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("rsvps");
   const [, navigate] = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Auto-logout helper function
   const handleAutoLogout = (error: Error) => {
@@ -55,6 +56,7 @@ export default function AdminDashboard() {
           if (data.csrfToken) {
             sessionStorage.setItem("csrfToken", data.csrfToken);
           }
+          setIsAuthenticated(true);
         } else if (res.status === 401) {
           navigate("/admin-login");
         }
@@ -71,6 +73,7 @@ export default function AdminDashboard() {
     isLoading: rsvpLoading
   } = useQuery<{ rsvps: Rsvp[], stats: { attending: number, guestCount: number, notAttending: number } }>({
     queryKey: ["/api/rsvp"],
+    enabled: isAuthenticated,
   });
 
   // Fetch all feature flags
@@ -80,6 +83,7 @@ export default function AdminDashboard() {
     error: featureFlagsError
   } = useQuery<{ featureFlags: FeatureFlag[] }>({
     queryKey: ["/api/feature-flags"],
+    enabled: isAuthenticated,
     retry: (failureCount, error) => {
       // Don't retry on authentication errors
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
@@ -120,6 +124,7 @@ export default function AdminDashboard() {
     error: messagesError
   } = useQuery<{ messages: Message[] }>({
     queryKey: ["/api/messages"],
+    enabled: isAuthenticated,
     retry: (failureCount, error) => {
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
         handleAutoLogout(error);
@@ -215,6 +220,7 @@ export default function AdminDashboard() {
   // Fetch welcome screen configuration
   const { data: welcomeScreenData, isLoading: welcomeScreenLoading } = useQuery<{ welcomeScreen: WelcomeScreen }>({
     queryKey: ["/api/welcome-screen"],
+    enabled: isAuthenticated,
   });
 
   // Update form when data is loaded
@@ -269,6 +275,7 @@ export default function AdminDashboard() {
   // Fetch app settings for e-gift
   const { data: appSettingsData } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
+    enabled: isAuthenticated,
   });
 
   // Update e-gift form when settings are loaded
@@ -396,6 +403,14 @@ export default function AdminDashboard() {
   };
   
   const stats = calculateAttendance();
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
