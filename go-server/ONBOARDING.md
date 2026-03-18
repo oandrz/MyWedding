@@ -19,7 +19,8 @@ This document is for engineers picking up the Go backend for the first time. It 
 11. [Services](#services)
 12. [Testing](#testing)
 13. [Docker & Deployment](#docker--deployment)
-14. [Conventions & Gotchas](#conventions--gotchas)
+14. [Production Deployment (AWS EC2)](#production-deployment-aws-ec2)
+15. [Conventions & Gotchas](#conventions--gotchas)
 
 ---
 
@@ -561,6 +562,137 @@ Workflow at `.github/workflows/go-ci.yml` runs on pushes to `golang_master` or `
 1. **Lint** — golangci-lint
 2. **Test** — `go vet` + `go test` with coverage
 3. **Build** — compiles binary
+
+---
+
+## Production Deployment (AWS EC2)
+
+The app runs on a single EC2 instance: Go backend + React SPA served by Nginx, with PostgreSQL and Redis in Docker Compose on the same VM. Google Cloud Storage handles file uploads.
+
+**Key files:**
+
+| File | Purpose |
+|------|---------|
+| `go-server/docker-compose.prod.yml` | Compose config for app + Postgres + Redis |
+| `deploy.sh` | One-command deploy (build, start, health check) |
+| `go-server/.env.production` | Production secrets template (edit on server) |
+| `nginx/wedding.conf` | Reverse proxy: port 80 → app on :5000 |
+| `gcs-key.json` | GCS service account key (not in repo — copy to server) |
+
+### Prerequisites
+
+Before deploying, have these ready:
+
+- [ ] AWS account with EC2 access
+- [ ] SSH key pair (`.pem` file from AWS)
+- [ ] GCS service account JSON key (`gcs-key.json`)
+- [ ] Google OAuth credentials (client ID, secret, refresh token — copy from `.env.development`)
+- [ ] A strong admin password and DB password (`openssl rand -base64 24`)
+
+### AWS Setup
+
+- [ ] Launch EC2 instance: **t3.small**, Ubuntu 24.04 LTS, 20GB gp3 storage
+- [ ] Security Group: allow SSH (port 22, your IP only) and HTTP (port 80, anywhere)
+- [ ] Allocate an Elastic IP and associate it with the instance
+- [ ] SSH in: `ssh -i your-key.pem ubuntu@<elastic-ip>`
+
+### Server Setup
+
+Run these on the EC2 instance:
+
+```bash
+# 1. Install dependencies
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y docker.io docker-compose-v2 git nginx
+sudo systemctl enable docker && sudo systemctl start docker
+sudo usermod -aG docker $USER
+# Log out and back in for group changes to take effect
+
+# 2. Clone the repo
+git clone https://github.com/andreasronaldo/wedding-server.git ~/wedding
+cd ~/wedding
+
+# 3. Copy gcs-key.json to server (run from your local machine)
+#    scp -i your-key.pem gcs-key.json ubuntu@<elastic-ip>:~/wedding/gcs-key.json
+
+# 4. Edit production secrets
+nano ~/wedding/go-server/.env.production
+# Replace all CHANGE_ME / placeholder values with real credentials
+
+# 5. Configure Nginx
+sudo cp ~/wedding/nginx/wedding.conf /etc/nginx/sites-available/wedding
+sudo ln -s /etc/nginx/sites-available/wedding /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+sudo systemctl enable nginx
+
+# 6. Deploy (first time — run migration)
+cd ~/wedding
+chmod +x deploy.sh
+MIGRATE=1 ./deploy.sh
+```
+
+### Post-Deploy Checklist
+
+- [ ] `curl http://<elastic-ip>/api/health` returns `{"status":"ok"}`
+- [ ] Frontend loads in browser at `http://<elastic-ip>`
+- [ ] Admin login works with your `ADMIN_PASSWORD`
+- [ ] Submit a test RSVP
+- [ ] Upload a test photo (verifies GCS connection)
+- [ ] Set up daily Postgres backups:
+  ```bash
+  mkdir -p ~/backups
+  cat > ~/backup.sh << 'BKEOF'
+  #!/bin/bash
+  docker compose --env-file ~/wedding/go-server/.env.production \
+    -f ~/wedding/go-server/docker-compose.prod.yml exec -T postgres \
+    pg_dump -U wedding_user wedding_invitation_db | gzip > ~/backups/wedding_$(date +%Y%m%d).sql.gz
+  find ~/backups -mtime +30 -delete
+  BKEOF
+  chmod +x ~/backup.sh
+  (crontab -l 2>/dev/null; echo "0 3 * * * ~/backup.sh") | crontab -
+  ```
+- [ ] Enable unattended security updates: `sudo apt install -y unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades`
+
+### SSH Access
+
+An SSH shortcut is configured in `~/.ssh/config`:
+
+```
+Host wedding
+    HostName 13.215.13.47
+    User ubuntu
+    IdentityFile ~/Downloads/wedding-key.pem
+```
+
+Connect with: `ssh wedding`
+
+### Updating the App
+
+```bash
+ssh wedding
+cd ~/wedding && ./deploy.sh
+```
+
+The deploy script pulls latest code, rebuilds Docker images, restarts services, and verifies the health check. Add `MIGRATE=1` if the update includes schema changes.
+
+### Adding a Domain + HTTPS (Later)
+
+1. Buy a domain and point an A record to your Elastic IP
+2. Update `CORS_ORIGINS` in `.env.production` to `https://yourdomain.com`
+3. Install Certbot: `sudo apt install -y certbot python3-certbot-nginx`
+4. Run: `sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com`
+5. Redeploy: `cd ~/wedding && ./deploy.sh`
+
+### Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| Health check fails | `cd ~/wedding/go-server && docker compose --env-file .env.production -f docker-compose.prod.yml logs app` |
+| Postgres won't start | Verify `DB_PASSWORD` in `.env.production` hasn't changed after first run |
+| Can't reach site | Check Security Group has port 80 open; check `sudo systemctl status nginx` |
+| GCS upload fails | Verify `gcs-key.json` exists at `~/wedding/gcs-key.json` |
+| Out of memory (t3.micro) | Enable swap: `sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
 
 ---
 

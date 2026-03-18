@@ -4,18 +4,22 @@ services:
       context: ..
       dockerfile: go-server/Dockerfile
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     environment:
       - GO_ENV=production
       - STATIC_DIR=./dist/public
-      - DATABASE_URL=postgresql://wedding_user:wedding_password@postgres:5432/wedding_invitation_db
+      - DATABASE_URL=postgresql://wedding_user:${DB_PASSWORD:-wedding_password}@postgres:5432/wedding_invitation_db?sslmode=disable
       - REDIS_URL=redis://redis:6379
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - CORS_ORIGINS=${CORS_ORIGINS}
+      - SESSION_MAX_AGE=${SESSION_MAX_AGE:-1800}
       - GCS_BUCKET_ID=${GCS_BUCKET_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs-key.json
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
+    volumes:
+      - ../gcs-key.json:/app/gcs-key.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,7 +45,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --appendonly yes
     volumes:
       - redis-data-prod:/data
     healthcheck:
