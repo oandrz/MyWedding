@@ -82,15 +82,13 @@ func main() {
 	csrf := middleware.NewCSRFStore()
 	cache := service.NewCache(30 * time.Second)
 
-	// Object storage (GCS or local fallback)
-	if cfg.GCSBucketID != "" {
-		gcs, err := service.NewGCSStorage(ctx, cfg.GCSBucketID)
-		if err != nil {
-			slog.Error("Failed to initialize GCS storage", "error", err)
-			os.Exit(1)
-		}
-		routerOpts = append(routerOpts, router.WithStorage(gcs))
-		slog.Info("GCS storage enabled", "bucket", cfg.GCSBucketID)
+	// Object storage: Supabase → local fallback
+	if cfg.SupabaseURL != "" && cfg.SupabaseServiceKey != "" && cfg.SupabaseBucketID != "" {
+		supaStorage := service.NewSupabaseStorage(
+			cfg.SupabaseURL, cfg.SupabaseServiceKey, cfg.SupabaseBucketID, cfg.Env,
+		)
+		routerOpts = append(routerOpts, router.WithStorage(supaStorage))
+		slog.Info("Supabase storage enabled", "bucket", cfg.SupabaseBucketID, "envPrefix", cfg.Env)
 	} else if !cfg.IsProduction() {
 		localStorage := service.NewLocalStorage("./storage")
 		routerOpts = append(routerOpts, router.WithStorage(localStorage))

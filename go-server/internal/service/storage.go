@@ -3,14 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"cloud.google.com/go/storage"
 )
 
 // ObjectStorage defines the interface for file storage operations.
@@ -21,98 +17,6 @@ type ObjectStorage interface {
 	DownloadBuffer(ctx context.Context, objectPath string) ([]byte, error)
 	Delete(ctx context.Context, objectPath string) error
 	ParsePublicURL(publicURL string) string
-}
-
-// GCSStorage implements ObjectStorage using Google Cloud Storage.
-type GCSStorage struct {
-	client *storage.Client
-	bucket string
-}
-
-// NewGCSStorage creates a new GCS-backed storage.
-func NewGCSStorage(ctx context.Context, bucketID string) (*GCSStorage, error) {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GCS client: %w", err)
-	}
-	return &GCSStorage{client: client, bucket: bucketID}, nil
-}
-
-func (s *GCSStorage) Upload(ctx context.Context, data []byte, filename, contentType, directory string) (string, error) {
-	objectName := directory + "/" + filename
-	bucket := s.client.Bucket(s.bucket)
-	obj := bucket.Object(objectName)
-	w := obj.NewWriter(ctx)
-	w.ContentType = contentType
-
-	if _, err := w.Write(data); err != nil {
-		w.Close()
-		return "", fmt.Errorf("failed to write to GCS: %w", err)
-	}
-	if err := w.Close(); err != nil {
-		return "", fmt.Errorf("failed to close GCS writer: %w", err)
-	}
-
-	slog.Debug("File uploaded to GCS", "path", objectName)
-	return "/storage/" + objectName, nil
-}
-
-func (s *GCSStorage) UploadAdminImage(ctx context.Context, data []byte, filename, contentType, imageType string) (string, error) {
-	dir := adminImageDirectory(imageType)
-	return s.Upload(ctx, data, filename, contentType, dir)
-}
-
-func (s *GCSStorage) Download(ctx context.Context, objectPath string, w http.ResponseWriter) error {
-	bucket := s.client.Bucket(s.bucket)
-	obj := bucket.Object(objectPath)
-
-	attrs, err := obj.Attrs(ctx)
-	if err != nil {
-		if err == storage.ErrObjectNotExist {
-			http.Error(w, `{"error":"File not found"}`, http.StatusNotFound)
-			return nil
-		}
-		return err
-	}
-
-	w.Header().Set("Content-Type", attrs.ContentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", attrs.Size))
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-
-	reader, err := obj.NewReader(ctx)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	_, err = io.Copy(w, reader)
-	return err
-}
-
-func (s *GCSStorage) DownloadBuffer(ctx context.Context, objectPath string) ([]byte, error) {
-	bucket := s.client.Bucket(s.bucket)
-	obj := bucket.Object(objectPath)
-	reader, err := obj.NewReader(ctx)
-	if err != nil {
-		if err == storage.ErrObjectNotExist {
-			return nil, fmt.Errorf("object not found: %s", objectPath)
-		}
-		return nil, err
-	}
-	defer reader.Close()
-	return io.ReadAll(reader)
-}
-
-func (s *GCSStorage) Delete(ctx context.Context, objectPath string) error {
-	bucket := s.client.Bucket(s.bucket)
-	return bucket.Object(objectPath).Delete(ctx)
-}
-
-func (s *GCSStorage) ParsePublicURL(publicURL string) string {
-	if idx := strings.Index(publicURL, "/storage/"); idx >= 0 {
-		return publicURL[idx+len("/storage/"):]
-	}
-	return ""
 }
 
 // LocalStorage implements ObjectStorage using local filesystem (dev fallback).

@@ -287,11 +287,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
         ? `/api/admin/config-images-upload?adminKey=${adminKey}`
         : `/api/admin/config-images-upload`;
         
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
-        credentials: "include"
-      });
+      const uploadResponse = await apiRequest('POST', uploadUrl, formData);
       
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json();
