@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3 } from "lucide-react";
 import { AdminContext } from "./AdminContext";
+import RsvpPage from "./RsvpPage";
+import MessagesPage from "./MessagesPage";
+import ConfigPage from "./ConfigPage";
+import WelcomePage from "./WelcomePage";
+import FlagsPage from "./FlagsPage";
+import StatsPage from "./StatsPage";
 
 const NAV_ITEMS = [
   { path: "/rsvps", label: "RSVP", icon: Users },
@@ -136,7 +142,12 @@ export function AdminLayout() {
               <Route path="/">
                 <Redirect to="/rsvps" replace />
               </Route>
-              {/* Page routes will be added as pages are created in Tasks 3-8 */}
+              <Route path="/rsvps" component={RsvpPage} />
+              <Route path="/messages" component={MessagesPage} />
+              <Route path="/config" component={ConfigPage} />
+              <Route path="/welcome" component={WelcomePage} />
+              <Route path="/flags" component={FlagsPage} />
+              <Route path="/stats" component={StatsPage} />
             </Switch>
           </main>
         </div>
