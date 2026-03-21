@@ -122,6 +122,19 @@ export class WeddingObjectStorageService {
     return contents;
   }
 
+  createReadStream(objectPath: string) {
+    const bucket = objectStorageClient.bucket(this.bucketName);
+    const file = bucket.file(objectPath);
+    return file.createReadStream();
+  }
+
+  async fileExists(objectPath: string): Promise<boolean> {
+    const bucket = objectStorageClient.bucket(this.bucketName);
+    const file = bucket.file(objectPath);
+    const [exists] = await file.exists();
+    return exists;
+  }
+
   // Download and stream a file
   async downloadFile(objectPath: string, res: Response): Promise<void> {
     try {

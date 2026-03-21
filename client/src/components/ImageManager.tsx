@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, GripVertical } from "lucide-react";
+import { Trash2, Edit, Plus, GripVertical, Download, Loader2 } from "lucide-react";
 import type { ConfigImage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import ImageUploadModal from "./ImageUploadModal";
@@ -141,8 +141,36 @@ const ImageManager = () => {
   const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image">("banner");
   const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [downloadingType, setDownloadingType] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const handleDownloadAll = useCallback(async (imageType: string) => {
+    setDownloadingType(imageType);
+    try {
+      const response = await fetch(`/api/admin/config-images/download-all?imageType=${imageType}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to download images");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${imageType}-images.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Success", description: "Images downloaded successfully!" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to download images", variant: "destructive" });
+    } finally {
+      setDownloadingType(null);
+    }
+  }, [toast]);
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 8 },
@@ -413,6 +441,17 @@ const ImageManager = () => {
               <h3 className="text-lg font-semibold">Banner Images</h3>
               <p className="text-sm text-gray-600">Hero section background image</p>
             </div>
+            {bannerImages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadAll("banner")}
+                disabled={downloadingType === "banner"}
+              >
+                {downloadingType === "banner" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download All
+              </Button>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -449,6 +488,17 @@ const ImageManager = () => {
                 Images showcased in the gallery section — drag the grip icon to reorder
               </p>
             </div>
+            {galleryImages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadAll("gallery")}
+                disabled={downloadingType === "gallery"}
+              >
+                {downloadingType === "gallery" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download All
+              </Button>
+            )}
           </div>
 
           <DndContext
@@ -523,6 +573,17 @@ const ImageManager = () => {
               <h3 className="text-lg font-semibold">Bride Profile Image</h3>
               <p className="text-sm text-gray-600">Profile photo displayed in the "Our Love Story" section</p>
             </div>
+            {brideProfileImages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadAll("bride-profile")}
+                disabled={downloadingType === "bride-profile"}
+              >
+                {downloadingType === "bride-profile" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download All
+              </Button>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -555,6 +616,17 @@ const ImageManager = () => {
               <h3 className="text-lg font-semibold">Groom Profile Image</h3>
               <p className="text-sm text-gray-600">Profile photo displayed in the "Our Love Story" section</p>
             </div>
+            {groomProfileImages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadAll("groom-profile")}
+                disabled={downloadingType === "groom-profile"}
+              >
+                {downloadingType === "groom-profile" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download All
+              </Button>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -587,6 +659,17 @@ const ImageManager = () => {
               <h3 className="text-lg font-semibold">Verse Section Image</h3>
               <p className="text-sm text-gray-600">Image displayed next to the Bible verse</p>
             </div>
+            {verseImages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadAll("verse-image")}
+                disabled={downloadingType === "verse-image"}
+              >
+                {downloadingType === "verse-image" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download All
+              </Button>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

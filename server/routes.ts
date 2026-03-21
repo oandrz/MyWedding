@@ -16,6 +16,7 @@ import { weddingObjectStorage, ObjectNotFoundError } from "./objectStorage";
 import { sessionStore } from "./session";
 import { generateCSRFToken, deleteCSRFToken } from "./middleware/csrf";
 import { optimizeImage, generateThumbnailFilename } from "./imageOptimizer";
+import archiver from "archiver";
 
 // Simple in-memory cache for frequently accessed data
 interface CacheEntry<T> {
@@ -864,6 +865,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Config image delete error:", error);
       res.status(500).json({ message: "Failed to delete image configuration" });
+    }
+  });
+
+  app.get("/api/admin/config-images/download-all", adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const imageType = req.query.imageType as string;
+      const validTypes = ["banner", "gallery", "bride-profile", "groom-profile", "verse-image"];
+      if (!imageType || !validTypes.includes(imageType)) {
+        return res.status(400).json({ message: "Invalid or missing imageType parameter" });
+      }
+
+      const images = await storage.getConfigImagesByType(imageType);
+      if (!images || images.length === 0) {
+        return res.status(404).json({ message: "No images found for this type" });
+      }
+
+      const zipFilename = `${imageType}-images.zip`;
+      res.set({
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${zipFilename}"`,
+      });
+
+      const archive = archiver("zip", { zlib: { level: 5 } });
+      archive.on("error", (err) => {
+        console.error("Archiver error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to create ZIP file" });
+        }
+      });
+      archive.pipe(res);
+
+      let appendedCount = 0;
+      for (const image of images) {
+        try {
+          const objectPath = weddingObjectStorage.parsePublicUrl(image.imageUrl);
+          if (!objectPath) {
+            console.warn(`Skipping image ${image.imageKey}: could not parse URL ${image.imageUrl}`);
+            continue;
+          }
+          const exists = await weddingObjectStorage.fileExists(objectPath);
+          if (!exists) {
+            console.warn(`Skipping image ${image.imageKey}: file not found at ${objectPath}`);
+            continue;
+          }
+          const ext = path.extname(objectPath) || ".jpg";
+          const filename = `${image.imageKey}${ext}`;
+          const stream = weddingObjectStorage.createReadStream(objectPath);
+          archive.append(stream, { name: filename });
+          appendedCount++;
+        } catch (err) {
+          console.warn(`Skipping image ${image.imageKey}: download failed`, err);
+        }
+      }
+
+      if (appendedCount === 0 && !res.headersSent) {
+        return res.status(404).json({ message: "No downloadable images found" });
+      }
+
+      await archive.finalize();
+    } catch (error) {
+      console.error("Download all images error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to download images" });
+      }
     }
   });
 
