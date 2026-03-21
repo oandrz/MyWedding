@@ -4,6 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { WelcomeScreen } from "@shared/schema";
 
+// Petal configuration for floating animation
+const PETALS = [
+  { top: "8%", left: "12%", size: 14, rotate: -25, delay: 0, duration: 18, color: "rgba(219,169,169,0.10)" },
+  { top: "15%", right: "18%", size: 11, rotate: 45, delay: 2, duration: 22, color: "rgba(219,169,169,0.08)" },
+  { top: "55%", right: "8%", size: 9, rotate: -50, delay: 4, duration: 20, color: "rgba(212,175,55,0.06)" },
+  { top: "40%", left: "6%", size: 12, rotate: 60, delay: 1, duration: 25, color: "rgba(219,169,169,0.09)" },
+  { top: "70%", right: "15%", size: 10, rotate: 30, delay: 3, duration: 17, color: "rgba(219,169,169,0.07)" },
+  { top: "25%", left: "80%", size: 8, rotate: -15, delay: 5, duration: 23, color: "rgba(212,175,55,0.05)" },
+];
+
 const WelcomeOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [guestName, setGuestName] = useState<string>("");
@@ -32,7 +42,7 @@ const WelcomeOverlay = () => {
 
     // Check if overlay has already been opened in this session
     const hasOpenedOverlay = sessionStorage.getItem("welcome_overlay_opened");
-    
+
     if (hasOpenedOverlay) {
       return;
     }
@@ -42,7 +52,7 @@ const WelcomeOverlay = () => {
       // Extract guest name from URL parameter
       const urlParams = new URLSearchParams(window.location.search);
       const toParam = urlParams.get("to");
-      
+
       if (toParam) {
         setGuestName(decodeURIComponent(toParam));
       } else {
@@ -50,7 +60,7 @@ const WelcomeOverlay = () => {
       }
 
       setIsOpen(true);
-      
+
       // Lock body scroll while overlay is open
       document.body.style.overflow = "hidden";
     }
@@ -58,12 +68,12 @@ const WelcomeOverlay = () => {
 
   const handleOpen = () => {
     setIsOpen(false);
-    
+
     // Unlock body scroll (with browser check)
     if (typeof document !== 'undefined') {
       document.body.style.overflow = "";
     }
-    
+
     // Mark as opened in session storage (with browser check)
     if (typeof window !== 'undefined') {
       sessionStorage.setItem("welcome_overlay_opened", "true");
@@ -82,14 +92,98 @@ const WelcomeOverlay = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, y: -50 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#FDFBF7] overflow-hidden"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
+          style={{ background: "linear-gradient(180deg, #FDFBF7 0%, #faf5f0 50%, #FDFBF7 100%)" }}
           data-testid="welcome-overlay"
         >
+          {/* Watercolor blobs */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1 }}
+            className="absolute inset-0 pointer-events-none"
+          >
+            <div
+              className="absolute animate-[blob-pulse_4s_ease-in-out_infinite]"
+              style={{
+                top: "-40px",
+                right: "-60px",
+                width: "300px",
+                height: "300px",
+                background: "radial-gradient(circle, rgba(219,169,169,0.06) 0%, transparent 70%)",
+                borderRadius: "50%",
+              }}
+            />
+            <div
+              className="absolute animate-[blob-pulse_5s_ease-in-out_infinite_1s]"
+              style={{
+                bottom: "-40px",
+                left: "-40px",
+                width: "240px",
+                height: "240px",
+                background: "radial-gradient(circle, rgba(219,169,169,0.05) 0%, transparent 70%)",
+                borderRadius: "50%",
+              }}
+            />
+            <div
+              className="absolute animate-[blob-pulse_4.5s_ease-in-out_infinite_0.5s]"
+              style={{
+                top: "40%",
+                left: "-20px",
+                width: "160px",
+                height: "160px",
+                background: "radial-gradient(circle, rgba(212,175,55,0.04) 0%, transparent 70%)",
+                borderRadius: "50%",
+              }}
+            />
+          </motion.div>
+
+          {/* Corner frame */}
+          {[
+            { pos: "top-6 left-6", border: "border-t border-l" },
+            { pos: "top-6 right-6", border: "border-t border-r" },
+            { pos: "bottom-6 left-6", border: "border-b border-l" },
+            { pos: "bottom-6 right-6", border: "border-b border-r" },
+          ].map((corner, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 + i * 0.15, duration: 0.6, ease: "easeOut" }}
+              className={`absolute ${corner.pos} w-8 h-8 sm:w-10 sm:h-10 ${corner.border} pointer-events-none`}
+              style={{ borderColor: "rgba(219,169,169,0.25)" }}
+            />
+          ))}
+
+          {/* Floating petals */}
+          {PETALS.map((petal, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 + petal.delay * 0.2, duration: 0.8 }}
+              className="absolute pointer-events-none"
+              style={{
+                top: petal.top,
+                left: petal.left,
+                right: (petal as { right?: string }).right,
+                width: `${petal.size * 0.7}px`,
+                height: `${petal.size}px`,
+                background: petal.color,
+                borderRadius: "50% 0 50% 50%",
+                transform: `rotate(${petal.rotate}deg)`,
+                animation: `petal-float-${i} ${petal.duration}s ease-in-out infinite`,
+                willChange: "transform",
+              }}
+            />
+          ))}
+
+          {/* Main content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
-            className="text-center px-6 max-w-2xl py-8 sm:py-0"
+            className="text-center px-6 max-w-2xl py-8 sm:py-0 relative z-10"
           >
             {/* Main Heading */}
             <motion.h1
@@ -101,13 +195,26 @@ const WelcomeOverlay = () => {
               {welcomeScreen.headingText}
             </motion.h1>
 
-            {/* Decorative Line */}
+            {/* Enhanced Decorative Divider */}
             <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
               transition={{ delay: 0.6, duration: 0.6, ease: "easeOut" }}
-              className="w-24 h-0.5 metallic-rose mx-auto mb-6 sm:mb-12"
-            />
+              className="flex items-center justify-center gap-2 mb-6 sm:mb-12"
+            >
+              <div
+                className="h-px w-8 sm:w-12"
+                style={{ background: "linear-gradient(90deg, transparent, rgba(219,169,169,0.4))" }}
+              />
+              <div
+                className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full"
+                style={{ background: "rgba(219,169,169,0.35)" }}
+              />
+              <div
+                className="h-px w-8 sm:w-12"
+                style={{ background: "linear-gradient(90deg, rgba(219,169,169,0.4), transparent)" }}
+              />
+            </motion.div>
 
             {/* Delivery Label */}
             <motion.p
@@ -129,7 +236,7 @@ const WelcomeOverlay = () => {
               {guestName}
             </motion.h2>
 
-            {/* Open Button */}
+            {/* Enhanced Button with shimmer */}
             <motion.button
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -137,22 +244,52 @@ const WelcomeOverlay = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleOpen}
-              className="bg-primary text-white font-montserrat text-xs sm:text-sm md:text-base uppercase tracking-wide px-8 sm:px-10 py-3 sm:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              className="relative font-montserrat text-xs sm:text-sm md:text-base uppercase tracking-wide px-8 sm:px-10 py-3 sm:py-4 rounded-full text-white overflow-hidden transition-all duration-300"
+              style={{
+                background: "linear-gradient(135deg, #dba9a9, #c99595)",
+                boxShadow: "0 4px 15px rgba(219,169,169,0.25)",
+              }}
               data-testid="button-open-invitation"
             >
-              Open Invitation
+              <span className="relative z-10">Open Invitation</span>
+              {/* Shimmer sweep */}
+              <div
+                className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite_1.5s]"
+                style={{
+                  background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%)",
+                  transform: "translateX(-100%)",
+                }}
+              />
             </motion.button>
           </motion.div>
 
-          {/* Subtle Background Pattern (optional) */}
-          <div className="absolute inset-0 opacity-5 pointer-events-none">
-            <svg width="100%" height="100%">
-              <pattern id="welcome-pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                <circle cx="20" cy="20" r="1" fill="currentColor" className="text-primary" />
-              </pattern>
-              <rect width="100%" height="100%" fill="url(#welcome-pattern)" />
-            </svg>
-          </div>
+          {/* Keyframe definitions */}
+          <style>{`
+            @keyframes blob-pulse {
+              0%, 100% { transform: scale(1); }
+              50% { transform: scale(1.15); }
+            }
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              50%, 100% { transform: translateX(100%); }
+            }
+            ${PETALS.map((petal, i) => `
+              @keyframes petal-float-${i} {
+                0%, 100% {
+                  transform: rotate(${petal.rotate}deg) translate(0, 0);
+                }
+                25% {
+                  transform: rotate(${petal.rotate + 10}deg) translate(${i % 2 === 0 ? 8 : -8}px, ${10 + i * 2}px);
+                }
+                50% {
+                  transform: rotate(${petal.rotate - 5}deg) translate(${i % 2 === 0 ? -5 : 5}px, ${20 + i * 3}px);
+                }
+                75% {
+                  transform: rotate(${petal.rotate + 8}deg) translate(${i % 2 === 0 ? 6 : -6}px, ${10 + i}px);
+                }
+              }
+            `).join("")}
+          `}</style>
         </motion.div>
       )}
     </AnimatePresence>
