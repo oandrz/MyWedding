@@ -5,12 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Music } from "lucide-react";
+import { useAdminContext } from "@/pages/admin/AdminContext";
 
 interface MusicManagerProps {
-  onAutoLogout: (error: Error) => void;
+  onAutoLogout?: (error: Error) => void;
 }
 
 const MusicManager = ({ onAutoLogout }: MusicManagerProps) => {
+  const adminContext = useAdminContext();
+  const autoLogout = onAutoLogout ?? adminContext.handleAutoLogout;
   const { toast } = useToast();
   const [musicUploading, setMusicUploading] = useState(false);
 
@@ -18,7 +21,7 @@ const MusicManager = ({ onAutoLogout }: MusicManagerProps) => {
     queryKey: ['/api/settings/music'],
     retry: (failureCount, error) => {
       if (error.message.includes("401") || error.message.includes("Unauthorized")) {
-        onAutoLogout(error);
+        autoLogout(error);
         return false;
       }
       return failureCount < 3;
