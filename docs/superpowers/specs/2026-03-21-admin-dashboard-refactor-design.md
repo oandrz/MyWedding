@@ -191,9 +191,35 @@ The mutation function is passed at hook creation time (not at confirm-time), mak
 | **Modify** | `client/src/components/MusicManager.tsx` (make `onAutoLogout` optional, add context fallback) |
 | **Delete** | `client/src/pages/AdminDashboard.tsx` |
 
-## Testing Strategy
+## Testing Strategy (TDD)
+
+Follow a test-driven development approach: write unit tests first, then implement to make them pass.
+
+### Unit Tests
+
+Test files live alongside their components in `client/src/pages/admin/__tests__/` and `client/src/hooks/__tests__/`:
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `AdminLayout.test.tsx` | Auth guard redirects to `/admin-login` on 401; renders sidebar nav; renders child routes; logout clears session and redirects; provides AdminContext |
+| `RsvpPage.test.tsx` | Renders stats cards with correct counts; renders RSVP table rows; delete confirmation flow works |
+| `MessagesPage.test.tsx` | Renders message list; delete confirmation flow works |
+| `ConfigPage.test.tsx` | Renders Google Drive, ImageManager, MusicManager, E-Gift form sections; E-Gift form submit calls correct API |
+| `WelcomePage.test.tsx` | Renders welcome form with loaded data; form submit calls PATCH API |
+| `FlagsPage.test.tsx` | Renders feature flag toggles; renders welcome screen enable toggle; toggle calls correct mutation |
+| `StatsPage.test.tsx` | Renders attendance breakdown from RSVP data |
+| `useDeleteConfirmation.test.ts` | requestDelete sets item; confirmDelete calls mutation and clears; cancelDelete clears without calling mutation |
+
+### Test Tooling
+
+- Use Vitest (already available via Vite) + React Testing Library
+- Mock API calls with `msw` (Mock Service Worker) or `vi.mock` on `apiRequest`
+- Mock Wouter navigation with `vi.mock("wouter")`
+
+### Verification Checklist
 
 - **TypeScript:** `npm run check` must pass with no errors.
+- **Unit tests:** All tests pass via `npm run test`.
 - **Manual verification:** Navigate each admin route, confirm data loads correctly and in isolation.
 - **Auth guard:** Unauthenticated access to any `/admin/*` route redirects to `/admin-login`.
 - **Backward compatibility:** `/admin` redirects to `/admin/rsvps`. `/admin-dashboard` redirects to `/admin/rsvps`.
