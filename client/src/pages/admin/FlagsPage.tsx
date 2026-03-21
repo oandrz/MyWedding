@@ -189,7 +189,7 @@ export default function FlagsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={flag.enabled}
+                      checked={flag.enabled ?? false}
                       onCheckedChange={(enabled) => handleFeatureFlagToggle(flag.featureKey, enabled)}
                       disabled={featureFlagMutation.isPending}
                       className="data-[state=checked]:bg-rose-600"

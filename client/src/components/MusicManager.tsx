@@ -46,7 +46,7 @@ const MusicManager = ({ onAutoLogout }: MusicManagerProps) => {
     },
     onError: (error: Error) => {
       setMusicUploading(false);
-      onAutoLogout(error);
+      autoLogout(error);
       toast({
         title: "Error",
         description: `Failed to upload music: ${error.message}`,
