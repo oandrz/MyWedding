@@ -74,13 +74,28 @@ const DetailsSection = () => {
               </div>
             </div>
             
-            {/* Time */}
+            {/* Schedule */}
             <div>
-              <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-2">
-                Time
+              <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-4">
+                Schedule
               </div>
-              <div className="text-2xl md:text-3xl font-cormorant text-foreground">
-                {VENUES[0].time}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <div className="text-center md:border-r md:border-primary/20 md:pr-8">
+                  <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
+                    Holy Matrimony
+                  </div>
+                  <div className="text-lg md:text-xl font-cormorant text-foreground">
+                    2:00 PM - 3:30 PM
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
+                    Wedding Reception
+                  </div>
+                  <div className="text-lg md:text-xl font-cormorant text-foreground">
+                    6:15 PM - 8:00 PM
+                  </div>
+                </div>
               </div>
             </div>
             
