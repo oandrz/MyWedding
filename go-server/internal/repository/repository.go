@@ -47,6 +47,7 @@ type Repository interface {
 	// App Settings
 	CreateAppSetting(ctx context.Context, data models.InsertAppSetting) (*models.AppSetting, error)
 	UpdateAppSetting(ctx context.Context, settingKey string, data models.InsertAppSetting) (*models.AppSetting, error)
+	UpsertAppSettings(ctx context.Context, settings []models.InsertAppSetting) (int, error)
 	GetAppSetting(ctx context.Context, settingKey string) (*models.AppSetting, error)
 	GetAllAppSettings(ctx context.Context) ([]models.AppSetting, error)
 

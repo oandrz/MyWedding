@@ -157,6 +157,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Patch("/feature-flags/{featureKey}", featureFlag.Update)
 			r.Post("/feature-flags", featureFlag.CreateFlag)
 
+			r.Patch("/app-settings/bulk", appSetting.BulkUpdate)
 			r.Patch("/app-settings/{settingKey}", appSetting.Update)
 
 			r.Patch("/welcome-screen", welcomeScreen.Update)

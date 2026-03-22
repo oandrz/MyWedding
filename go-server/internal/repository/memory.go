@@ -465,6 +465,39 @@ func (m *MemoryRepository) UpdateAppSetting(_ context.Context, settingKey string
 	return nil, nil
 }
 
+func (m *MemoryRepository) UpsertAppSettings(_ context.Context, settings []models.InsertAppSetting) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	count := 0
+	for _, s := range settings {
+		found := false
+		for id, as := range m.appSettings {
+			if as.SettingKey == s.SettingKey {
+				as.SettingValue = s.SettingValue
+				as.SettingType = s.SettingType
+				as.Description = s.Description
+				as.UpdatedAt = now()
+				m.appSettings[id] = as
+				found = true
+				break
+			}
+		}
+		if !found {
+			m.settingIDSeq++
+			m.appSettings[m.settingIDSeq] = models.AppSetting{
+				ID:           m.settingIDSeq,
+				SettingKey:   s.SettingKey,
+				SettingValue: s.SettingValue,
+				SettingType:  s.SettingType,
+				Description:  s.Description,
+				UpdatedAt:    now(),
+			}
+		}
+		count++
+	}
+	return count, nil
+}
+
 func (m *MemoryRepository) GetAppSetting(_ context.Context, settingKey string) (*models.AppSetting, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

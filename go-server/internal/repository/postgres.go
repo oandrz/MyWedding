@@ -524,6 +524,37 @@ func (r *PostgresRepository) UpdateAppSetting(ctx context.Context, settingKey st
 	return &as, nil
 }
 
+func (r *PostgresRepository) UpsertAppSettings(ctx context.Context, settings []models.InsertAppSetting) (int, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	count := 0
+	for _, s := range settings {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO app_settings (setting_key, setting_value, setting_type, description)
+			 VALUES ($1, $2, $3, $4)
+			 ON CONFLICT (setting_key) DO UPDATE SET
+			   setting_value = EXCLUDED.setting_value,
+			   setting_type = EXCLUDED.setting_type,
+			   description = EXCLUDED.description,
+			   updated_at = NOW()`,
+			s.SettingKey, s.SettingValue, s.SettingType, s.Description,
+		)
+		if err != nil {
+			return 0, err
+		}
+		count++
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *PostgresRepository) GetAppSetting(ctx context.Context, settingKey string) (*models.AppSetting, error) {
 	var as models.AppSetting
 	var updatedAt time.Time

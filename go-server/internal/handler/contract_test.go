@@ -12,6 +12,7 @@ package handler_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -1082,6 +1083,115 @@ func TestContract_AppSettingListWithData(t *testing.T) {
 
 	obj := settings[0].(map[string]interface{})
 	assertAppSettingObject(t, obj)
+}
+
+// ---------------------------------------------------------------------------
+// 19b. PATCH /api/admin/app-settings/bulk
+// Contract: { "updated": <number> }
+// ---------------------------------------------------------------------------
+func TestContract_AppSettingBulkUpdate(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{
+			{"settingKey": "egift_groom_name", "settingValue": "John", "settingType": "text"},
+			{"settingKey": "egift_bride_name", "settingValue": "Jane", "settingType": "text"},
+		},
+	})
+	req := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusOK)
+
+	updated, ok := result["updated"].(float64)
+	if !ok {
+		t.Fatal("Expected 'updated' to be a number")
+	}
+	if int(updated) != 2 {
+		t.Fatalf("Expected updated=2, got %v", updated)
+	}
+}
+
+func TestContract_AppSettingBulkUpdate_EmptyArray(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{},
+	})
+	req := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestContract_AppSettingBulkUpdate_BlankKey(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{
+			{"settingKey": "", "settingValue": "val", "settingType": "text"},
+		},
+	})
+	req := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestContract_AppSettingBulkUpdate_ExceedsMax(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	items := make([]map[string]interface{}, 51)
+	for i := range items {
+		items[i] = map[string]interface{}{
+			"settingKey":   fmt.Sprintf("key_%d", i),
+			"settingValue": "val",
+			"settingType":  "text",
+		}
+	}
+	body := jsonBody(map[string]interface{}{"settings": items})
+	req := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestContract_AppSettingBulkUpdate_Upsert(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// First bulk insert
+	body := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{
+			{"settingKey": "egift_groom_name", "settingValue": "John", "settingType": "text"},
+		},
+	})
+	req := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusOK)
+
+	// Second bulk update (upsert) same key with new value
+	body2 := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{
+			{"settingKey": "egift_groom_name", "settingValue": "Johnny", "settingType": "text"},
+		},
+	})
+	req2 := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body2, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusOK)
+
+	// Verify via GET
+	getReq := httptest.NewRequest(http.MethodGet, "/api/app-settings", nil)
+	getResult := contractResponse(t, env, getReq, http.StatusOK)
+	settings := assertArray(t, getResult, "settings")
+
+	found := false
+	for _, s := range settings {
+		obj := s.(map[string]interface{})
+		if obj["settingKey"] == "egift_groom_name" {
+			if obj["settingValue"] != "Johnny" {
+				t.Fatalf("Expected settingValue='Johnny', got %v", obj["settingValue"])
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("Expected to find egift_groom_name setting after upsert")
+	}
 }
 
 // ---------------------------------------------------------------------------

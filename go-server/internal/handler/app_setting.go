@@ -70,6 +70,55 @@ func (h *AppSettingHandler) Get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// BulkUpdate handles PATCH /api/admin/app-settings/bulk.
+func (h *AppSettingHandler) BulkUpdate(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Settings []struct {
+			SettingKey   string  `json:"settingKey"`
+			SettingValue string  `json:"settingValue"`
+			SettingType  string  `json:"settingType"`
+			Description  *string `json:"description"`
+		} `json:"settings"`
+	}
+	if err := parseJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if len(body.Settings) == 0 {
+		writeError(w, http.StatusBadRequest, "Settings array must not be empty")
+		return
+	}
+	if len(body.Settings) > 50 {
+		writeError(w, http.StatusBadRequest, "Settings array must not exceed 50 items")
+		return
+	}
+
+	inserts := make([]models.InsertAppSetting, 0, len(body.Settings))
+	for _, s := range body.Settings {
+		if s.SettingKey == "" {
+			writeError(w, http.StatusBadRequest, "Each setting must have a non-empty settingKey")
+			return
+		}
+		inserts = append(inserts, models.InsertAppSetting{
+			SettingKey:   s.SettingKey,
+			SettingValue: s.SettingValue,
+			SettingType:  s.SettingType,
+			Description:  s.Description,
+		})
+	}
+
+	updated, err := h.Repo.UpsertAppSettings(r.Context(), inserts)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to update app settings")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"updated": updated,
+	})
+}
+
 // Update handles PATCH /api/admin/app-settings/{settingKey}.
 func (h *AppSettingHandler) Update(w http.ResponseWriter, r *http.Request) {
 	settingKey := chi.URLParam(r, "settingKey")
