@@ -11,7 +11,7 @@ export default defineConfig({
       "tests/**/*.test.ts",
       "client/src/**/*.test.{ts,tsx}",
     ],
-    setupFiles: ["./client/src/test-setup.ts"],
+    setupFiles: ["./client/src/test-setup.ts", "./client/src/test/setup.ts"],
     environmentOptions: {
       jsdom: {},
     },
