@@ -84,14 +84,11 @@ const RsvpSection = () => {
   
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: RsvpFormValues) => {
-      console.log("Submitting RSVP:", data);
       const response = await apiRequest("POST", "/api/rsvp", data);
       const responseData = await response.json();
-      console.log("RSVP response:", responseData);
       return responseData;
     },
     onSuccess: (data) => {
-      console.log("RSVP submitted successfully:", data);
       setIsSubmitted(true);
       
       // Invalidate RSVP check query so UI updates correctly
@@ -143,7 +140,6 @@ const RsvpSection = () => {
   });
   
   const onSubmit = (data: RsvpFormValues) => {
-    console.log("Form data to submit:", data);
     mutate(data);
   };
   
