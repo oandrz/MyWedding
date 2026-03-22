@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -11,7 +12,8 @@ func TestLocalStorageUpload(t *testing.T) {
 	dir := t.TempDir()
 	s := NewLocalStorage(dir)
 
-	url, err := s.Upload(context.Background(), []byte("hello"), "test.txt", "text/plain", "uploads")
+	data := []byte("hello")
+	url, err := s.Upload(context.Background(), bytes.NewReader(data), int64(len(data)), "test.txt", "text/plain", "uploads")
 	if err != nil {
 		t.Fatalf("upload failed: %v", err)
 	}
@@ -19,12 +21,12 @@ func TestLocalStorageUpload(t *testing.T) {
 		t.Errorf("unexpected URL: %s", url)
 	}
 
-	data, err := os.ReadFile(filepath.Join(dir, "uploads", "test.txt"))
+	fileData, err := os.ReadFile(filepath.Join(dir, "uploads", "test.txt"))
 	if err != nil {
 		t.Fatalf("file not found on disk: %v", err)
 	}
-	if string(data) != "hello" {
-		t.Errorf("unexpected content: %s", string(data))
+	if string(fileData) != "hello" {
+		t.Errorf("unexpected content: %s", string(fileData))
 	}
 }
 
@@ -45,7 +47,8 @@ func TestLocalStorageAdminImage(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		url, err := s.UploadAdminImage(context.Background(), []byte("img"), "test.jpg", "image/jpeg", tc.imageType)
+		img := []byte("img")
+		url, err := s.UploadAdminImage(context.Background(), bytes.NewReader(img), int64(len(img)), "test.jpg", "image/jpeg", tc.imageType)
 		if err != nil {
 			t.Errorf("%s: upload failed: %v", tc.imageType, err)
 			continue
@@ -61,7 +64,8 @@ func TestLocalStorageDownloadBuffer(t *testing.T) {
 	dir := t.TempDir()
 	s := NewLocalStorage(dir)
 
-	s.Upload(context.Background(), []byte("content"), "dl.txt", "text/plain", "test")
+	content := []byte("content")
+	s.Upload(context.Background(), bytes.NewReader(content), int64(len(content)), "dl.txt", "text/plain", "test")
 
 	data, err := s.DownloadBuffer(context.Background(), "test/dl.txt")
 	if err != nil {
@@ -76,7 +80,8 @@ func TestLocalStorageDelete(t *testing.T) {
 	dir := t.TempDir()
 	s := NewLocalStorage(dir)
 
-	s.Upload(context.Background(), []byte("x"), "del.txt", "text/plain", "test")
+	x := []byte("x")
+	s.Upload(context.Background(), bytes.NewReader(x), int64(len(x)), "del.txt", "text/plain", "test")
 
 	err := s.Delete(context.Background(), "test/del.txt")
 	if err != nil {

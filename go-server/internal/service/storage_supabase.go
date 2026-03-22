@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -55,18 +54,21 @@ func (s *SupabaseStorage) apiURL(objectPath string) string {
 	return fmt.Sprintf("%s/storage/v1/object/%s/%s", s.baseURL, s.bucketID, objectPath)
 }
 
-func (s *SupabaseStorage) Upload(ctx context.Context, data []byte, filename, contentType, directory string) (string, error) {
+func (s *SupabaseStorage) Upload(ctx context.Context, data io.Reader, size int64, filename, contentType, directory string) (string, error) {
 	logicalPath := directory + "/" + filename
 	objPath := s.objectPath(logicalPath)
 	url := s.apiURL(objPath)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to create upload request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("x-upsert", "true")
+	if size > 0 {
+		req.ContentLength = size
+	}
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -83,9 +85,9 @@ func (s *SupabaseStorage) Upload(ctx context.Context, data []byte, filename, con
 	return "/storage/" + logicalPath, nil
 }
 
-func (s *SupabaseStorage) UploadAdminImage(ctx context.Context, data []byte, filename, contentType, imageType string) (string, error) {
+func (s *SupabaseStorage) UploadAdminImage(ctx context.Context, data io.Reader, size int64, filename, contentType, imageType string) (string, error) {
 	dir := adminImageDirectory(imageType)
-	return s.Upload(ctx, data, filename, contentType, dir)
+	return s.Upload(ctx, data, size, filename, contentType, dir)
 }
 
 func (s *SupabaseStorage) Download(ctx context.Context, objectPath string, w http.ResponseWriter) error {

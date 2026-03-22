@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -31,7 +32,8 @@ func TestSupabaseUpload(t *testing.T) {
 	})
 	defer srv.Close()
 
-	url, err := s.Upload(context.Background(), []byte("hello"), "test.txt", "text/plain", "uploads")
+	hello := []byte("hello")
+	url, err := s.Upload(context.Background(), bytes.NewReader(hello), int64(len(hello)), "test.txt", "text/plain", "uploads")
 	if err != nil {
 		t.Fatalf("upload failed: %v", err)
 	}
@@ -81,7 +83,8 @@ func TestSupabaseUploadAdminImage(t *testing.T) {
 			})
 			defer srv.Close()
 
-			url, err := s.UploadAdminImage(context.Background(), []byte("img"), "test.jpg", "image/jpeg", tc.imageType)
+			img := []byte("img")
+			url, err := s.UploadAdminImage(context.Background(), bytes.NewReader(img), int64(len(img)), "test.jpg", "image/jpeg", tc.imageType)
 			if err != nil {
 				t.Fatalf("upload failed: %v", err)
 			}
@@ -239,7 +242,8 @@ func TestSupabaseEnvPrefixEmpty(t *testing.T) {
 
 	s := NewSupabaseStorageWithClient(srv.Client(), srv.URL, "key", "bucket", "")
 
-	_, err := s.Upload(context.Background(), []byte("x"), "f.txt", "text/plain", "dir")
+	x := []byte("x")
+	_, err := s.Upload(context.Background(), bytes.NewReader(x), int64(len(x)), "f.txt", "text/plain", "dir")
 	if err != nil {
 		t.Fatalf("upload failed: %v", err)
 	}
@@ -256,7 +260,8 @@ func TestSupabaseUploadError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, err := s.Upload(context.Background(), []byte("x"), "f.txt", "text/plain", "dir")
+	x2 := []byte("x")
+	_, err := s.Upload(context.Background(), bytes.NewReader(x2), int64(len(x2)), "f.txt", "text/plain", "dir")
 	if err == nil {
 		t.Fatal("expected error on 500")
 	}

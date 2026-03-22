@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,8 +12,8 @@ import (
 
 // ObjectStorage defines the interface for file storage operations.
 type ObjectStorage interface {
-	Upload(ctx context.Context, data []byte, filename, contentType, directory string) (string, error)
-	UploadAdminImage(ctx context.Context, data []byte, filename, contentType, imageType string) (string, error)
+	Upload(ctx context.Context, data io.Reader, size int64, filename, contentType, directory string) (string, error)
+	UploadAdminImage(ctx context.Context, data io.Reader, size int64, filename, contentType, imageType string) (string, error)
 	Download(ctx context.Context, objectPath string, w http.ResponseWriter) error
 	DownloadBuffer(ctx context.Context, objectPath string) ([]byte, error)
 	Delete(ctx context.Context, objectPath string) error
@@ -30,21 +31,26 @@ func NewLocalStorage(baseDir string) *LocalStorage {
 	return &LocalStorage{baseDir: baseDir}
 }
 
-func (s *LocalStorage) Upload(_ context.Context, data []byte, filename, contentType, directory string) (string, error) {
+func (s *LocalStorage) Upload(_ context.Context, data io.Reader, size int64, filename, contentType, directory string) (string, error) {
 	dir := filepath.Join(s.baseDir, directory)
 	os.MkdirAll(dir, 0o755)
 
 	path := filepath.Join(dir, filename)
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	f, err := os.Create(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	if _, err := io.Copy(f, data); err != nil {
 		return "", err
 	}
 
 	return "/storage/" + directory + "/" + filename, nil
 }
 
-func (s *LocalStorage) UploadAdminImage(_ context.Context, data []byte, filename, contentType, imageType string) (string, error) {
+func (s *LocalStorage) UploadAdminImage(_ context.Context, data io.Reader, size int64, filename, contentType, imageType string) (string, error) {
 	dir := adminImageDirectory(imageType)
-	return s.Upload(context.Background(), data, filename, contentType, dir)
+	return s.Upload(context.Background(), data, size, filename, contentType, dir)
 }
 
 func (s *LocalStorage) Download(_ context.Context, objectPath string, w http.ResponseWriter) error {

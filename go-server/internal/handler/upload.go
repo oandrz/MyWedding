@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log/slog"
@@ -86,12 +87,6 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to read file")
-		return
-	}
-
 	// Detect media type from MIME
 	ct := header.Header.Get("Content-Type")
 	mediaType := "image"
@@ -111,7 +106,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		dir = "uploads"
 	}
 
-	fileURL, err := h.Storage.Upload(r.Context(), data, uniqueName, ct, dir)
+	fileURL, err := h.Storage.Upload(r.Context(), file, header.Size, uniqueName, ct, dir)
 	if err != nil {
 		slog.Error("File upload error", "error", err)
 		writeError(w, http.StatusInternalServerError, "Failed to upload file")
@@ -193,7 +188,7 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 	ext := fileExtension(header.Filename)
 	uniqueName := fmt.Sprintf("%s-%d.%s", imageKey, time.Now().UnixMilli(), ext)
 
-	imageURL, err := h.Storage.UploadAdminImage(r.Context(), data, uniqueName, ct, imageType)
+	imageURL, err := h.Storage.UploadAdminImage(r.Context(), bytes.NewReader(data), int64(len(data)), uniqueName, ct, imageType)
 	if err != nil {
 		slog.Error("Config image upload error", "error", err)
 		writeError(w, http.StatusInternalServerError, "Failed to upload config image")
@@ -206,7 +201,7 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 		opt, err := service.OptimizeImage(data, 600, 80)
 		if err == nil {
 			thumbName := service.GenerateThumbnailFilename(uniqueName)
-			thumbURL, err := h.Storage.Upload(r.Context(), opt.ThumbnailBuffer, thumbName, opt.ThumbnailContentType, "admin/gallery/thumbnails")
+			thumbURL, err := h.Storage.Upload(r.Context(), bytes.NewReader(opt.ThumbnailBuffer), int64(len(opt.ThumbnailBuffer)), thumbName, opt.ThumbnailContentType, "admin/gallery/thumbnails")
 			if err == nil {
 				thumbnailURL = &thumbURL
 				slog.Debug("Generated thumbnail", "url", thumbURL)
@@ -273,16 +268,10 @@ func (h *UploadHandler) MusicUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to read file")
-		return
-	}
-
 	ext := fileExtension(header.Filename)
 	uniqueName := fmt.Sprintf("background-music-%d.%s", time.Now().UnixMilli(), ext)
 
-	musicURL, err := h.Storage.Upload(r.Context(), data, uniqueName, ct, "admin/music")
+	musicURL, err := h.Storage.Upload(r.Context(), file, header.Size, uniqueName, ct, "admin/music")
 	if err != nil {
 		slog.Error("Music upload error", "error", err)
 		writeError(w, http.StatusInternalServerError, "Failed to upload music file")
