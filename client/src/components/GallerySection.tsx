@@ -1,12 +1,12 @@
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, Component, type ReactNode } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, staggerFast, revealText } from "@/lib/animations";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Camera } from "lucide-react";
 import { useResponsivePhotoLimit } from "@/hooks/useResponsivePhotoLimit";
 
 // Helper: Generate responsive Unsplash URLs with optimized sizing
@@ -46,7 +46,38 @@ const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: str
   );
 };
 
+// Error fallback UI for both API errors and render errors
+const GalleryErrorFallback = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="flex flex-col items-center justify-center py-16 text-center">
+    <Camera className="h-12 w-12 text-gray-300 mb-4" />
+    <p className="text-gray-500 text-lg mb-2">Gallery photos couldn't be loaded</p>
+    <p className="text-gray-400 text-sm mb-4">Please try again later</p>
+    <button
+      onClick={onRetry}
+      className="px-6 py-2 rounded-full text-white font-montserrat text-sm shadow-md hover:shadow-lg transition-all hover:brightness-110"
+      style={{ backgroundColor: '#dba9a9' }}
+    >
+      Try Again
+    </button>
+  </div>
+);
+
+class GalleryErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
 const GallerySection = () => {
+  const queryClient = useQueryClient();
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const galleryRef = useRef(null);
@@ -136,7 +167,26 @@ const GallerySection = () => {
     return null;
   }
 
+  if (error) {
+    return (
+      <section id="gallery" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
+        <div className="container mx-auto px-4">
+          <GalleryErrorFallback onRetry={() => queryClient.invalidateQueries({ queryKey: ["/api/config-images/gallery"] })} />
+        </div>
+      </section>
+    );
+  }
+
   return (
+    <GalleryErrorBoundary
+      fallback={
+        <section id="gallery" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture">
+          <div className="container mx-auto px-4">
+            <GalleryErrorFallback onRetry={() => window.location.reload()} />
+          </div>
+        </section>
+      }
+    >
     <section id="gallery" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
         <motion.div
@@ -288,6 +338,7 @@ const GallerySection = () => {
         </DialogContent>
       </Dialog>
     </section>
+    </GalleryErrorBoundary>
   );
 };
 
