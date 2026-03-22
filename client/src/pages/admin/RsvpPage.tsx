@@ -1,12 +1,16 @@
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminContext } from "./AdminContext";
 import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
-import { Loader2, CheckCircle, XCircle, Users, Calendar, Trash2 } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Loader2, CheckCircle, XCircle, Users, Calendar, Trash2, Search, X } from "lucide-react";
 import type { Rsvp } from "@shared/schema";
 
 interface RsvpResponse {
@@ -64,7 +68,31 @@ export default function RsvpPage() {
     useDeleteConfirmation((id) => deleteRsvpMutation.mutate(id));
 
   const rsvps = data?.rsvps ?? [];
-  const stats = calculateAttendance(rsvps);
+  const totalStats = calculateAttendance(rsvps);
+
+  // Search and filter state
+  const [searchText, setSearchText] = useState("");
+  const [attendingFilter, setAttendingFilter] = useState<"all" | "attending" | "not-attending">("all");
+  const debouncedSearch = useDebounce(searchText, 300);
+
+  const filteredRsvps = useMemo(() => {
+    return rsvps.filter((rsvp) => {
+      const matchesSearch =
+        !debouncedSearch ||
+        rsvp.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        rsvp.email.toLowerCase().includes(debouncedSearch.toLowerCase());
+
+      const matchesFilter =
+        attendingFilter === "all" ||
+        (attendingFilter === "attending" && rsvp.attending) ||
+        (attendingFilter === "not-attending" && !rsvp.attending);
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [rsvps, debouncedSearch, attendingFilter]);
+
+  const filteredStats = calculateAttendance(filteredRsvps);
+  const isFiltered = debouncedSearch !== "" || attendingFilter !== "all";
 
   if (isLoading) {
     return (
@@ -84,11 +112,16 @@ export default function RsvpPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl font-bold text-white">
-                  {stats.attending}
+                  {filteredStats.attending}
                 </CardTitle>
                 <CardDescription className="text-rose-100">
                   Confirmed Attending
                 </CardDescription>
+                {isFiltered && (
+                  <p className="text-xs text-rose-200 mt-1">
+                    {filteredStats.attending} of {totalStats.attending} shown
+                  </p>
+                )}
               </div>
               <Users className="h-8 w-8 text-rose-200" />
             </div>
@@ -100,16 +133,54 @@ export default function RsvpPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl font-bold text-white">
-                  {stats.totalGuests}
+                  {filteredStats.totalGuests}
                 </CardTitle>
                 <CardDescription className="text-pink-100">
                   Total Expected Guests
                 </CardDescription>
+                {isFiltered && (
+                  <p className="text-xs text-pink-200 mt-1">
+                    {filteredStats.totalGuests} of {totalStats.totalGuests} shown
+                  </p>
+                )}
               </div>
               <Calendar className="h-8 w-8 text-pink-200" />
             </div>
           </CardHeader>
         </Card>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="pl-10 pr-10"
+            data-testid="rsvp-search-input"
+          />
+          {searchText && (
+            <button
+              onClick={() => setSearchText("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Tabs
+          value={attendingFilter}
+          onValueChange={(v) => setAttendingFilter(v as typeof attendingFilter)}
+        >
+          <TabsList data-testid="rsvp-filter-tabs">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="attending">Attending</TabsTrigger>
+            <TabsTrigger value="not-attending">Not Attending</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* RSVP List */}
@@ -127,7 +198,7 @@ export default function RsvpPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {rsvps.map((rsvp) => (
+            {filteredRsvps.map((rsvp) => (
               <Card
                 key={rsvp.id}
                 className="shadow-sm border-l-4 border-l-rose-500"
@@ -213,6 +284,27 @@ export default function RsvpPage() {
                 </CardContent>
               </Card>
             ))}
+
+            {filteredRsvps.length === 0 && rsvps.length > 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Search className="h-12 w-12 text-gray-300 mb-3" />
+                <p className="text-gray-500 text-lg">
+                  No guests match your search
+                </p>
+                {attendingFilter !== "all" && (
+                  <Button
+                    variant="link"
+                    className="text-sm mt-2"
+                    onClick={() => {
+                      setSearchText("");
+                      setAttendingFilter("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            )}
 
             {rsvps.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">

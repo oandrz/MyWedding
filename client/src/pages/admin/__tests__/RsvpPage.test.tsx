@@ -63,8 +63,10 @@ describe("RsvpPage", () => {
 
   it("shows attending badge for attending guests", () => {
     renderRsvpPage();
-    expect(screen.getByText("Attending")).toBeInTheDocument();
-    expect(screen.getByText("Not Attending")).toBeInTheDocument();
+    // "Attending" appears in both the filter tab and the badge
+    const attendingElements = screen.getAllByText("Attending");
+    expect(attendingElements.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Not Attending").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows empty state when no RSVPs", () => {
@@ -83,5 +85,58 @@ describe("RsvpPage", () => {
     expect(screen.getByText("Delete?")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("No")).toBeInTheDocument();
+  });
+
+  it("renders search input", () => {
+    renderRsvpPage();
+    expect(screen.getByTestId("rsvp-search-input")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search by name or email...")).toBeInTheDocument();
+  });
+
+  it("renders filter tabs", () => {
+    renderRsvpPage();
+    expect(screen.getByTestId("rsvp-filter-tabs")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Attending" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Not Attending" })).toBeInTheDocument();
+  });
+
+  it("filters by search text", async () => {
+    renderRsvpPage();
+    const input = screen.getByTestId("rsvp-search-input");
+    await userEvent.type(input, "Alice");
+    await waitFor(() => {
+      expect(screen.getByText("Alice")).toBeInTheDocument();
+      expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    });
+  });
+
+  it("filters by attending status", async () => {
+    renderRsvpPage();
+    const attendingTab = screen.getByRole("tab", { name: "Attending" });
+    await userEvent.click(attendingTab);
+    await waitFor(() => {
+      expect(screen.getByText("Alice")).toBeInTheDocument();
+      expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows empty state when search has no results", async () => {
+    renderRsvpPage();
+    const input = screen.getByTestId("rsvp-search-input");
+    await userEvent.type(input, "nonexistent");
+    await waitFor(() => {
+      expect(screen.getByText("No guests match your search")).toBeInTheDocument();
+    });
+  });
+
+  it("shows filtered count label when filter is active", async () => {
+    renderRsvpPage();
+    const attendingTab = screen.getByRole("tab", { name: "Attending" });
+    await userEvent.click(attendingTab);
+    await waitFor(() => {
+      const shownLabels = screen.getAllByText(/of.*shown/);
+      expect(shownLabels.length).toBeGreaterThanOrEqual(1);
+    });
   });
 });
