@@ -1194,6 +1194,76 @@ func TestContract_AppSettingBulkUpdate_Upsert(t *testing.T) {
 	}
 }
 
+func TestContract_AppSettingCarouselInterval(t *testing.T) {
+	env := newTestEnv()
+
+	// Seed the gallery carousel interval setting
+	env.repo.CreateAppSetting(nil, struct {
+		SettingKey   string  `json:"settingKey"`
+		SettingValue string  `json:"settingValue"`
+		SettingType  string  `json:"settingType"`
+		Description  *string `json:"description"`
+	}{
+		SettingKey:   "gallery_carousel_interval",
+		SettingValue: "4000",
+		SettingType:  "number",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/app-settings", nil)
+	result := contractResponse(t, env, req, http.StatusOK)
+
+	settings := assertArray(t, result, "settings")
+	if len(settings) != 1 {
+		t.Fatalf("expected 1 setting, got %d", len(settings))
+	}
+
+	obj := settings[0].(map[string]interface{})
+	assertAppSettingObject(t, obj)
+	assertStringValue(t, obj, "settingKey", "gallery_carousel_interval")
+	assertStringValue(t, obj, "settingValue", "4000")
+	assertStringValue(t, obj, "settingType", "number")
+}
+
+func TestContract_AppSettingCarouselIntervalUpdate(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create initial setting
+	body := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{
+			{"settingKey": "gallery_carousel_interval", "settingValue": "4000", "settingType": "number"},
+		},
+	})
+	req := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusOK)
+
+	// Update to new value
+	body2 := jsonBody(map[string]interface{}{
+		"settings": []map[string]interface{}{
+			{"settingKey": "gallery_carousel_interval", "settingValue": "6000", "settingType": "number"},
+		},
+	})
+	req2 := adminRequest(http.MethodPatch, "/api/admin/app-settings/bulk", body2, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusOK)
+
+	// Verify updated value via GET
+	getReq := httptest.NewRequest(http.MethodGet, "/api/app-settings", nil)
+	getResult := contractResponse(t, env, getReq, http.StatusOK)
+	settings := assertArray(t, getResult, "settings")
+
+	found := false
+	for _, s := range settings {
+		obj := s.(map[string]interface{})
+		if obj["settingKey"] == "gallery_carousel_interval" {
+			assertStringValue(t, obj, "settingValue", "6000")
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("Expected to find gallery_carousel_interval setting after update")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 20. GET /api/settings/music
 // Contract: { "musicUrl": "<string>" }
