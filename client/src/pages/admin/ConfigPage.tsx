@@ -36,6 +36,9 @@ export default function ConfigPage() {
     brideAccount: "",
   });
 
+  // Carousel interval state
+  const [carouselInterval, setCarouselInterval] = useState<string>("4000");
+
   // Fetch app settings for e-gift
   const { data: appSettingsData } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
@@ -58,6 +61,7 @@ export default function ConfigPage() {
         brideBank: getSettingValue("egift_bride_bank"),
         brideAccount: getSettingValue("egift_bride_account"),
       });
+      setCarouselInterval(getSettingValue("gallery_carousel_interval") || "4000");
     }
   }, [appSettingsData]);
 
@@ -117,6 +121,36 @@ export default function ConfigPage() {
       toast({
         title: "Error",
         description: `Failed to update e-gift settings: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for updating carousel interval
+  const carouselSettingsMutation = useMutation({
+    mutationFn: async (intervalValue: string) => {
+      const settings = [
+        {
+          settingKey: "gallery_carousel_interval",
+          settingValue: intervalValue,
+          settingType: "number",
+          description: "Gallery carousel auto-scroll interval in milliseconds",
+        },
+      ];
+      await apiRequest("PATCH", "/api/admin/app-settings/bulk", { settings });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/app-settings"] });
+      toast({
+        title: "Success",
+        description: "Gallery carousel speed updated",
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({
+        title: "Error",
+        description: `Failed to update carousel setting: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -189,6 +223,54 @@ export default function ConfigPage() {
         </CardHeader>
         <CardContent>
           <ImageManager />
+        </CardContent>
+      </Card>
+
+      {/* Gallery Carousel Settings */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <Settings className="h-6 w-6 text-rose-600" />
+            <div>
+              <CardTitle className="text-xl">Gallery Carousel</CardTitle>
+              <CardDescription>
+                Configure auto-scroll speed for the photo gallery
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="carouselInterval">
+                Auto-scroll interval: {(parseInt(carouselInterval) / 1000).toFixed(1)}s
+              </Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  id="carouselInterval"
+                  type="number"
+                  min={2000}
+                  max={10000}
+                  step={500}
+                  value={carouselInterval}
+                  onChange={(e) => setCarouselInterval(e.target.value)}
+                  className="max-w-[150px]"
+                  data-testid="input-carousel-interval"
+                />
+                <span className="text-sm text-muted-foreground">ms (2000–10000)</span>
+              </div>
+            </div>
+            <Button
+              onClick={() => carouselSettingsMutation.mutate(carouselInterval)}
+              disabled={carouselSettingsMutation.isPending}
+              data-testid="save-carousel-interval"
+            >
+              {carouselSettingsMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save Carousel Settings
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
