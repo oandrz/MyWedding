@@ -83,17 +83,20 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	r.Post("/api/media", media.Create)
 	r.Get("/api/media", media.ListApproved)
 
-	r.Get("/api/config-images", configImage.ListAll)
-	r.Get("/api/config-images/{type}", configImage.ListByType)
+	// Public config routes with caching (data changes rarely)
+	cacheConfig := chi.Chain(middleware.CacheControl(60))
 
-	r.Get("/api/feature-flags", featureFlag.List)
-	r.Get("/api/feature-flags/{featureKey}", featureFlag.Get)
+	r.With(cacheConfig.Handler).Get("/api/config-images", configImage.ListAll)
+	r.With(cacheConfig.Handler).Get("/api/config-images/{type}", configImage.ListByType)
 
-	r.Get("/api/app-settings", appSetting.List)
-	r.Get("/api/settings/music", appSetting.GetMusic)
-	r.Get("/api/settings/{settingKey}", appSetting.Get)
+	r.With(cacheConfig.Handler).Get("/api/feature-flags", featureFlag.List)
+	r.With(cacheConfig.Handler).Get("/api/feature-flags/{featureKey}", featureFlag.Get)
 
-	r.Get("/api/welcome-screen", welcomeScreen.Get)
+	r.With(cacheConfig.Handler).Get("/api/app-settings", appSetting.List)
+	r.With(cacheConfig.Handler).Get("/api/settings/music", appSetting.GetMusic)
+	r.With(cacheConfig.Handler).Get("/api/settings/{settingKey}", appSetting.Get)
+
+	r.With(cacheConfig.Handler).Get("/api/welcome-screen", welcomeScreen.Get)
 
 	// File upload routes (if storage is configured)
 	var upload *handler.UploadHandler
