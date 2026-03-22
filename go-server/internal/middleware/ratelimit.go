@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
 // RateLimiter tracks request attempts per IP within a time window.
@@ -49,9 +51,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", "60")
 			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
-				"message": "Too many login attempts. Please try again later.",
-			})
+			json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": "TOO_MANY_REQUESTS", "message": "Too many login attempts. Please try again later.", "requestId": chimw.GetReqID(r.Context())}}) //nolint:errcheck
 			return
 		}
 

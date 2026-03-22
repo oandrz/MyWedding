@@ -20,12 +20,12 @@ type RsvpHandler struct {
 func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var body models.InsertRsvp
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.Name == "" || body.Email == "" {
-		writeError(w, http.StatusBadRequest, "Name and email are required")
+		writeError(w, r, http.StatusBadRequest, "Name and email are required")
 		return
 	}
 
@@ -36,7 +36,7 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Check if RSVP already exists for this email
 	existing, err := h.Repo.GetRsvpByEmail(r.Context(), body.Email)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to check existing RSVP")
+		writeError(w, r, http.StatusInternalServerError, "Failed to check existing RSVP")
 		return
 	}
 
@@ -44,7 +44,7 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 		// Update existing RSVP
 		updated, err := h.Repo.UpdateRsvp(r.Context(), existing.ID, body)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Failed to update RSVP")
+			writeError(w, r, http.StatusInternalServerError, "Failed to update RSVP")
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -57,7 +57,7 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Create new RSVP
 	rsvp, err := h.Repo.CreateRsvp(r.Context(), body)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to create RSVP")
+		writeError(w, r, http.StatusInternalServerError, "Failed to create RSVP")
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *RsvpHandler) List(w http.ResponseWriter, r *http.Request) {
 	rsvps, err := h.Repo.GetRsvps(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get RSVPs")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get RSVPs")
 		return
 	}
 
@@ -115,12 +115,12 @@ func (h *RsvpHandler) GetByEmail(w http.ResponseWriter, r *http.Request) {
 
 	rsvp, err := h.Repo.GetRsvpByEmail(r.Context(), email)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get RSVP")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get RSVP")
 		return
 	}
 
 	if rsvp == nil {
-		writeError(w, http.StatusNotFound, "RSVP not found")
+		writeError(w, r, http.StatusNotFound, "RSVP not found")
 		return
 	}
 
@@ -133,13 +133,13 @@ func (h *RsvpHandler) GetByEmail(w http.ResponseWriter, r *http.Request) {
 func (h *RsvpHandler) Check(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "Name query parameter is required")
+		writeError(w, r, http.StatusBadRequest, "Name query parameter is required")
 		return
 	}
 
 	rsvp, err := h.Repo.GetRsvpByName(r.Context(), name)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to check RSVP")
+		writeError(w, r, http.StatusInternalServerError, "Failed to check RSVP")
 		return
 	}
 
@@ -162,18 +162,18 @@ func (h *RsvpHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid RSVP ID")
+		writeError(w, r, http.StatusBadRequest, "Invalid RSVP ID")
 		return
 	}
 
 	deleted, err := h.Repo.DeleteRsvp(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to delete RSVP")
+		writeError(w, r, http.StatusInternalServerError, "Failed to delete RSVP")
 		return
 	}
 
 	if !deleted {
-		writeError(w, http.StatusNotFound, "RSVP not found")
+		writeError(w, r, http.StatusNotFound, "RSVP not found")
 		return
 	}
 

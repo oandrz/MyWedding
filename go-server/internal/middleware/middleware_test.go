@@ -28,10 +28,14 @@ func TestAuthNoSession(t *testing.T) {
 		t.Errorf("expected 401, got %d", w.Code)
 	}
 
-	var body map[string]string
+	var body map[string]interface{}
 	json.NewDecoder(w.Body).Decode(&body)
-	if body["message"] != "Unauthorized: No session found" {
-		t.Errorf("unexpected message: %s", body["message"])
+	errObj, ok := body["error"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected 'error' object in response")
+	}
+	if errObj["message"] != "Unauthorized: No session found" {
+		t.Errorf("unexpected message: %s", errObj["message"])
 	}
 }
 
@@ -51,10 +55,14 @@ func TestAuthInvalidSession(t *testing.T) {
 		t.Errorf("expected 401, got %d", w.Code)
 	}
 
-	var body map[string]string
+	var body map[string]interface{}
 	json.NewDecoder(w.Body).Decode(&body)
-	if body["message"] != "Unauthorized: Invalid or expired session" {
-		t.Errorf("unexpected message: %s", body["message"])
+	errObj, ok := body["error"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected 'error' object in response")
+	}
+	if errObj["message"] != "Unauthorized: Invalid or expired session" {
+		t.Errorf("unexpected message: %s", errObj["message"])
 	}
 }
 

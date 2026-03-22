@@ -18,7 +18,7 @@ type WelcomeScreenHandler struct {
 func (h *WelcomeScreenHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ws, err := h.Repo.GetWelcomeScreen(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get welcome screen")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get welcome screen")
 		return
 	}
 
@@ -42,7 +42,7 @@ func (h *WelcomeScreenHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *WelcomeScreenHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var body models.InsertWelcomeScreen
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *WelcomeScreenHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	ws, err := h.Repo.UpdateWelcomeScreen(r.Context(), body)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update welcome screen")
+		writeError(w, r, http.StatusInternalServerError, "Failed to update welcome screen")
 		return
 	}
 

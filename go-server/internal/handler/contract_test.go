@@ -640,7 +640,10 @@ func TestContract_RsvpGetByEmailNotFound(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp/missing@example.com", nil)
 	result := contractResponse(t, env, req, http.StatusNotFound)
 
-	assertStringValue(t, result, "message", "RSVP not found")
+	errObj := assertObject(t, result, "error")
+	assertStringValue(t, errObj, "message", "RSVP not found")
+	assertStringValue(t, errObj, "code", "NOT_FOUND")
+	assertKeyExists(t, errObj, "requestId")
 }
 
 // ---------------------------------------------------------------------------
@@ -1067,7 +1070,10 @@ func TestContract_FeatureFlagGetNotFound(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/feature-flags/nonexistent", nil)
 	result := contractResponse(t, env, req, http.StatusNotFound)
 
-	assertStringValue(t, result, "message", "Feature flag not found")
+	errObj := assertObject(t, result, "error")
+	assertStringValue(t, errObj, "message", "Feature flag not found")
+	assertStringValue(t, errObj, "code", "NOT_FOUND")
+	assertKeyExists(t, errObj, "requestId")
 }
 
 // ---------------------------------------------------------------------------
@@ -1347,7 +1353,10 @@ func TestContract_SettingsGetByKeyNotFound(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/settings/nonexistent", nil)
 	result := contractResponse(t, env, req, http.StatusNotFound)
 
-	assertStringValue(t, result, "message", "Setting not found")
+	errObj := assertObject(t, result, "error")
+	assertStringValue(t, errObj, "message", "Setting not found")
+	assertStringValue(t, errObj, "code", "NOT_FOUND")
+	assertKeyExists(t, errObj, "requestId")
 }
 
 // ---------------------------------------------------------------------------
@@ -1401,7 +1410,23 @@ func TestContract_WelcomeScreenAfterUpdate(t *testing.T) {
 // ===========================================================================
 // Error Response Contract Tests
 // ===========================================================================
-// All errors follow: { "message": "<string>" }
+// All errors follow: { "error": { "code": "...", "message": "...", "requestId": "..." } }
+
+func TestRespondError_Format(t *testing.T) {
+	env := newTestEnv()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", jsonBody(map[string]string{}))
+	req.Header.Set("Content-Type", "application/json")
+	result := contractResponse(t, env, req, http.StatusBadRequest)
+
+	errObj, ok := result["error"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected 'error' object in response, got keys: %v", mapKeys(result))
+	}
+	assertKeyExists(t, errObj, "code")
+	assertKeyExists(t, errObj, "message")
+	assertKeyExists(t, errObj, "requestId")
+}
 
 func TestContract_ErrorResponseShape(t *testing.T) {
 	env := newTestEnv()
@@ -1412,6 +1437,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 		path       string
 		body       *bytes.Buffer
 		wantStatus int
+		wantCode   string
 		wantMsg    string
 	}{
 		{
@@ -1420,6 +1446,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			path:       "/api/admin/login",
 			body:       jsonBody(map[string]string{"password": "wrong"}),
 			wantStatus: http.StatusUnauthorized,
+			wantCode:   "UNAUTHORIZED",
 			wantMsg:    "Invalid admin password",
 		},
 		{
@@ -1428,6 +1455,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			path:       "/api/admin/login",
 			body:       jsonBody(map[string]string{"password": ""}),
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "BAD_REQUEST",
 			wantMsg:    "Password is required",
 		},
 		{
@@ -1436,6 +1464,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			path:       "/api/rsvp",
 			body:       jsonBody(map[string]interface{}{"name": "Alice"}),
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "BAD_REQUEST",
 			wantMsg:    "Name and email are required",
 		},
 		{
@@ -1444,6 +1473,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			path:       "/api/messages",
 			body:       jsonBody(map[string]interface{}{"name": "Alice"}),
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "BAD_REQUEST",
 			wantMsg:    "Name and content are required",
 		},
 		{
@@ -1452,6 +1482,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			path:       "/api/media",
 			body:       jsonBody(map[string]interface{}{"name": "Alice"}),
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "BAD_REQUEST",
 			wantMsg:    "Name, email, and mediaUrl are required",
 		},
 		{
@@ -1460,6 +1491,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			path:       "/api/rsvp/check",
 			body:       nil,
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "BAD_REQUEST",
 			wantMsg:    "Name query parameter is required",
 		},
 	}
@@ -1476,13 +1508,16 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 
 			result := contractResponse(t, env, req, tc.wantStatus)
 
-			assertStringValue(t, result, "message", tc.wantMsg)
-
-			// Error responses must have exactly {"message":"..."} — no extra keys
+			// Error responses must have exactly {"error": {...}} — no extra keys
 			if len(result) != 1 {
-				t.Fatalf("error response should have exactly 1 key (message), got %d: %v",
+				t.Fatalf("error response should have exactly 1 key (error), got %d: %v",
 					len(result), mapKeys(result))
 			}
+
+			errObj := assertObject(t, result, "error")
+			assertStringValue(t, errObj, "code", tc.wantCode)
+			assertStringValue(t, errObj, "message", tc.wantMsg)
+			assertKeyExists(t, errObj, "requestId")
 		})
 	}
 }

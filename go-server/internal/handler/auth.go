@@ -23,17 +23,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Password is required")
+		writeError(w, r, http.StatusBadRequest, "Password is required")
 		return
 	}
 
 	if body.Password == "" {
-		writeError(w, http.StatusBadRequest, "Password is required")
+		writeError(w, r, http.StatusBadRequest, "Password is required")
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(h.Config.AdminPasswordHash), []byte(body.Password)); err != nil {
-		writeError(w, http.StatusUnauthorized, "Invalid admin password")
+		writeError(w, r, http.StatusUnauthorized, "Invalid admin password")
 		return
 	}
 

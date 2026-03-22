@@ -30,7 +30,7 @@ func (h *ConfigImageHandler) ListAll(w http.ResponseWriter, r *http.Request) {
 
 	images, err := h.Repo.GetAllConfigImages(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get config images")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get config images")
 		return
 	}
 
@@ -61,7 +61,7 @@ func (h *ConfigImageHandler) ListByType(w http.ResponseWriter, r *http.Request) 
 
 	images, err := h.Repo.GetConfigImagesByType(r.Context(), imageType)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get config images")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get config images")
 		return
 	}
 
@@ -80,19 +80,19 @@ func (h *ConfigImageHandler) ListByType(w http.ResponseWriter, r *http.Request) 
 func (h *ConfigImageHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var body models.InsertConfigImage
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.ImageKey == "" || body.ImageURL == "" || body.ImageType == "" {
-		writeError(w, http.StatusBadRequest, "imageKey, imageUrl, and imageType are required")
+		writeError(w, r, http.StatusBadRequest, "imageKey, imageUrl, and imageType are required")
 		return
 	}
 
 	// Upsert: check if imageKey already exists
 	existing, err := h.Repo.GetConfigImage(r.Context(), body.ImageKey)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to check existing config image")
+		writeError(w, r, http.StatusInternalServerError, "Failed to check existing config image")
 		return
 	}
 
@@ -104,7 +104,7 @@ func (h *ConfigImageHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to save config image")
+		writeError(w, r, http.StatusInternalServerError, "Failed to save config image")
 		return
 	}
 
@@ -122,7 +122,7 @@ func (h *ConfigImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var body models.InsertConfigImage
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -130,12 +130,12 @@ func (h *ConfigImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	image, err := h.Repo.UpdateConfigImage(r.Context(), imageKey, body)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update config image")
+		writeError(w, r, http.StatusInternalServerError, "Failed to update config image")
 		return
 	}
 
 	if image == nil {
-		writeError(w, http.StatusNotFound, "Config image not found")
+		writeError(w, r, http.StatusNotFound, "Config image not found")
 		return
 	}
 
@@ -154,18 +154,18 @@ func (h *ConfigImageHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 		OrderedKeys []string `json:"orderedKeys"`
 	}
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.ImageType == "" || len(body.OrderedKeys) == 0 {
-		writeError(w, http.StatusBadRequest, "imageType and orderedKeys are required")
+		writeError(w, r, http.StatusBadRequest, "imageType and orderedKeys are required")
 		return
 	}
 
 	err := h.Repo.ReorderConfigImages(r.Context(), body.ImageType, body.OrderedKeys)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to reorder config images")
+		writeError(w, r, http.StatusInternalServerError, "Failed to reorder config images")
 		return
 	}
 
@@ -182,12 +182,12 @@ func (h *ConfigImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	deleted, err := h.Repo.DeleteConfigImage(r.Context(), imageKey)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to delete config image")
+		writeError(w, r, http.StatusInternalServerError, "Failed to delete config image")
 		return
 	}
 
 	if !deleted {
-		writeError(w, http.StatusNotFound, "Config image not found")
+		writeError(w, r, http.StatusNotFound, "Config image not found")
 		return
 	}
 

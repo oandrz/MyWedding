@@ -53,7 +53,7 @@ func (h *GoogleDriveHandler) UploadToDrive(w http.ResponseWriter, r *http.Reques
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "File too large")
+		writeError(w, r, http.StatusBadRequest, "File too large")
 		return
 	}
 
@@ -62,7 +62,7 @@ func (h *GoogleDriveHandler) UploadToDrive(w http.ResponseWriter, r *http.Reques
 	// Get all files from the multipart form
 	form := r.MultipartForm
 	if form == nil || form.File["files"] == nil {
-		writeError(w, http.StatusBadRequest, "No files uploaded")
+		writeError(w, r, http.StatusBadRequest, "No files uploaded")
 		return
 	}
 
@@ -173,7 +173,7 @@ func (h *GoogleDriveHandler) GetDriveFolderContents(w http.ResponseWriter, r *ht
 	files, err := h.Drive.GetFolderContents(r.Context())
 	if err != nil {
 		slog.Error("Error fetching Drive contents", "error", err)
-		writeError(w, http.StatusInternalServerError, "Failed to fetch folder contents")
+		writeError(w, r, http.StatusInternalServerError, "Failed to fetch folder contents")
 		return
 	}
 

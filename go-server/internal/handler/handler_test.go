@@ -221,8 +221,12 @@ func TestAuthLoginWrongPassword(t *testing.T) {
 	}
 
 	result := parseResponse(t, rec)
-	if result["message"] != "Invalid admin password" {
-		t.Fatalf("expected 'Invalid admin password', got %v", result["message"])
+	errObj, ok := result["error"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected 'error' object in response, got keys: %v", mapKeys(result))
+	}
+	if errObj["message"] != "Invalid admin password" {
+		t.Fatalf("expected 'Invalid admin password', got %v", errObj["message"])
 	}
 }
 

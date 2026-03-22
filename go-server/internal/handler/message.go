@@ -20,12 +20,12 @@ type MessageHandler struct {
 func (h *MessageHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var body models.InsertMessage
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.Name == "" || body.Content == "" {
-		writeError(w, http.StatusBadRequest, "Name and content are required")
+		writeError(w, r, http.StatusBadRequest, "Name and content are required")
 		return
 	}
 
@@ -36,7 +36,7 @@ func (h *MessageHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	msg, err := h.Repo.CreateMessage(r.Context(), body)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to create message")
+		writeError(w, r, http.StatusInternalServerError, "Failed to create message")
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *MessageHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	messages, total, err := h.Repo.GetMessagesPaginated(r.Context(), limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get messages")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get messages")
 		return
 	}
 
@@ -77,18 +77,18 @@ func (h *MessageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid message ID")
+		writeError(w, r, http.StatusBadRequest, "Invalid message ID")
 		return
 	}
 
 	deleted, err := h.Repo.DeleteMessage(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to delete message")
+		writeError(w, r, http.StatusInternalServerError, "Failed to delete message")
 		return
 	}
 
 	if !deleted {
-		writeError(w, http.StatusNotFound, "Message not found")
+		writeError(w, r, http.StatusNotFound, "Message not found")
 		return
 	}
 

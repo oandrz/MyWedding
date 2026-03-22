@@ -18,12 +18,12 @@ type MediaHandler struct {
 func (h *MediaHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var body models.InsertMedia
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.Name == "" || body.Email == "" || body.MediaURL == "" {
-		writeError(w, http.StatusBadRequest, "Name, email, and mediaUrl are required")
+		writeError(w, r, http.StatusBadRequest, "Name, email, and mediaUrl are required")
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *MediaHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	media, err := h.Repo.CreateMedia(r.Context(), body)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to create media")
+		writeError(w, r, http.StatusInternalServerError, "Failed to create media")
 		return
 	}
 
@@ -43,7 +43,7 @@ func (h *MediaHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if body.Email == "admin@wedding.com" {
 		media, err = h.Repo.UpdateMediaApproval(r.Context(), media.ID, true)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Failed to approve media")
+			writeError(w, r, http.StatusInternalServerError, "Failed to approve media")
 			return
 		}
 	}
@@ -68,7 +68,7 @@ func (h *MediaHandler) ListApproved(w http.ResponseWriter, r *http.Request) {
 
 	media, total, err := h.Repo.GetApprovedMediaPaginated(r.Context(), limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get media")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get media")
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *MediaHandler) ListApproved(w http.ResponseWriter, r *http.Request) {
 func (h *MediaHandler) ListAll(w http.ResponseWriter, r *http.Request) {
 	media, err := h.Repo.GetAllMedia(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get media")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get media")
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *MediaHandler) UpdateApproval(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid media ID")
+		writeError(w, r, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
@@ -118,23 +118,23 @@ func (h *MediaHandler) UpdateApproval(w http.ResponseWriter, r *http.Request) {
 		Approved *bool `json:"approved"`
 	}
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.Approved == nil {
-		writeError(w, http.StatusBadRequest, "Field 'approved' is required")
+		writeError(w, r, http.StatusBadRequest, "Field 'approved' is required")
 		return
 	}
 
 	media, err := h.Repo.UpdateMediaApproval(r.Context(), id, *body.Approved)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update media approval")
+		writeError(w, r, http.StatusInternalServerError, "Failed to update media approval")
 		return
 	}
 
 	if media == nil {
-		writeError(w, http.StatusNotFound, "Media not found")
+		writeError(w, r, http.StatusNotFound, "Media not found")
 		return
 	}
 

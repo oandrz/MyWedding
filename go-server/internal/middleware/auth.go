@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
 type contextKey string
@@ -17,7 +19,7 @@ func Auth(sessions Sessions) func(http.Handler) http.Handler {
 			if err != nil || cookie.Value == "" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(map[string]string{"message": "Unauthorized: No session found"})
+				json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": "UNAUTHORIZED", "message": "Unauthorized: No session found", "requestId": chimw.GetReqID(r.Context())}}) //nolint:errcheck
 				return
 			}
 
@@ -33,7 +35,7 @@ func Auth(sessions Sessions) func(http.Handler) http.Handler {
 				})
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(map[string]string{"message": "Unauthorized: Invalid or expired session"})
+				json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": "UNAUTHORIZED", "message": "Unauthorized: Invalid or expired session", "requestId": chimw.GetReqID(r.Context())}}) //nolint:errcheck
 				return
 			}
 

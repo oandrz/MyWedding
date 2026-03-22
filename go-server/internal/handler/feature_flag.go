@@ -31,7 +31,7 @@ func (h *FeatureFlagHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	flags, err := h.Repo.GetAllFeatureFlags(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get feature flags")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get feature flags")
 		return
 	}
 
@@ -52,12 +52,12 @@ func (h *FeatureFlagHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	flag, err := h.Repo.GetFeatureFlag(r.Context(), featureKey)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get feature flag")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get feature flag")
 		return
 	}
 
 	if flag == nil {
-		writeError(w, http.StatusNotFound, "Feature flag not found")
+		writeError(w, r, http.StatusNotFound, "Feature flag not found")
 		return
 	}
 
@@ -74,23 +74,23 @@ func (h *FeatureFlagHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Enabled *bool `json:"enabled"`
 	}
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.Enabled == nil {
-		writeError(w, http.StatusBadRequest, "Field 'enabled' is required and must be a boolean")
+		writeError(w, r, http.StatusBadRequest, "Field 'enabled' is required and must be a boolean")
 		return
 	}
 
 	flag, err := h.Repo.UpdateFeatureFlag(r.Context(), featureKey, *body.Enabled)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update feature flag")
+		writeError(w, r, http.StatusInternalServerError, "Failed to update feature flag")
 		return
 	}
 
 	if flag == nil {
-		writeError(w, http.StatusNotFound, "Feature flag not found")
+		writeError(w, r, http.StatusNotFound, "Feature flag not found")
 		return
 	}
 
@@ -111,30 +111,30 @@ func (h *FeatureFlagHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *FeatureFlagHandler) CreateFlag(w http.ResponseWriter, r *http.Request) {
 	var body models.InsertFeatureFlag
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.FeatureKey == "" {
-		writeError(w, http.StatusBadRequest, "Feature key is required")
+		writeError(w, r, http.StatusBadRequest, "Feature key is required")
 		return
 	}
 
 	// Check for duplicate
 	existing, err := h.Repo.GetFeatureFlag(r.Context(), body.FeatureKey)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to check existing feature flag")
+		writeError(w, r, http.StatusInternalServerError, "Failed to check existing feature flag")
 		return
 	}
 
 	if existing != nil {
-		writeError(w, http.StatusConflict, fmt.Sprintf("Feature flag '%s' already exists", body.FeatureKey))
+		writeError(w, r, http.StatusConflict, fmt.Sprintf("Feature flag '%s' already exists", body.FeatureKey))
 		return
 	}
 
 	flag, err := h.Repo.CreateFeatureFlag(r.Context(), body)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to create feature flag")
+		writeError(w, r, http.StatusInternalServerError, "Failed to create feature flag")
 		return
 	}
 

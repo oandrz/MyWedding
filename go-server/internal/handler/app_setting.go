@@ -17,7 +17,7 @@ type AppSettingHandler struct {
 func (h *AppSettingHandler) List(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.Repo.GetAllAppSettings(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get app settings")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get app settings")
 		return
 	}
 
@@ -34,7 +34,7 @@ func (h *AppSettingHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *AppSettingHandler) GetMusic(w http.ResponseWriter, r *http.Request) {
 	setting, err := h.Repo.GetAppSetting(r.Context(), "background_music_url")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get music setting")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get music setting")
 		return
 	}
 
@@ -56,12 +56,12 @@ func (h *AppSettingHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	setting, err := h.Repo.GetAppSetting(r.Context(), settingKey)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get app setting")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get app setting")
 		return
 	}
 
 	if setting == nil {
-		writeError(w, http.StatusNotFound, "Setting not found")
+		writeError(w, r, http.StatusNotFound, "Setting not found")
 		return
 	}
 
@@ -81,23 +81,23 @@ func (h *AppSettingHandler) BulkUpdate(w http.ResponseWriter, r *http.Request) {
 		} `json:"settings"`
 	}
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if len(body.Settings) == 0 {
-		writeError(w, http.StatusBadRequest, "Settings array must not be empty")
+		writeError(w, r, http.StatusBadRequest, "Settings array must not be empty")
 		return
 	}
 	if len(body.Settings) > 50 {
-		writeError(w, http.StatusBadRequest, "Settings array must not exceed 50 items")
+		writeError(w, r, http.StatusBadRequest, "Settings array must not exceed 50 items")
 		return
 	}
 
 	inserts := make([]models.InsertAppSetting, 0, len(body.Settings))
 	for _, s := range body.Settings {
 		if s.SettingKey == "" {
-			writeError(w, http.StatusBadRequest, "Each setting must have a non-empty settingKey")
+			writeError(w, r, http.StatusBadRequest, "Each setting must have a non-empty settingKey")
 			return
 		}
 		inserts = append(inserts, models.InsertAppSetting{
@@ -110,7 +110,7 @@ func (h *AppSettingHandler) BulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := h.Repo.UpsertAppSettings(r.Context(), inserts)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update app settings")
+		writeError(w, r, http.StatusInternalServerError, "Failed to update app settings")
 		return
 	}
 
@@ -129,19 +129,19 @@ func (h *AppSettingHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Description  *string `json:"description"`
 	}
 	if err := parseJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if body.SettingValue == "" {
-		writeError(w, http.StatusBadRequest, "Setting value is required")
+		writeError(w, r, http.StatusBadRequest, "Setting value is required")
 		return
 	}
 
 	// Get existing to preserve fields not provided
 	existing, err := h.Repo.GetAppSetting(r.Context(), settingKey)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to get app setting")
+		writeError(w, r, http.StatusInternalServerError, "Failed to get app setting")
 		return
 	}
 
@@ -164,12 +164,12 @@ func (h *AppSettingHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	setting, err := h.Repo.UpdateAppSetting(r.Context(), settingKey, data)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to update app setting")
+		writeError(w, r, http.StatusInternalServerError, "Failed to update app setting")
 		return
 	}
 
 	if setting == nil {
-		writeError(w, http.StatusNotFound, "Setting not found")
+		writeError(w, r, http.StatusNotFound, "Setting not found")
 		return
 	}
 

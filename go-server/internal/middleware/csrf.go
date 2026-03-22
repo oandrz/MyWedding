@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
+
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
 type CSRFStore struct {
@@ -62,7 +64,7 @@ func CSRFProtection(csrf *CSRFStore) func(http.Handler) http.Handler {
 			if err != nil || cookie.Value == "" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{"message": "No session found"})
+				json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": "FORBIDDEN", "message": "No session found", "requestId": chimw.GetReqID(r.Context())}}) //nolint:errcheck
 				return
 			}
 
@@ -70,7 +72,7 @@ func CSRFProtection(csrf *CSRFStore) func(http.Handler) http.Handler {
 			if !ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{"message": "CSRF token not found"})
+				json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": "FORBIDDEN", "message": "CSRF token not found", "requestId": chimw.GetReqID(r.Context())}}) //nolint:errcheck
 				return
 			}
 
@@ -78,7 +80,7 @@ func CSRFProtection(csrf *CSRFStore) func(http.Handler) http.Handler {
 			if providedToken == "" || subtle.ConstantTimeCompare([]byte(providedToken), []byte(expectedToken)) != 1 {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{"message": "Invalid CSRF token"})
+				json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": "FORBIDDEN", "message": "Invalid CSRF token", "requestId": chimw.GetReqID(r.Context())}}) //nolint:errcheck
 				return
 			}
 

@@ -16,9 +16,10 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
-// writeError writes a JSON error response with the given status code and message.
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"message": message})
+// writeError writes a structured JSON error response with the given status code and message.
+func writeError(w http.ResponseWriter, r *http.Request, status int, message string) {
+	code := statusToCode(status)
+	respondError(w, r, status, code, message)
 }
 
 // parseJSON decodes the request body into v.

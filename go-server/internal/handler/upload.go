@@ -58,19 +58,19 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
 
 	if err := r.ParseMultipartForm(maxImageSize); err != nil {
-		writeError(w, http.StatusBadRequest, "File too large (max 10MB)")
+		writeError(w, r, http.StatusBadRequest, "File too large (max 10MB)")
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "No file uploaded")
+		writeError(w, r, http.StatusBadRequest, "No file uploaded")
 		return
 	}
 	defer file.Close()
 
 	if !allowedImageMIME[header.Header.Get("Content-Type")] {
-		writeError(w, http.StatusBadRequest, "Invalid file type. Only images and videos are allowed.")
+		writeError(w, r, http.StatusBadRequest, "Invalid file type. Only images and videos are allowed.")
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if name == "" || email == "" {
-		writeError(w, http.StatusBadRequest, "Missing required fields")
+		writeError(w, r, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	fileURL, err := h.Storage.Upload(r.Context(), file, header.Size, uniqueName, ct, dir)
 	if err != nil {
 		slog.Error("File upload error", "error", err)
-		writeError(w, http.StatusInternalServerError, "Failed to upload file")
+		writeError(w, r, http.StatusInternalServerError, "Failed to upload file")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	media, err := h.Repo.CreateMedia(r.Context(), insertMedia)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to create media entry")
+		writeError(w, r, http.StatusInternalServerError, "Failed to create media entry")
 		return
 	}
 
@@ -147,20 +147,20 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 	r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
 
 	if err := r.ParseMultipartForm(maxImageSize); err != nil {
-		writeError(w, http.StatusBadRequest, "File too large (max 10MB)")
+		writeError(w, r, http.StatusBadRequest, "File too large (max 10MB)")
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "No file uploaded")
+		writeError(w, r, http.StatusBadRequest, "No file uploaded")
 		return
 	}
 	defer file.Close()
 
 	ct := header.Header.Get("Content-Type")
 	if !strings.HasPrefix(ct, "image/") {
-		writeError(w, http.StatusBadRequest, "Only images are allowed for config images")
+		writeError(w, r, http.StatusBadRequest, "Only images are allowed for config images")
 		return
 	}
 
@@ -170,18 +170,18 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 	description := r.FormValue("description")
 
 	if imageKey == "" || imageType == "" {
-		writeError(w, http.StatusBadRequest, "Image key and type are required")
+		writeError(w, r, http.StatusBadRequest, "Image key and type are required")
 		return
 	}
 
 	if !validConfigImageTypes[imageType] {
-		writeError(w, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
+		writeError(w, r, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
 		return
 	}
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to read file")
+		writeError(w, r, http.StatusInternalServerError, "Failed to read file")
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 	imageURL, err := h.Storage.UploadAdminImage(r.Context(), bytes.NewReader(data), int64(len(data)), uniqueName, ct, imageType)
 	if err != nil {
 		slog.Error("Config image upload error", "error", err)
-		writeError(w, http.StatusInternalServerError, "Failed to upload config image")
+		writeError(w, r, http.StatusInternalServerError, "Failed to upload config image")
 		return
 	}
 
@@ -234,7 +234,7 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 		img, err = h.Repo.CreateConfigImage(r.Context(), insertData)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to save config image")
+		writeError(w, r, http.StatusInternalServerError, "Failed to save config image")
 		return
 	}
 
@@ -251,20 +251,20 @@ func (h *UploadHandler) MusicUpload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxAudioSize)
 
 	if err := r.ParseMultipartForm(maxAudioSize); err != nil {
-		writeError(w, http.StatusBadRequest, "File too large (max 20MB)")
+		writeError(w, r, http.StatusBadRequest, "File too large (max 20MB)")
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "No file uploaded")
+		writeError(w, r, http.StatusBadRequest, "No file uploaded")
 		return
 	}
 	defer file.Close()
 
 	ct := header.Header.Get("Content-Type")
 	if !allowedAudioMIME[ct] {
-		writeError(w, http.StatusBadRequest, "Only audio files are allowed")
+		writeError(w, r, http.StatusBadRequest, "Only audio files are allowed")
 		return
 	}
 
@@ -274,7 +274,7 @@ func (h *UploadHandler) MusicUpload(w http.ResponseWriter, r *http.Request) {
 	musicURL, err := h.Storage.Upload(r.Context(), file, header.Size, uniqueName, ct, "admin/music")
 	if err != nil {
 		slog.Error("Music upload error", "error", err)
-		writeError(w, http.StatusInternalServerError, "Failed to upload music file")
+		writeError(w, r, http.StatusInternalServerError, "Failed to upload music file")
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *UploadHandler) MusicUpload(w http.ResponseWriter, r *http.Request) {
 		setting, err = h.Repo.CreateAppSetting(r.Context(), settingData)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to save music setting")
+		writeError(w, r, http.StatusInternalServerError, "Failed to save music setting")
 		return
 	}
 
@@ -310,14 +310,14 @@ func (h *UploadHandler) ServeStorage(w http.ResponseWriter, r *http.Request) {
 	// Extract everything after /storage/
 	path := strings.TrimPrefix(r.URL.Path, "/storage/")
 	if path == "" {
-		writeError(w, http.StatusBadRequest, "No file path specified")
+		writeError(w, r, http.StatusBadRequest, "No file path specified")
 		return
 	}
 
 	if err := h.Storage.Download(r.Context(), path, w); err != nil {
 		slog.Error("Error serving file", "path", path, "error", err)
 		if !headersSent(w) {
-			writeError(w, http.StatusInternalServerError, "Error serving file")
+			writeError(w, r, http.StatusInternalServerError, "Error serving file")
 		}
 	}
 }
