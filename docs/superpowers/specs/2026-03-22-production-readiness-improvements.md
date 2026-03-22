@@ -16,7 +16,7 @@ A comprehensive codebase analysis identified improvements across security, perfo
 
 #### Admin Password Hashing
 
-**Problem:** Admin password is compared in plaintext in `auth.go`. Visible in environment variables and logs.
+**Problem:** Admin password uses `crypto/subtle.ConstantTimeCompare` (timing-safe), but compares the raw password — not a hash. The plaintext password is visible in environment variables and could appear in logs or process listings.
 
 **Solution:**
 - Add `golang.org/x/crypto/bcrypt` dependency
@@ -37,7 +37,7 @@ A comprehensive codebase analysis identified improvements across security, perfo
 **Solution:**
 - Add `github.com/microcosm-cc/bluemonday` dependency
 - Create `internal/service/sanitizer.go` with a strict policy (allow basic formatting tags only: `<b>`, `<i>`, `<em>`, `<strong>`, `<br>`)
-- Sanitize in handlers before persisting: `message.go`, `rsvp.go` (name field), `welcome_screen.go`
+- Sanitize in handlers before persisting: `message.go`, `rsvp.go` (name field), `welcome_screen.go`, `upload.go` (caption field)
 - React already escapes output by default, but server-side sanitization is the defense-in-depth layer
 
 **Files:**
@@ -45,6 +45,7 @@ A comprehensive codebase analysis identified improvements across security, perfo
 - `go-server/internal/handler/message.go` — sanitize content before save
 - `go-server/internal/handler/rsvp.go` — sanitize name before save
 - `go-server/internal/handler/welcome_screen.go` — sanitize text fields before save
+- `go-server/internal/handler/upload.go` — sanitize caption before save
 
 #### Rate Limiting on Login
 
@@ -63,17 +64,7 @@ A comprehensive codebase analysis identified improvements across security, perfo
 
 #### File Upload Size Limits
 
-**Problem:** Upload endpoints read the entire request body into memory before validation. Large files (or malicious uploads) can spike memory.
-
-**Solution:**
-- Wrap request body with `http.MaxBytesReader(w, r.Body, maxSize)` at the start of upload handlers
-- Limits: 10MB for images, 50MB for music files
-- Returns `413 Request Entity Too Large` if exceeded
-- Enforced before any `io.ReadAll` or processing
-
-**Files:**
-- `go-server/internal/handler/upload.go` — add MaxBytesReader
-- `go-server/internal/handler/config_image.go` — add MaxBytesReader for image uploads
+**Status:** Already implemented. Upload handlers already use `http.MaxBytesReader` with 10MB for images and 20MB for audio. No changes needed.
 
 ### 1.2 Performance
 
@@ -88,11 +79,12 @@ Backend:
 - Add `GetMessagesPaginated(ctx, limit, offset int) ([]Message, int, error)` to repository interface
 - Implement in both `memory.go` and `postgres.go`
 - Update handlers to accept `?limit=20&offset=0` query params, default limit=20
-- Response shape: `{"data": [...], "total": 150, "limit": 20, "offset": 0}`
+- Response shape: `{"media": [...], "total": 150, "limit": 20, "offset": 0}` (preserves existing key name `media`/`messages`, adds pagination metadata)
+- **Breaking change:** Existing responses use `{"media": [...]}` and `{"messages": [...]}` — the new envelope adds `total`, `limit`, `offset` alongside the existing key. Contract tests must be updated.
 
 Frontend:
 - Replace `useQuery` with `useInfiniteQuery` for media and message lists
-- Add infinite scroll trigger (IntersectionObserver) to GallerySection and MessageWallSection
+- Add "Load more" button to GallerySection and MessageWallSection (simpler than IntersectionObserver for ~200 records)
 - Show loading skeleton while fetching next page
 
 **Files:**
@@ -101,8 +93,9 @@ Frontend:
 - `go-server/internal/repository/postgres.go` — implement with `LIMIT/OFFSET` SQL
 - `go-server/internal/handler/media.go` — accept pagination params
 - `go-server/internal/handler/message.go` — accept pagination params
-- `client/src/components/GallerySection.tsx` — useInfiniteQuery + infinite scroll
-- `client/src/components/MessageWallSection.tsx` — useInfiniteQuery + infinite scroll
+- `go-server/internal/handler/contract_test.go` — update contract tests for new response envelope
+- `client/src/components/GallerySection.tsx` — useInfiniteQuery + "Load more"
+- `client/src/components/MessageWallSection.tsx` — useInfiniteQuery + "Load more"
 
 #### HTTP Cache Headers
 
@@ -115,7 +108,7 @@ Frontend:
   - `GET /api/config-images`
   - `GET /api/app-settings`
   - `GET /api/welcome-screen`
-- Add `ETag` generation based on content hash (MD5 of JSON response)
+- Add `ETag` generation based on a version counter or last-modified timestamp from the cache service (avoids buffering the full response to compute a hash)
 - Handle `If-None-Match` → return `304 Not Modified` when ETag matches
 - Admin mutation handlers don't need changes — the 60s max-age handles staleness
 
@@ -133,9 +126,15 @@ Frontend:
 - Buffer size: 1-2MB chunks
 - Combined with the MaxBytesReader from 1.1, this bounds memory regardless of file size
 
+**Note:** The `ObjectStorage` interface currently accepts `[]byte` in both `Upload` and `UploadAdminImage`. Changing to `io.Reader` is a breaking interface change affecting `LocalStorage`, `SupabaseStorage`, all upload handlers, and thumbnail generation in `ConfigImageUpload`.
+
 **Files:**
 - `go-server/internal/handler/upload.go` — refactor to streaming
-- `go-server/internal/service/storage.go` — ensure storage interface supports `io.Reader` (not just `[]byte`)
+- `go-server/internal/service/storage.go` — change `ObjectStorage` interface from `[]byte` to `io.Reader`, update `LocalStorage` implementation (both live in this file)
+- `go-server/internal/service/storage_supabase.go` — update `SupabaseStorage` implementation
+- `go-server/internal/handler/config_image.go` — update callers (thumbnail upload)
+- `go-server/internal/service/storage_test.go` — update tests
+- `go-server/internal/service/storage_supabase_test.go` — update tests
 
 ### 1.3 Database
 
@@ -144,7 +143,7 @@ Frontend:
 **Problem:** No indexes on frequently queried columns. Table scans on every email lookup and sorted query.
 
 **Solution:**
-- New migration file `002_add_indexes.sql`:
+- New migration file `003_add_indexes.sql` (002 is already taken by `002_gallery_carousel_interval.sql`):
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_rsvp_email ON rsvp(email);
@@ -153,7 +152,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 ```
 
 **Files:**
-- `go-server/migrations/002_add_indexes.sql` — new
+- `go-server/migrations/003_add_indexes.sql` — new
 
 ---
 
@@ -187,7 +186,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 
 ### 2.2 Structured Error Responses
 
-**Current:** Handlers return inconsistent error shapes — sometimes `{"error": "message"}`, sometimes plain text, sometimes just a status code.
+**Current:** Handlers use a `writeError(w, statusCode, message)` helper that returns `{"message": "..."}`. This is consistent but lacks error codes and request IDs for debugging and frontend-specific handling.
 
 **Solution:**
 - Define `AppError` struct:
@@ -206,8 +205,9 @@ type AppError struct {
   - Injects request ID from Chi context
   - Writes JSON error envelope: `{"error": {...}}`
 - Define error codes as constants: `ErrRsvpDuplicateEmail`, `ErrUploadTooLarge`, `ErrUnauthorized`, etc.
-- Update all handlers to use `respondError` instead of ad-hoc error writing
-- Frontend: update `apiRequest()` in `queryClient.ts` to parse error codes for user-friendly toasts
+- Replace existing `writeError` calls across all handlers with `respondError` (find-and-replace migration)
+- **Breaking change:** Existing error format is `{"message": "..."}` (flat string). New format is `{"error": {"code": "...", "message": "...", "requestId": "..."}}`. Frontend must migrate from `response.message` to `response.error.message` + `response.error.code`. Coordinate frontend and backend changes together.
+- Frontend: update `apiRequest()` in `queryClient.ts` to parse structured errors for user-friendly toasts
 
 **Files:**
 - `go-server/internal/handler/errors.go` — new, AppError type + respondError helper + error code constants
@@ -225,7 +225,8 @@ type AppError struct {
 | `RsvpSection.test.tsx` | RSVP form flow | Email pre-fill from URL, validation errors, successful submit, duplicate email handling |
 | `FeatureFlags.test.tsx` | Conditional rendering | Sections hidden when flags disabled, polling behavior, error fallback |
 | `apiRequest.test.ts` | API error handling | 401 redirect, 429 rate limit toast, structured error parsing, CSRF token injection |
-| `MessagesSection.test.tsx` | Message submission | Form validation, successful post, optimistic update |
+| `MessagesSection.test.tsx` | Message submission form (`MessagesSection.tsx`) | Form validation, successful post, optimistic update |
+| `MessageWallSection.test.tsx` | Message display list (`MessageWallSection.tsx`) | Pagination, "Load more", empty state |
 
 **Setup:**
 - Add `msw` as dev dependency
@@ -239,6 +240,7 @@ type AppError struct {
 - `client/src/hooks/useFeatureFlags.test.ts` — new
 - `client/src/lib/queryClient.test.ts` — new
 - `client/src/components/MessagesSection.test.tsx` — new
+- `client/src/components/MessageWallSection.test.tsx` — new
 
 ### 2.4 Backend Test Coverage
 
@@ -254,8 +256,10 @@ type AppError struct {
 - Missing required fields return 400 with field-specific error code
 - Concurrent RSVP submissions with same email (race condition test with `-race` flag)
 
+**Note:** Existing `handler_test.go` has test helpers and `contract_test.go` has API shape tests. The new test files below complement these by testing business logic and edge cases, not API shape.
+
 **Files:**
-- `go-server/internal/handler/rsvp_test.go` — new, handler-level tests
+- `go-server/internal/handler/rsvp_test.go` — new, business logic tests (complements existing contract tests)
 - `go-server/internal/handler/media_test.go` — new
 - `go-server/internal/handler/message_test.go` — new
 - `go-server/internal/handler/upload_test.go` — new
@@ -283,17 +287,13 @@ type AppError struct {
 - `.flask_server` — Python remnant, no longer relevant
 - `pyproject.toml`, `poetry.lock`, `uv.lock` — old Python dependency files
 - `package.local.json` — appears unused
-- `replit.md` — references Express backend, outdated
-
-**Update:**
-- `replit.md` — either update to reflect Go backend or remove entirely
+- `replit.md` — references Express backend, outdated and misleading; remove entirely
 
 **Add:**
 - `docs/API.md` — markdown table of all endpoints (method, path, auth required, request/response shape)
 
 **Files:**
-- Delete: `.flask_server`, `pyproject.toml`, `poetry.lock`, `uv.lock`, `package.local.json`
-- Update or delete: `replit.md`
+- Delete: `.flask_server`, `pyproject.toml`, `poetry.lock`, `uv.lock`, `package.local.json`, `replit.md`
 - New: `docs/API.md`
 
 ---
@@ -301,14 +301,15 @@ type AppError struct {
 ## Implementation Order
 
 ### Phase 1 (recommended sequence)
-1. Database indexes (002_add_indexes.sql) — zero risk, immediate benefit
-2. File upload size limits (MaxBytesReader) — small change, prevents memory issues
-3. Admin password hashing (bcrypt) — security critical
-4. Input sanitization (bluemonday) — security critical
-5. Rate limiting on login — security, standalone middleware
-6. HTTP cache headers — standalone middleware, no breaking changes
-7. Pagination (backend then frontend) — largest change, needs both sides
-8. Streaming uploads — refactor, test thoroughly
+1. Database indexes (003_add_indexes.sql) — zero risk, immediate benefit
+2. Admin password hashing (bcrypt) — security critical
+3. Input sanitization (bluemonday) — security critical
+4. Rate limiting on login — security, standalone middleware
+5. HTTP cache headers — standalone middleware, no breaking changes
+6. Pagination (backend then frontend) — largest change, needs both sides
+7. Streaming uploads — refactor, test thoroughly
+
+Note: File upload size limits already implemented — no work needed.
 
 ### Phase 2 (recommended sequence)
 1. Structured error responses (AppError) — foundational, other work builds on it
