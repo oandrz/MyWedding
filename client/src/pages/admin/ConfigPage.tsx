@@ -18,19 +18,9 @@ import { Label } from "@/components/ui/label";
 import {
   Settings,
   Music,
-  Zap,
   Gift,
-  Image,
-  CheckCircle,
-  XCircle,
   Loader2,
 } from "lucide-react";
-
-interface MigrationResult {
-  message: string;
-  results: { imageKey: string; status: string; thumbnailUrl?: string }[];
-  summary: { total: number; success: number; skipped: number; failed: number };
-}
 
 export default function ConfigPage() {
   const { toast } = useToast();
@@ -143,40 +133,6 @@ export default function ConfigPage() {
     egiftSettingsMutation.mutate(egiftForm);
   };
 
-  // Thumbnail migration state
-  const [migrationResult, setMigrationResult] =
-    useState<MigrationResult | null>(null);
-
-  // Mutation for thumbnail migration
-  const thumbnailMigrationMutation = useMutation({
-    mutationFn: async (): Promise<MigrationResult> => {
-      const response = await apiRequest(
-        "POST",
-        "/api/admin/migrate-thumbnails",
-        {}
-      );
-      return response.json();
-    },
-    onSuccess: (data: MigrationResult) => {
-      setMigrationResult(data);
-      queryClient.invalidateQueries({
-        queryKey: ["/api/config-images/gallery"],
-      });
-      toast({
-        title: "Migration Complete",
-        description: `Generated ${data.summary.success} thumbnails, skipped ${data.summary.skipped}`,
-      });
-    },
-    onError: (error: Error) => {
-      handleAutoLogout(error);
-      toast({
-        title: "Migration Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   return (
     <div className="space-y-6">
       {/* Google Drive Configuration */}
@@ -257,73 +213,6 @@ export default function ConfigPage() {
         </CardHeader>
         <CardContent>
           <MusicManager onAutoLogout={handleAutoLogout} />
-        </CardContent>
-      </Card>
-
-      {/* Gallery Performance Optimization */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <Zap className="h-6 w-6 text-amber-500" />
-            <div>
-              <CardTitle className="text-xl">Gallery Performance</CardTitle>
-              <CardDescription>
-                Optimize gallery images for faster loading
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Generate optimized thumbnails for existing gallery images. This
-              improves page load speed by using smaller images in the gallery
-              grid, while keeping full-resolution images for the detail view.
-            </p>
-            <Button
-              onClick={() => thumbnailMigrationMutation.mutate()}
-              disabled={thumbnailMigrationMutation.isPending}
-              className="bg-amber-500 hover:bg-amber-600"
-              data-testid="button-migrate-thumbnails"
-            >
-              {thumbnailMigrationMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Thumbnails...
-                </>
-              ) : (
-                <>
-                  <Image className="mr-2 h-4 w-4" />
-                  Generate Gallery Thumbnails
-                </>
-              )}
-            </Button>
-
-            {migrationResult && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">
-                  Migration Results:
-                </h4>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>{migrationResult.summary.success} generated</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-gray-500">
-                      {migrationResult.summary.skipped} skipped
-                    </span>
-                  </div>
-                  {migrationResult.summary.failed > 0 && (
-                    <div className="flex items-center gap-1">
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      <span>{migrationResult.summary.failed} failed</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 

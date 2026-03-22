@@ -58,12 +58,6 @@ describe("ConfigPage", () => {
     expect(screen.getAllByLabelText("Account Holder Name").length).toBeGreaterThan(0);
   });
 
-  it("renders Gallery Performance section", () => {
-    renderConfigPage();
-    expect(screen.getByText("Gallery Performance")).toBeInTheDocument();
-    expect(screen.getByText("Generate Gallery Thumbnails")).toBeInTheDocument();
-  });
-
   it("loads e-gift settings into form", () => {
     const settings = [
       { settingKey: "egift_groom_name", settingValue: "Andreas" },
