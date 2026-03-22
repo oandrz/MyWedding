@@ -48,18 +48,27 @@ func (h *MessageHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/messages.
 func (h *MessageHandler) List(w http.ResponseWriter, r *http.Request) {
-	messages, err := h.Repo.GetAllMessages(r.Context())
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	messages, total, err := h.Repo.GetMessagesPaginated(r.Context(), limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get messages")
 		return
 	}
 
-	if messages == nil {
-		messages = make([]models.Message, 0)
-	}
-
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"messages": messages,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
 	})
 }
 

@@ -736,6 +736,13 @@ func TestContract_MessageList(t *testing.T) {
 		}
 		assertMessageObject(t, obj)
 	}
+
+	assertKeyExists(t, result, "total")
+	assertKeyType(t, result, "total", "float64")
+	assertKeyExists(t, result, "limit")
+	assertKeyType(t, result, "limit", "float64")
+	assertKeyExists(t, result, "offset")
+	assertKeyType(t, result, "offset", "float64")
 }
 
 func TestContract_MessageListEmpty(t *testing.T) {
@@ -748,6 +755,13 @@ func TestContract_MessageListEmpty(t *testing.T) {
 	if len(msgs) != 0 {
 		t.Fatalf("expected 0 messages, got %d", len(msgs))
 	}
+
+	assertKeyExists(t, result, "total")
+	assertKeyType(t, result, "total", "float64")
+	assertKeyExists(t, result, "limit")
+	assertKeyType(t, result, "limit", "float64")
+	assertKeyExists(t, result, "offset")
+	assertKeyType(t, result, "offset", "float64")
 }
 
 // ---------------------------------------------------------------------------
@@ -849,6 +863,13 @@ func TestContract_MediaListApproved(t *testing.T) {
 	item := mediaArr[0].(map[string]interface{})
 	assertMediaObject(t, item)
 	assertStringValue(t, item, "email", "alice@example.com")
+
+	assertKeyExists(t, result, "total")
+	assertKeyType(t, result, "total", "float64")
+	assertKeyExists(t, result, "limit")
+	assertKeyType(t, result, "limit", "float64")
+	assertKeyExists(t, result, "offset")
+	assertKeyType(t, result, "offset", "float64")
 }
 
 func TestContract_MediaListEmpty(t *testing.T) {
@@ -861,6 +882,13 @@ func TestContract_MediaListEmpty(t *testing.T) {
 	if len(mediaArr) != 0 {
 		t.Fatalf("expected 0 media, got %d", len(mediaArr))
 	}
+
+	assertKeyExists(t, result, "total")
+	assertKeyType(t, result, "total", "float64")
+	assertKeyExists(t, result, "limit")
+	assertKeyType(t, result, "limit", "float64")
+	assertKeyExists(t, result, "offset")
+	assertKeyType(t, result, "offset", "float64")
 }
 
 // ---------------------------------------------------------------------------

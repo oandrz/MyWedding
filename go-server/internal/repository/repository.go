@@ -27,6 +27,7 @@ type Repository interface {
 	GetMediaByID(ctx context.Context, id int) (*models.Media, error)
 	GetAllMedia(ctx context.Context) ([]models.Media, error)
 	GetApprovedMedia(ctx context.Context) ([]models.Media, error)
+	GetApprovedMediaPaginated(ctx context.Context, limit, offset int) ([]models.Media, int, error)
 	UpdateMediaApproval(ctx context.Context, id int, approved bool) (*models.Media, error)
 
 	// Config Images
@@ -59,5 +60,6 @@ type Repository interface {
 	CreateMessage(ctx context.Context, data models.InsertMessage) (*models.Message, error)
 	GetMessageByID(ctx context.Context, id int) (*models.Message, error)
 	GetAllMessages(ctx context.Context) ([]models.Message, error)
+	GetMessagesPaginated(ctx context.Context, limit, offset int) ([]models.Message, int, error)
 	DeleteMessage(ctx context.Context, id int) (bool, error)
 }

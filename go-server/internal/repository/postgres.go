@@ -244,6 +244,33 @@ func (r *PostgresRepository) GetApprovedMedia(ctx context.Context) ([]models.Med
 	return result, rows.Err()
 }
 
+func (r *PostgresRepository) GetApprovedMediaPaginated(ctx context.Context, limit, offset int) ([]models.Media, int, error) {
+	var total int
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM media WHERE approved = true`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, media_url, media_type, caption, approved, created_at FROM media WHERE approved = true ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Media, 0)
+	for rows.Next() {
+		var md models.Media
+		var createdAt time.Time
+		if err := rows.Scan(&md.ID, &md.Name, &md.Email, &md.MediaURL, &md.MediaType, &md.Caption, &md.Approved, &createdAt); err != nil {
+			return nil, 0, err
+		}
+		md.CreatedAt = createdAt.Format(time.RFC3339)
+		result = append(result, md)
+	}
+	return result, total, rows.Err()
+}
+
 func (r *PostgresRepository) UpdateMediaApproval(ctx context.Context, id int, approved bool) (*models.Media, error) {
 	var md models.Media
 	var createdAt time.Time
@@ -696,6 +723,33 @@ func (r *PostgresRepository) GetAllMessages(ctx context.Context) ([]models.Messa
 		result = append(result, msg)
 	}
 	return result, rows.Err()
+}
+
+func (r *PostgresRepository) GetMessagesPaginated(ctx context.Context, limit, offset int) ([]models.Message, int, error) {
+	var total int
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM messages`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, content, created_at FROM messages ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Message, 0)
+	for rows.Next() {
+		var msg models.Message
+		var createdAt time.Time
+		if err := rows.Scan(&msg.ID, &msg.Name, &msg.Email, &msg.Content, &createdAt); err != nil {
+			return nil, 0, err
+		}
+		msg.CreatedAt = createdAt.Format(time.RFC3339)
+		result = append(result, msg)
+	}
+	return result, total, rows.Err()
 }
 
 func (r *PostgresRepository) DeleteMessage(ctx context.Context, id int) (bool, error) {

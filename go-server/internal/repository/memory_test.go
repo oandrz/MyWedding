@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1230,6 +1231,97 @@ func TestMessageJSONCamelCase(t *testing.T) {
 		if !strings.Contains(s, key) {
 			t.Fatalf("expected camelCase key %s in JSON: %s", key, s)
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Pagination tests
+// ---------------------------------------------------------------------------
+
+func TestGetMessagesPaginated(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	for i := 1; i <= 5; i++ {
+		repo.CreateMessage(ctx, models.InsertMessage{
+			Name:    fmt.Sprintf("User%d", i),
+			Content: fmt.Sprintf("Message %d", i),
+		})
+	}
+
+	tests := []struct {
+		name      string
+		limit     int
+		offset    int
+		wantCount int
+		wantTotal int
+	}{
+		{"first page", 2, 0, 2, 5},
+		{"second page", 2, 2, 2, 5},
+		{"last page partial", 2, 4, 1, 5},
+		{"offset beyond total", 2, 10, 0, 5},
+		{"all at once", 10, 0, 5, 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msgs, total, err := repo.GetMessagesPaginated(ctx, tt.limit, tt.offset)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(msgs) != tt.wantCount {
+				t.Errorf("got %d messages, want %d", len(msgs), tt.wantCount)
+			}
+			if total != tt.wantTotal {
+				t.Errorf("got total %d, want %d", total, tt.wantTotal)
+			}
+		})
+	}
+}
+
+func TestGetApprovedMediaPaginated(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	// CreateMedia defaults to Approved=false, so we must approve them first
+	for i := 1; i <= 5; i++ {
+		mediaType := "image"
+		md, _ := repo.CreateMedia(ctx, models.InsertMedia{
+			Name:      fmt.Sprintf("User%d", i),
+			Email:     fmt.Sprintf("user%d@example.com", i),
+			MediaURL:  fmt.Sprintf("https://example.com/photo%d.jpg", i),
+			MediaType: &mediaType,
+		})
+		repo.UpdateMediaApproval(ctx, md.ID, true)
+	}
+
+	tests := []struct {
+		name      string
+		limit     int
+		offset    int
+		wantCount int
+		wantTotal int
+	}{
+		{"first page", 2, 0, 2, 5},
+		{"second page", 2, 2, 2, 5},
+		{"last page partial", 2, 4, 1, 5},
+		{"offset beyond total", 2, 10, 0, 5},
+		{"all at once", 10, 0, 5, 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			media, total, err := repo.GetApprovedMediaPaginated(ctx, tt.limit, tt.offset)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(media) != tt.wantCount {
+				t.Errorf("got %d media, want %d", len(media), tt.wantCount)
+			}
+			if total != tt.wantTotal {
+				t.Errorf("got total %d, want %d", total, tt.wantTotal)
+			}
+		})
 	}
 }
 

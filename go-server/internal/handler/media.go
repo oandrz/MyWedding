@@ -56,7 +56,17 @@ func (h *MediaHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // ListApproved handles GET /api/media.
 func (h *MediaHandler) ListApproved(w http.ResponseWriter, r *http.Request) {
-	allApproved, err := h.Repo.GetApprovedMedia(r.Context())
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	media, total, err := h.Repo.GetApprovedMediaPaginated(r.Context(), limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get media")
 		return
@@ -64,14 +74,17 @@ func (h *MediaHandler) ListApproved(w http.ResponseWriter, r *http.Request) {
 
 	// Filter out admin@wedding.com entries
 	filtered := make([]models.Media, 0)
-	for _, m := range allApproved {
+	for _, m := range media {
 		if m.Email != "admin@wedding.com" {
 			filtered = append(filtered, m)
 		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"media": filtered,
+		"media":  filtered,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 

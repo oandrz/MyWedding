@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -222,6 +223,30 @@ func (m *MemoryRepository) GetApprovedMedia(_ context.Context) ([]models.Media, 
 		result = []models.Media{}
 	}
 	return result, nil
+}
+
+func (m *MemoryRepository) GetApprovedMediaPaginated(_ context.Context, limit, offset int) ([]models.Media, int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	approved := make([]models.Media, 0)
+	for _, md := range m.media {
+		if md.Approved {
+			approved = append(approved, md)
+		}
+	}
+	total := len(approved)
+
+	sort.Slice(approved, func(i, j int) bool { return approved[i].ID > approved[j].ID })
+
+	if offset >= total {
+		return []models.Media{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return approved[offset:end], total, nil
 }
 
 func (m *MemoryRepository) UpdateMediaApproval(_ context.Context, id int, approved bool) (*models.Media, error) {
@@ -604,6 +629,28 @@ func (m *MemoryRepository) GetAllMessages(_ context.Context) ([]models.Message, 
 		result = append(result, msg)
 	}
 	return result, nil
+}
+
+func (m *MemoryRepository) GetMessagesPaginated(_ context.Context, limit, offset int) ([]models.Message, int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	all := make([]models.Message, 0, len(m.messages))
+	for _, msg := range m.messages {
+		all = append(all, msg)
+	}
+	total := len(all)
+
+	sort.Slice(all, func(i, j int) bool { return all[i].ID > all[j].ID })
+
+	if offset >= total {
+		return []models.Message{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return all[offset:end], total, nil
 }
 
 func (m *MemoryRepository) DeleteMessage(_ context.Context, id int) (bool, error) {
