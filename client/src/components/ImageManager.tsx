@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,35 +6,16 @@ import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, GripVertical } from "lucide-react";
 import type { ConfigImage } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import ImageUploadModal from "./ImageUploadModal";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useDragAndDrop } from "@/hooks/useDragAndDrop";
+import { SortableImageGrid, StaticImageGrid } from "./ImageGrid";
 
 const imageConfigSchema = z.object({
   imageKey: z.string().min(1, "Image key is required"),
@@ -47,110 +28,14 @@ const imageConfigSchema = z.object({
 
 type ImageConfigForm = z.infer<typeof imageConfigSchema>;
 
-const SortableGalleryItem = memo(function SortableGalleryItem({
-  image,
-  onEdit,
-  onDelete,
-  isDragActive,
-}: {
-  image: ConfigImage;
-  onEdit: (image: ConfigImage) => void;
-  onDelete: (image: ConfigImage) => void;
-  isDragActive: boolean;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: image.imageKey });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: isDragActive && !isDragging ? "none" : transition,
-    opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 50 : undefined,
-  };
-
-  const cardClassName = isDragging
-    ? "overflow-hidden ring-2 ring-pink-400 shadow-lg"
-    : isDragActive
-      ? "overflow-hidden transition-none"
-      : "overflow-hidden";
-
-  return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      className={cardClassName}
-    >
-      <div className="relative h-48">
-        <img
-          src={image.thumbnailUrl || image.imageUrl}
-          alt={image.title || "Config image"}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          style={{ backgroundColor: "#f3f4f6", minHeight: "192px" }}
-          onLoad={(e) => {
-            const img = e.target as HTMLImageElement;
-            img.style.backgroundColor = "transparent";
-          }}
-        />
-        <div className="absolute top-2 left-2">
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing bg-white/80 hover:bg-white rounded p-1.5 shadow-sm"
-            title="Drag to reorder"
-          >
-            <GripVertical className="h-4 w-4 text-gray-600" />
-          </div>
-        </div>
-        <div className="absolute top-2 right-2 flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => onEdit(image)}>
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => onDelete(image)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-sm">
-          {image.title || image.imageKey}
-        </h3>
-        {image.description && (
-          <p className="text-xs text-gray-600 mt-1">{image.description}</p>
-        )}
-        <p className="text-xs text-gray-500 mt-2">Key: {image.imageKey}</p>
-      </CardContent>
-    </Card>
-  );
-});
-
 const ImageManager = () => {
   const [activeTab, setActiveTab] = useState("banner");
   const [editingImage, setEditingImage] = useState<ConfigImage | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalType, setUploadModalType] = useState<"banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image">("banner");
   const [showDeleteDialog, setShowDeleteDialog] = useState<ConfigImage | null>(null);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 8 },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 250, tolerance: 5 },
-  });
-  const sensors = useSensors(pointerSensor, touchSensor);
 
   // Fetch all configurable images - force fresh data
   const { data: imagesData, isLoading } = useQuery<{ images: ConfigImage[] }>({
@@ -291,94 +176,36 @@ const ImageManager = () => {
     },
   });
 
-  const galleryItemIds = useMemo(
-    () => galleryImages.map((img) => img.imageKey),
-    [galleryImages]
+  const getImageKey = useCallback((img: ConfigImage) => img.imageKey, []);
+
+  const handleReorder = useCallback(
+    (orderedKeys: string[]) => reorderMutation.mutate(orderedKeys),
+    [reorderMutation],
   );
+
+  const {
+    sensors,
+    collisionDetection,
+    activeDragItem: activeDragImage,
+    isDragActive,
+    itemIds: galleryItemIds,
+    handleDragStart,
+    handleDragEnd,
+  } = useDragAndDrop({
+    items: galleryImages,
+    getId: getImageKey,
+    onReorder: handleReorder,
+  });
 
   const handleDeleteClick = useCallback((image: ConfigImage) => {
     setShowDeleteDialog(image);
   }, []);
-
-  const activeDragImage = activeDragId
-    ? galleryImages.find((img) => img.imageKey === activeDragId) ?? null
-    : null;
-
-  const isDragActive = activeDragId !== null;
-
-  function handleDragStart(event: DragStartEvent) {
-    setActiveDragId(event.active.id as string);
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    setActiveDragId(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = galleryImages.findIndex(
-      (img) => img.imageKey === active.id
-    );
-    const newIndex = galleryImages.findIndex(
-      (img) => img.imageKey === over.id
-    );
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(galleryImages, oldIndex, newIndex);
-    const orderedKeys = reordered.map((img) => img.imageKey);
-    reorderMutation.mutate(orderedKeys);
-  }
 
   const handleNewImage = (type: "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image") => {
     setEditingImage(null); // Clear editing state for new image
     setUploadModalType(type);
     setShowUploadModal(true);
   };
-
-  const ImageCard = ({ image }: { image: ConfigImage }) => (
-    <Card className="overflow-hidden">
-      <div className="relative h-48">
-        <img 
-          src={image.imageUrl} 
-          alt={image.title || "Config image"}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          style={{
-            backgroundColor: '#f3f4f6',
-            minHeight: '192px'
-          }}
-          onLoad={(e) => {
-            const img = e.target as HTMLImageElement;
-            img.style.backgroundColor = 'transparent';
-          }}
-        />
-        <div className="absolute top-2 right-2 flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleEdit(image)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          {image.imageType !== "banner" && (
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setShowDeleteDialog(image)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-sm">{image.title || image.imageKey}</h3>
-        {image.description && (
-          <p className="text-xs text-gray-600 mt-1">{image.description}</p>
-        )}
-        <p className="text-xs text-gray-500 mt-2">Key: {image.imageKey}</p>
-      </CardContent>
-    </Card>
-  );
 
   if (isLoading) {
     return (
@@ -414,31 +241,14 @@ const ImageManager = () => {
               <p className="text-sm text-gray-600">Hero section background image</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {bannerImages.map((image) => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-            
 
-            
-            {bannerImages.length === 0 && (
-              <Card className="overflow-hidden border-2 border-dashed border-rose-300 hover:border-rose-400 transition-colors cursor-pointer group">
-                <div 
-                  className="relative h-48 flex items-center justify-center bg-rose-50 hover:bg-rose-100 transition-colors"
-                  onClick={() => handleNewImage("banner")}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-600 flex items-center justify-center group-hover:bg-rose-700 transition-colors">
-                      <Plus className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="text-rose-700 font-medium">Add Banner Image</p>
-                    <p className="text-rose-600 text-sm mt-1">Click to upload</p>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
+          <StaticImageGrid
+            images={bannerImages}
+            onEdit={handleEdit}
+            emptyLabel="Add Banner Image"
+            emptyColorScheme="rose"
+            onAdd={() => handleNewImage("banner")}
+          />
         </TabsContent>
 
         <TabsContent value="gallery" className="space-y-6">
@@ -451,70 +261,19 @@ const ImageManager = () => {
             </div>
           </div>
 
-          <DndContext
+          <SortableImageGrid
+            images={galleryImages}
+            itemIds={galleryItemIds}
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={collisionDetection}
+            isDragActive={isDragActive}
+            activeDragImage={activeDragImage}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={galleryItemIds}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {galleryImages.map((image) => (
-                  <SortableGalleryItem
-                    key={image.imageKey}
-                    image={image}
-                    onEdit={handleEdit}
-                    onDelete={handleDeleteClick}
-                    isDragActive={isDragActive}
-                  />
-                ))}
-
-                <Card className="overflow-hidden border-2 border-dashed border-pink-300 hover:border-pink-400 transition-colors cursor-pointer group">
-                  <div
-                    className="relative h-48 flex items-center justify-center bg-pink-50 hover:bg-pink-100 transition-colors"
-                    onClick={() => handleNewImage("gallery")}
-                  >
-                    <div className="text-center">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-pink-600 flex items-center justify-center group-hover:bg-pink-700 transition-colors">
-                        <Plus className="h-6 w-6 text-white" />
-                      </div>
-                      <p className="text-pink-700 font-medium">Add Gallery Image</p>
-                      <p className="text-pink-600 text-sm mt-1">Click to upload</p>
-                    </div>
-                  </div>
-                </Card>
-
-                {galleryImages.length === 0 && (
-                  <div className="col-span-full text-center py-8 text-gray-500">
-                    No gallery images configured. Default images will be used.
-                  </div>
-                )}
-              </div>
-            </SortableContext>
-
-            <DragOverlay>
-              {activeDragImage ? (
-                <Card className="overflow-hidden ring-2 ring-pink-400 shadow-xl rotate-2">
-                  <div className="relative h-48">
-                    <img
-                      src={activeDragImage.thumbnailUrl || activeDragImage.imageUrl}
-                      alt={activeDragImage.title || "Dragging image"}
-                      className="w-full h-full object-cover"
-                      style={{ backgroundColor: "#f3f4f6", minHeight: "192px" }}
-                    />
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm">
-                      {activeDragImage.title || activeDragImage.imageKey}
-                    </h3>
-                  </CardContent>
-                </Card>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+            onEdit={handleEdit}
+            onDelete={handleDeleteClick}
+            onAdd={() => handleNewImage("gallery")}
+          />
         </TabsContent>
 
         <TabsContent value="bride-profile" className="space-y-6">
@@ -524,29 +283,15 @@ const ImageManager = () => {
               <p className="text-sm text-gray-600">Profile photo displayed in the "Our Love Story" section</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {brideProfileImages.map((image) => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-            
-            {brideProfileImages.length === 0 && (
-              <Card className="overflow-hidden border-2 border-dashed border-purple-300 hover:border-purple-400 transition-colors cursor-pointer group">
-                <div 
-                  className="relative h-48 flex items-center justify-center bg-purple-50 hover:bg-purple-100 transition-colors"
-                  onClick={() => handleNewImage("bride-profile")}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-purple-600 flex items-center justify-center group-hover:bg-purple-700 transition-colors">
-                      <Plus className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="text-purple-700 font-medium">Add Bride Photo</p>
-                    <p className="text-purple-600 text-sm mt-1">Click to upload</p>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
+
+          <StaticImageGrid
+            images={brideProfileImages}
+            onEdit={handleEdit}
+            onDelete={handleDeleteClick}
+            emptyLabel="Add Bride Photo"
+            emptyColorScheme="purple"
+            onAdd={() => handleNewImage("bride-profile")}
+          />
         </TabsContent>
 
         <TabsContent value="groom-profile" className="space-y-6">
@@ -556,29 +301,15 @@ const ImageManager = () => {
               <p className="text-sm text-gray-600">Profile photo displayed in the "Our Love Story" section</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {groomProfileImages.map((image) => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-            
-            {groomProfileImages.length === 0 && (
-              <Card className="overflow-hidden border-2 border-dashed border-blue-300 hover:border-blue-400 transition-colors cursor-pointer group">
-                <div 
-                  className="relative h-48 flex items-center justify-center bg-blue-50 hover:bg-blue-100 transition-colors"
-                  onClick={() => handleNewImage("groom-profile")}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors">
-                      <Plus className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="text-blue-700 font-medium">Add Groom Photo</p>
-                    <p className="text-blue-600 text-sm mt-1">Click to upload</p>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
+
+          <StaticImageGrid
+            images={groomProfileImages}
+            onEdit={handleEdit}
+            onDelete={handleDeleteClick}
+            emptyLabel="Add Groom Photo"
+            emptyColorScheme="blue"
+            onAdd={() => handleNewImage("groom-profile")}
+          />
         </TabsContent>
 
         <TabsContent value="verse-image" className="space-y-6">
@@ -588,29 +319,15 @@ const ImageManager = () => {
               <p className="text-sm text-gray-600">Image displayed next to the Bible verse</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {verseImages.map((image) => (
-              <ImageCard key={image.id} image={image} />
-            ))}
-            
-            {verseImages.length === 0 && (
-              <Card className="overflow-hidden border-2 border-dashed border-amber-300 hover:border-amber-400 transition-colors cursor-pointer group">
-                <div 
-                  className="relative h-48 flex items-center justify-center bg-amber-50 hover:bg-amber-100 transition-colors"
-                  onClick={() => handleNewImage("verse-image")}
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-600 flex items-center justify-center group-hover:bg-amber-700 transition-colors">
-                      <Plus className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="text-amber-700 font-medium">Add Verse Image</p>
-                    <p className="text-amber-600 text-sm mt-1">Click to upload</p>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
+
+          <StaticImageGrid
+            images={verseImages}
+            onEdit={handleEdit}
+            onDelete={handleDeleteClick}
+            emptyLabel="Add Verse Image"
+            emptyColorScheme="amber"
+            onAdd={() => handleNewImage("verse-image")}
+          />
         </TabsContent>
       </Tabs>
 
@@ -646,8 +363,8 @@ const ImageManager = () => {
             <Button variant="outline" onClick={() => setShowDeleteDialog(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => showDeleteDialog && deleteMutation.mutate(showDeleteDialog.imageKey)}
               disabled={deleteMutation.isPending}
             >
@@ -673,8 +390,8 @@ const ImageManager = () => {
                     <FormItem>
                       <FormLabel>Image Key</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
+                        <Input
+                          {...field}
                           placeholder="unique-image-key"
                           disabled={!!editingImage}
                         />
@@ -691,8 +408,8 @@ const ImageManager = () => {
                     <FormItem>
                       <FormLabel>Image URL</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
+                        <Input
+                          {...field}
                           placeholder="https://example.com/image.jpg"
                           type="url"
                         />
@@ -731,15 +448,15 @@ const ImageManager = () => {
                 />
 
                 <div className="flex gap-2">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={updateImageMutation.isPending}
                   >
                     {updateImageMutation.isPending ? "Saving..." : "Update Image"}
                   </Button>
-                  
-                  <Button 
-                    type="button" 
+
+                  <Button
+                    type="button"
                     variant="outline"
                     onClick={() => {
                       setEditingImage(null);
