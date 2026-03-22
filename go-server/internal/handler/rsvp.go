@@ -6,12 +6,14 @@ import (
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/andreasronaldo/wedding-server/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
 // RsvpHandler handles RSVP-related endpoints.
 type RsvpHandler struct {
-	Repo repository.Repository
+	Repo      repository.Repository
+	Sanitizer *service.Sanitizer
 }
 
 // Create handles POST /api/rsvp.
@@ -25,6 +27,10 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if body.Name == "" || body.Email == "" {
 		writeError(w, http.StatusBadRequest, "Name and email are required")
 		return
+	}
+
+	if h.Sanitizer != nil {
+		body.Name = h.Sanitizer.Sanitize(body.Name)
 	}
 
 	// Check if RSVP already exists for this email

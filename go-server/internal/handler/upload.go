@@ -46,9 +46,10 @@ var validConfigImageTypes = map[string]bool{
 
 // UploadHandler handles file upload endpoints.
 type UploadHandler struct {
-	Repo    repository.Repository
-	Storage service.ObjectStorage
-	Cache   *service.Cache
+	Repo      repository.Repository
+	Storage   service.ObjectStorage
+	Cache     *service.Cache
+	Sanitizer *service.Sanitizer
 }
 
 // Upload handles POST /api/upload — multipart file upload.
@@ -75,6 +76,10 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	email := r.FormValue("email")
 	caption := r.FormValue("caption")
+
+	if h.Sanitizer != nil && caption != "" {
+		caption = h.Sanitizer.Sanitize(caption)
+	}
 
 	if name == "" || email == "" {
 		writeError(w, http.StatusBadRequest, "Missing required fields")

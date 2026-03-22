@@ -6,12 +6,14 @@ import (
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/andreasronaldo/wedding-server/internal/service"
 	"github.com/go-chi/chi/v5"
 )
 
 // MessageHandler handles message-related endpoints.
 type MessageHandler struct {
-	Repo repository.Repository
+	Repo      repository.Repository
+	Sanitizer *service.Sanitizer
 }
 
 // Create handles POST /api/messages.
@@ -25,6 +27,11 @@ func (h *MessageHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if body.Name == "" || body.Content == "" {
 		writeError(w, http.StatusBadRequest, "Name and content are required")
 		return
+	}
+
+	if h.Sanitizer != nil {
+		body.Name = h.Sanitizer.Sanitize(body.Name)
+		body.Content = h.Sanitizer.Sanitize(body.Content)
 	}
 
 	msg, err := h.Repo.CreateMessage(r.Context(), body)

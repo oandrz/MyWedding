@@ -40,13 +40,15 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 		CSRF:     csrf,
 	}
 
-	rsvp := &handler.RsvpHandler{Repo: repo}
-	message := &handler.MessageHandler{Repo: repo}
+	sanitizer := service.NewSanitizer()
+
+	rsvp := &handler.RsvpHandler{Repo: repo, Sanitizer: sanitizer}
+	message := &handler.MessageHandler{Repo: repo, Sanitizer: sanitizer}
 	media := &handler.MediaHandler{Repo: repo}
 	configImage := &handler.ConfigImageHandler{Repo: repo, Cache: cache}
 	featureFlag := &handler.FeatureFlagHandler{Repo: repo, Cache: cache}
 	appSetting := &handler.AppSettingHandler{Repo: repo}
-	welcomeScreen := &handler.WelcomeScreenHandler{Repo: repo}
+	welcomeScreen := &handler.WelcomeScreenHandler{Repo: repo, Sanitizer: sanitizer}
 
 	// Health check
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -97,9 +99,10 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	var upload *handler.UploadHandler
 	if o.storage != nil {
 		upload = &handler.UploadHandler{
-			Repo:    repo,
-			Storage: o.storage,
-			Cache:   cache,
+			Repo:      repo,
+			Storage:   o.storage,
+			Cache:     cache,
+			Sanitizer: sanitizer,
 		}
 		r.Post("/api/upload", upload.Upload)
 		r.Get("/storage/*", upload.ServeStorage)

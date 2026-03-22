@@ -5,11 +5,13 @@ import (
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/andreasronaldo/wedding-server/internal/service"
 )
 
 // WelcomeScreenHandler handles welcome screen endpoints.
 type WelcomeScreenHandler struct {
-	Repo repository.Repository
+	Repo      repository.Repository
+	Sanitizer *service.Sanitizer
 }
 
 // Get handles GET /api/welcome-screen.
@@ -42,6 +44,21 @@ func (h *WelcomeScreenHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if err := parseJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request body")
 		return
+	}
+
+	if h.Sanitizer != nil {
+		if body.HeadingText != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.HeadingText)
+			body.HeadingText = &sanitized
+		}
+		if body.DeliveryLabel != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.DeliveryLabel)
+			body.DeliveryLabel = &sanitized
+		}
+		if body.FallbackName != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.FallbackName)
+			body.FallbackName = &sanitized
+		}
 	}
 
 	ws, err := h.Repo.UpdateWelcomeScreen(r.Context(), body)
