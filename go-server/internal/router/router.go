@@ -128,10 +128,12 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	r.With(authCSRF.Handler).Delete("/api/rsvp/{id}", rsvp.Delete)
 	r.With(authCSRF.Handler).Delete("/api/messages/{id}", message.Delete)
 
+	loginRateLimiter := middleware.NewRateLimiter(5, 60)
+
 	// Admin routes
 	r.Route("/api/admin", func(r chi.Router) {
-		// Login does not require auth
-		r.Post("/login", auth.Login)
+		// Login does not require auth but is rate-limited to 5 attempts/min/IP
+		r.With(loginRateLimiter.Middleware).Post("/login", auth.Login)
 
 		// Validate requires auth but NOT CSRF (enables CSRF token recovery)
 		r.With(middleware.Auth(sessions)).Post("/validate", auth.Validate)
