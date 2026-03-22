@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"crypto/subtle"
 	"net/http"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
 	"github.com/andreasronaldo/wedding-server/internal/middleware"
@@ -31,7 +32,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if subtle.ConstantTimeCompare([]byte(body.Password), []byte(h.Config.AdminPassword)) != 1 {
+	if err := bcrypt.CompareHashAndPassword([]byte(h.Config.AdminPasswordHash), []byte(body.Password)); err != nil {
 		writeError(w, http.StatusUnauthorized, "Invalid admin password")
 		return
 	}

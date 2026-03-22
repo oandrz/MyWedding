@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
@@ -14,8 +15,9 @@ type Config struct {
 	Port               int
 	DatabaseURL        string
 	RedisURL           string
-	AdminPassword      string
-	SessionMaxAge      int // seconds
+	AdminPassword     string
+	AdminPasswordHash string // bcrypt hash — preferred over AdminPassword
+	SessionMaxAge     int    // seconds
 	CORSOrigins        []string
 	SupabaseURL        string
 	SupabaseServiceKey string
@@ -57,6 +59,19 @@ func Load() *Config {
 		GoogleSecret:       getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRefresh:      getEnv("GOOGLE_REFRESH_TOKEN", ""),
 		StaticDir:          getEnv("STATIC_DIR", ""),
+	}
+
+	cfg.AdminPasswordHash = getEnv("ADMIN_PASSWORD_HASH", "")
+
+	// If no hash provided but plaintext password exists, hash it at startup and warn
+	if cfg.AdminPasswordHash == "" && cfg.AdminPassword != "" {
+		slog.Warn("ADMIN_PASSWORD is deprecated — use ADMIN_PASSWORD_HASH with a bcrypt hash instead")
+		hash, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost)
+		if err != nil {
+			slog.Error("Failed to hash admin password", "error", err)
+			os.Exit(1)
+		}
+		cfg.AdminPasswordHash = string(hash)
 	}
 
 	if cfg.IsProduction() {

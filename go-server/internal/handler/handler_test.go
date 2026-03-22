@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/andreasronaldo/wedding-server/internal/config"
 	"github.com/andreasronaldo/wedding-server/internal/middleware"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
@@ -26,12 +28,15 @@ type testEnv struct {
 }
 
 func newTestEnv() *testEnv {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("testpass123"), bcrypt.DefaultCost)
+
 	cfg := &config.Config{
-		Env:           "development",
-		Port:          5000,
-		AdminPassword: "testpass123",
-		SessionMaxAge: 1800,
-		CORSOrigins:   []string{"*"},
+		Env:               "development",
+		Port:              5000,
+		AdminPassword:     "testpass123",
+		AdminPasswordHash: string(hash),
+		SessionMaxAge:     1800,
+		CORSOrigins:       []string{"*"},
 	}
 
 	repo := repository.NewMemoryRepository()
@@ -39,6 +44,34 @@ func newTestEnv() *testEnv {
 	csrf := middleware.NewCSRFStore()
 	cache := service.NewCache(5 * time.Minute)
 
+	r := router.New(cfg, repo, sessions, csrf, cache)
+
+	return &testEnv{
+		handler:  r,
+		cfg:      cfg,
+		repo:     repo,
+		sessions: sessions,
+		csrf:     csrf,
+		cache:    cache,
+	}
+}
+
+// newTestEnvWithBcrypt creates a test env that uses ADMIN_PASSWORD_HASH for auth.
+func newTestEnvWithBcrypt() *testEnv {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("testpass123"), bcrypt.DefaultCost)
+
+	cfg := &config.Config{
+		Env:               "development",
+		Port:              5000,
+		AdminPasswordHash: string(hash),
+		SessionMaxAge:     1800,
+		CORSOrigins:       []string{"*"},
+	}
+
+	repo := repository.NewMemoryRepository()
+	sessions := middleware.NewSessionStore(30 * time.Minute)
+	csrf := middleware.NewCSRFStore()
+	cache := service.NewCache(5 * time.Minute)
 	r := router.New(cfg, repo, sessions, csrf, cache)
 
 	return &testEnv{
@@ -334,12 +367,14 @@ func TestLoginCookieAttributes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			hash, _ := bcrypt.GenerateFromPassword([]byte("testpass123"), bcrypt.DefaultCost)
 			cfg := &config.Config{
-				Env:           tc.env,
-				Port:          5000,
-				AdminPassword: "testpass123",
-				SessionMaxAge: 1800,
-				CORSOrigins:   tc.corsOrigins,
+				Env:               tc.env,
+				Port:              5000,
+				AdminPassword:     "testpass123",
+				AdminPasswordHash: string(hash),
+				SessionMaxAge:     1800,
+				CORSOrigins:       tc.corsOrigins,
 			}
 
 			repo := repository.NewMemoryRepository()
@@ -375,6 +410,31 @@ func TestLoginCookieAttributes(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Auth — bcrypt
+// ---------------------------------------------------------------------------
+
+func TestLogin_BcryptPassword(t *testing.T) {
+	env := newTestEnvWithBcrypt()
+
+	body := jsonBody(map[string]string{"password": "testpass123"})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/login", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	result := contractResponse(t, env, req, http.StatusOK)
+	assertKeyExists(t, result, "csrfToken")
+}
+
+func TestLogin_BcryptPassword_WrongPassword(t *testing.T) {
+	env := newTestEnvWithBcrypt()
+
+	body := jsonBody(map[string]string{"password": "wrongpassword"})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/login", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	contractResponse(t, env, req, http.StatusUnauthorized)
 }
 
 // ---------------------------------------------------------------------------
