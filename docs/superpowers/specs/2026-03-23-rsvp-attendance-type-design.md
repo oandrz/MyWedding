@@ -26,14 +26,16 @@ Update the RSVP form so guests can indicate whether they're attending the Holy M
 ### Migration: `002_attendance_type.sql`
 
 ```sql
+BEGIN;
+
 ALTER TABLE rsvp ADD COLUMN attendance_type TEXT NOT NULL DEFAULT 'both';
 
-UPDATE rsvp SET attendance_type = CASE
-  WHEN attending = true THEN 'both'
-  ELSE 'decline'
-END;
+-- DEFAULT sets all rows to 'both'; fix declined rows explicitly:
+UPDATE rsvp SET attendance_type = 'decline' WHERE attending = false;
 
 ALTER TABLE rsvp DROP COLUMN attending;
+
+COMMIT;
 ```
 
 Valid values: `"both"`, `"holy_matrimony"`, `"reception"`, `"decline"`
@@ -74,6 +76,16 @@ export const rsvp = pgTable("rsvp", {
     attendanceType: text("attendance_type").notNull().default("both"),
     guestCount: integer("guest_count"),
 });
+
+export const insertRsvpSchema = createInsertSchema(rsvp).pick({
+    name: true,
+    email: true,
+    attendanceType: true,
+    guestCount: true,
+});
+
+export type InsertRsvp = z.infer<typeof insertRsvpSchema>;
+export type Rsvp = typeof rsvp.$inferSelect;
 ```
 
 ### Validation
@@ -118,6 +130,10 @@ Stats object expands:
 
 No logic change — `attendanceType` included automatically from model.
 
+### GET /api/rsvp/{email}
+
+No logic change — `attendanceType` included automatically from model. Contract test must be updated to assert `attendanceType` is a string instead of `attending` as a boolean.
+
 ### DELETE /api/rsvp/{id}
 
 No change.
@@ -152,14 +168,32 @@ Update thank-you message to reflect which events: e.g., "We've received your RSV
 
 ### Confetti
 
-Triggers only when `attendanceType != "decline"`.
+Triggers only when `attendanceType != "decline"`. The confetti block (~25 lines) in the mutation's `onSuccess` callback must be wrapped in a conditional check. Use the submitted form data (available via the mutation closure) to check: `if (data.attendanceType !== "decline") { /* confetti block */ }`.
 
 ## Frontend: Admin Page (`RsvpPage.tsx`)
 
+### RsvpResponse Interface Update
+
+```typescript
+interface RsvpResponse {
+    rsvps: Rsvp[];
+    stats: {
+        total: number;
+        attending: number;
+        notAttending: number;
+        guestCount: number;
+        holyMatrimonyCount: number;
+        receptionCount: number;
+    };
+}
+```
+
 ### Stat Cards (4 total)
 
-1. **Holy Matrimony** — `holyMatrimonyCount`
-2. **Reception** — `receptionCount`
+Note: `holyMatrimonyCount` and `receptionCount` are RSVP counts (number of responses), not guest counts.
+
+1. **Holy Matrimony RSVPs** — `holyMatrimonyCount` (number of RSVPs for ceremony)
+2. **Reception RSVPs** — `receptionCount` (number of RSVPs for reception)
 3. **Declined** — `notAttending`
 4. **Total Expected Guests** — `guestCount` (sum of guest counts for all attending)
 
@@ -214,6 +248,9 @@ All tests written and confirmed failing before implementation.
    - Event-specific badges per attendance type
    - "Holy Matrimony" filter includes "both" guests
    - "Reception" filter includes "both" guests
+3. **StatsPage tests:**
+   - `calculateAttendance` uses `attendanceType` instead of `attending`
+   - Stats correctly count per-event attendance
 
 ## Files Modified
 
@@ -232,3 +269,5 @@ All tests written and confirmed failing before implementation.
 | `client/src/components/__tests__/RsvpSection.test.tsx` | Updated tests |
 | `client/src/pages/admin/RsvpPage.tsx` | 4 stats, 5 filters, event badges |
 | `client/src/pages/admin/__tests__/RsvpPage.test.tsx` | Updated tests |
+| `client/src/pages/admin/StatsPage.tsx` | Update `calculateAttendance` to use `attendanceType` instead of `attending` |
+| `client/src/pages/admin/__tests__/StatsPage.test.tsx` | Updated tests for attendance type |
