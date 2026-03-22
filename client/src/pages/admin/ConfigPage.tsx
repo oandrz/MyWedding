@@ -103,13 +103,7 @@ export default function ConfigPage() {
         },
       ];
 
-      for (const setting of settings) {
-        await apiRequest(
-          "PATCH",
-          `/api/admin/app-settings/${setting.settingKey}`,
-          setting
-        );
-      }
+      await apiRequest("PATCH", "/api/admin/app-settings/bulk", { settings });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/app-settings"] });
