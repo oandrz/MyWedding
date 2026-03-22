@@ -2,12 +2,13 @@ import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { motion, useInView } from 'framer-motion';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle } from 'lucide-react';
@@ -69,6 +70,8 @@ const getInitials = (name: string) => {
     .substring(0, 2);
 };
 
+const PAGE_SIZE = 20;
+
 const MessageWallSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -93,14 +96,31 @@ const MessageWallSection = () => {
     }
   });
 
-  // Query to fetch messages
-  const { 
-    data = { messages: [], count: 0 }, 
-    isLoading, 
-    isError 
-  } = useQuery<{ messages: Message[], count: number }>({ 
+  // Query to fetch messages with pagination
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
     queryKey: ['/api/messages'],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await fetch(`/api/messages?limit=${PAGE_SIZE}&offset=${pageParam}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch messages');
+      return res.json();
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: { messages: Message[]; offset: number; limit: number; total: number }) => {
+      const nextOffset = lastPage.offset + lastPage.limit;
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
   });
+
+  const messages = data?.pages.flatMap((page) => page.messages) ?? [];
 
   // Mutation to submit a new message
   const { mutate, isPending } = useMutation({
@@ -201,7 +221,7 @@ const MessageWallSection = () => {
             </div>
           )}
           
-          {!isLoading && !isError && (data?.messages?.length === 0 || !data?.messages) && (
+          {!isLoading && !isError && messages.length === 0 && (
             <div className="text-center p-8 bg-white/50 rounded-lg shadow-sm">
               <MessageCircle className="h-12 w-12 text-accent/50 mx-auto mb-4" />
               <h3 className="text-lg font-cormorant text-foreground mb-2">No Messages Yet</h3>
@@ -210,11 +230,11 @@ const MessageWallSection = () => {
               </p>
             </div>
           )}
-          
-          {!isLoading && !isError && data?.messages && data.messages.length > 0 && (
+
+          {!isLoading && !isError && messages.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {data.messages.map((message, index) => (
-                <motion.div 
+              {messages.map((message, index) => (
+                <motion.div
                   key={message.id}
                   variants={scaleIn}
                   custom={index}
@@ -243,6 +263,18 @@ const MessageWallSection = () => {
                   </Card>
                 </motion.div>
               ))}
+            </div>
+          )}
+
+          {hasNextPage && (
+            <div className="flex justify-center mt-8">
+              <Button
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? "Loading..." : "Load more"}
+              </Button>
             </div>
           )}
         </motion.div>
