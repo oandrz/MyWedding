@@ -231,6 +231,8 @@ All tests written and confirmed failing before implementation.
    - `TestRsvp_DuplicateEmail_UpdatesAttendanceType` — update from "both" to "reception"
    - `TestRsvp_ListStats_IncludesEventCounts` — mixed types, verify `holyMatrimonyCount` and `receptionCount`
 4. **Contract tests** — expect `attendanceType` string instead of `attending` boolean
+   - In `assertRsvpObject`: replace `assertKeyType(t, obj, "attending", "bool")` with `assertKeyType(t, obj, "attendanceType", "string")`
+   - Update `createRsvp` test helper signature from `attending bool` to `attendanceType string`, build payload with `"attendanceType": attendanceType`. Update all call sites (~6 locations).
 5. **Repository tests** — in-memory repo stores and retrieves `AttendanceType`
 
 ### Frontend TDD Sequence
@@ -249,8 +251,21 @@ All tests written and confirmed failing before implementation.
    - "Holy Matrimony" filter includes "both" guests
    - "Reception" filter includes "both" guests
 3. **StatsPage tests:**
-   - `calculateAttendance` uses `attendanceType` instead of `attending`
-   - Stats correctly count per-event attendance
+   - Update mock data from `attending: true/false` to `attendanceType: "both"/"decline"/etc.`
+   - `calculateAttendance` uses `attendanceType != "decline"` instead of `attending`
+   - Stats correctly count per-event attendance (add holy matrimony and reception counts)
+
+### Mock Data Shape (for frontend tests)
+
+All frontend test mock data must use the new schema:
+
+```typescript
+// RSVP object
+{ id: 1, name: "Alice", email: "alice@test.com", attendanceType: "both", guestCount: 2 }
+
+// Stats object in RsvpResponse
+{ total: 3, attending: 2, notAttending: 1, guestCount: 4, holyMatrimonyCount: 2, receptionCount: 2 }
+```
 
 ## Files Modified
 
@@ -271,3 +286,4 @@ All tests written and confirmed failing before implementation.
 | `client/src/pages/admin/__tests__/RsvpPage.test.tsx` | Updated tests |
 | `client/src/pages/admin/StatsPage.tsx` | Update `calculateAttendance` to use `attendanceType` instead of `attending` |
 | `client/src/pages/admin/__tests__/StatsPage.test.tsx` | Updated tests for attendance type |
+| `client/src/test/mocks/handlers.ts` | Update RSVP POST mock response from `attending: true` to `attendanceType` from request body |
