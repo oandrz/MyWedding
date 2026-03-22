@@ -7,7 +7,9 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
+	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/redis/go-redis/v9 v9.18.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.271.0
 )
@@ -31,7 +33,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
@@ -41,7 +42,6 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
