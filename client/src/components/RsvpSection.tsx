@@ -14,7 +14,7 @@ import confetti from "canvas-confetti";
 const rsvpSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
-  attending: z.boolean(),
+  attendanceType: z.enum(["both", "holy_matrimony", "reception", "decline"]),
   guestCount: z.number().optional()
 });
 
@@ -34,12 +34,12 @@ const RsvpSection = () => {
   
   const { toast } = useToast();
   
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<RsvpFormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<RsvpFormValues>({
     resolver: zodResolver(rsvpSchema),
     defaultValues: {
       name: "",
       email: "",
-      attending: true,
+      attendanceType: "both",
       guestCount: 1
     }
   });
@@ -69,15 +69,13 @@ const RsvpSection = () => {
     enabled: !!guestName,
   });
 
-  // Handle radio button changes
-  const handleAttendanceChange = (isAttending: boolean) => {
-    setValue("attending", isAttending);
-    setShowGuestOptions(isAttending);
-    
-    // If not attending, clear guest-specific fields
-    if (!isAttending) {
+  const handleAttendanceChange = (type: "both" | "holy_matrimony" | "reception" | "decline") => {
+    setValue("attendanceType", type);
+    setShowGuestOptions(type !== "decline");
+
+    if (type === "decline") {
       setValue("guestCount", undefined);
-    } else {
+    } else if (!showGuestOptions) {
       setValue("guestCount", 1);
     }
   };
@@ -94,35 +92,38 @@ const RsvpSection = () => {
       // Invalidate RSVP check query so UI updates correctly
       queryClient.invalidateQueries({ queryKey: ['/api/rsvp/check', guestName] });
       
-      // Trigger confetti celebration
-      const duration = 3 * 1000;
-      const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+      // Only fire confetti for attending guests
+      if (data.rsvp?.attendanceType !== "decline") {
+        // Trigger confetti celebration
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
 
-      function randomInRange(min: number, max: number) {
-        return Math.random() * (max - min) + min;
+        const randomInRange = (min: number, max: number) => {
+          return Math.random() * (max - min) + min;
+        };
+
+        const interval = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+
+          const particleCount = 50 * (timeLeft / duration);
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+          });
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+          });
+        }, 250);
       }
 
-      const interval = setInterval(function() {
-        const timeLeft = animationEnd - Date.now();
-
-        if (timeLeft <= 0) {
-          return clearInterval(interval);
-        }
-
-        const particleCount = 50 * (timeLeft / duration);
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
-        });
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
-        });
-      }, 250);
-      
       toast({
         title: "RSVP Submitted",
         description: "Thank you for your response!",
@@ -200,7 +201,15 @@ const RsvpSection = () => {
               </motion.div>
               <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You!</h3>
               <p className="text-foreground font-montserrat">
-                We've already received your RSVP{rsvpCheck.rsvp?.attending ? " and look forward to celebrating with you" : ""}.
+                {rsvpCheck.rsvp?.attendanceType && rsvpCheck.rsvp.attendanceType !== "decline"
+                  ? `We've received your RSVP for the ${
+                      rsvpCheck.rsvp.attendanceType === "both"
+                        ? "Holy Matrimony and Reception"
+                        : rsvpCheck.rsvp.attendanceType === "holy_matrimony"
+                        ? "Holy Matrimony"
+                        : "Reception"
+                    } and look forward to celebrating with you.`
+                  : "We've already received your RSVP."}
               </p>
             </motion.div>
           ) : !isSubmitted ? (
@@ -237,31 +246,31 @@ const RsvpSection = () => {
                 )}
               </div>
               
-              {/* Attendance */}
+              {/* Attendance Type */}
               <div>
-                <label className="block text-foreground font-montserrat text-sm mb-4">Will you be attending?</label>
-                <div className="flex space-x-6">
-                  <label className="inline-flex items-center">
-                    <input 
-                      type="radio" 
-                      className="text-primary focus:ring-primary focus:ring-opacity-20" 
-                      name="attending"
-                      value="true"
-                      defaultChecked
-                      onChange={() => handleAttendanceChange(true)}
-                    />
-                    <span className="ml-2 font-montserrat text-foreground">Joyfully Accept</span>
-                  </label>
-                  <label className="inline-flex items-center">
-                    <input 
-                      type="radio" 
-                      className="text-primary focus:ring-primary focus:ring-opacity-20" 
-                      name="attending"
-                      value="false"
-                      onChange={() => handleAttendanceChange(false)}
-                    />
-                    <span className="ml-2 font-montserrat text-foreground">Regretfully Decline</span>
-                  </label>
+                <label className="block text-foreground font-montserrat text-sm mb-4">Will you be joining us?</label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { value: "both", label: "Both" },
+                    { value: "holy_matrimony", label: "Holy Matrimony" },
+                    { value: "reception", label: "Reception" },
+                    { value: "decline", label: "Regretfully Decline" },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleAttendanceChange(option.value)}
+                      className={`px-4 py-2 rounded-full font-montserrat text-sm transition-all duration-200 ${
+                        option.value === watch("attendanceType")
+                          ? "bg-primary text-white shadow-md"
+                          : option.value === "decline"
+                          ? "border border-gray-200 text-gray-400 hover:border-gray-300"
+                          : "border border-gray-300 text-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               </div>
               

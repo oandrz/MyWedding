@@ -46,7 +46,6 @@ function createTestQueryClient() {
 
 function renderRsvpSection() {
   const qc = createTestQueryClient();
-  // Pre-fill query data so the component doesn't show loading/existing RSVP states
   qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
   return render(
     <QueryClientProvider client={qc}>
@@ -58,7 +57,6 @@ function renderRsvpSection() {
 describe("RsvpSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Ensure no "to" URL param is set so guestName stays empty and rsvpCheck is skipped
     Object.defineProperty(window, "location", {
       value: { search: "", href: "http://localhost" },
       writable: true,
@@ -72,35 +70,54 @@ describe("RsvpSection", () => {
     expect(screen.getByLabelText(/number of guests/i)).toBeInTheDocument();
   });
 
+  it("renders attendance type pill buttons", () => {
+    renderRsvpSection();
+    expect(screen.getByRole("button", { name: /both/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /holy matrimony/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reception/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /decline/i })).toBeInTheDocument();
+  });
+
+  it("hides guest count when Decline is selected", async () => {
+    renderRsvpSection();
+    const declineBtn = screen.getByRole("button", { name: /decline/i });
+    fireEvent.click(declineBtn);
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/number of guests/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows guest count for non-decline attendance types", () => {
+    renderRsvpSection();
+    // "Both" is default, guest count should be visible
+    expect(screen.getByLabelText(/number of guests/i)).toBeInTheDocument();
+  });
+
   it("shows validation error when required fields are empty", async () => {
     renderRsvpSection();
-
-    // Clear default values and submit
     const nameInput = screen.getByLabelText(/^name$/i);
     fireEvent.change(nameInput, { target: { value: "" } });
-
     const submitButton = screen.getByTestId("button-submit-rsvp");
     fireEvent.click(submitButton);
-
     await waitFor(() => {
       expect(screen.getByText(/name is required/i)).toBeInTheDocument();
     });
   });
 
-  it("submits successfully and shows confirmation", async () => {
-    // Mock fetch for the RSVP POST endpoint
+  it("submits with attendanceType in payload", async () => {
+    let capturedBody: any;
     const originalFetch = global.fetch;
     global.fetch = vi.fn((url, options) => {
       const urlStr = typeof url === "string" ? url : url.toString();
       if (urlStr.includes("/api/rsvp") && options?.method === "POST") {
+        capturedBody = JSON.parse(options.body as string);
         return Promise.resolve(
           new Response(
-            JSON.stringify({ message: "Thank you!", rsvp: { id: 1 } }),
+            JSON.stringify({ message: "Thank you!", rsvp: { id: 1, attendanceType: "both" } }),
             { status: 201, headers: { "Content-Type": "application/json" } }
           )
         );
       }
-      // For rsvp check and other queries
       if (urlStr.includes("/api/rsvp/check")) {
         return Promise.resolve(
           new Response(
@@ -119,19 +136,16 @@ describe("RsvpSection", () => {
 
     renderRsvpSection();
 
-    // Fill out the form
-    fireEvent.change(screen.getByLabelText(/^name$/i), {
-      target: { value: "John Doe" },
-    });
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "john@example.com" },
-    });
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "John Doe" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "john@example.com" } });
 
     const submitButton = screen.getByTestId("button-submit-rsvp");
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/thank you/i)).toBeInTheDocument();
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.attendanceType).toBe("both");
+      expect(capturedBody).not.toHaveProperty("attending");
     });
 
     global.fetch = originalFetch;
