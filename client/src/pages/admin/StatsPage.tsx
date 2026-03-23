@@ -9,7 +9,7 @@ function calculateAttendance(rsvps: Rsvp[]) {
   let notAttending = 0;
   let totalGuests = 0;
   rsvps.forEach((rsvp) => {
-    if (rsvp.attending) {
+    if (rsvp.attendanceType !== "decline") {
       attending++;
       totalGuests += rsvp.guestCount || 1;
     } else {

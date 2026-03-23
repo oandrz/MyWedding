@@ -15,9 +15,9 @@ import StatsPage from "../StatsPage";
 
 const mockRsvpData = {
   rsvps: [
-    { id: 1, name: "Alice", attending: true, guestCount: 3 },
-    { id: 2, name: "Bob", attending: true, guestCount: 2 },
-    { id: 3, name: "Carol", attending: false, guestCount: 0 },
+    { id: 1, name: "Alice", attendanceType: "both", guestCount: 3 },
+    { id: 2, name: "Bob", attendanceType: "holy_matrimony", guestCount: 2 },
+    { id: 3, name: "Carol", attendanceType: "decline", guestCount: null },
   ],
 };
 
@@ -36,25 +36,25 @@ describe("StatsPage", () => {
 
   it("renders attending count", () => {
     renderStatsPage();
-    expect(screen.getByText("2")).toBeInTheDocument(); // 2 attending
+    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Confirmed Attending")).toBeInTheDocument();
   });
 
   it("renders not attending count", () => {
     renderStatsPage();
-    expect(screen.getByText("1")).toBeInTheDocument(); // 1 not attending
+    expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText("Not Attending")).toBeInTheDocument();
   });
 
   it("renders total guest count", () => {
     renderStatsPage();
-    expect(screen.getByText("5")).toBeInTheDocument(); // 3 + 2
+    expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Total Expected Guests")).toBeInTheDocument();
   });
 
   it("renders attendance rate percentage", () => {
     renderStatsPage();
-    expect(screen.getByText("67%")).toBeInTheDocument(); // 2/3 = 67%
+    expect(screen.getByText("67%")).toBeInTheDocument();
   });
 
   it("renders total responses", () => {
