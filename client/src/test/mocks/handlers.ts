@@ -45,7 +45,7 @@ export const handlers = [
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({
       message: "Thank you for your RSVP!",
-      rsvp: { id: 1, ...body, attending: true },
+      rsvp: { id: 1, ...body },
     }, { status: 201 });
   }),
 
