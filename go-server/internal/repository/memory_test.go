@@ -123,7 +123,7 @@ func TestCreateRsvp(t *testing.T) {
 
 	gc := 2
 	r, err := repo.CreateRsvp(ctx, models.InsertRsvp{
-		Name: "Alice", Email: "alice@example.com", Attending: true, GuestCount: &gc,
+		Name: "Alice", Email: "alice@example.com", AttendanceType: "both", GuestCount: &gc,
 	})
 	if err != nil {
 		t.Fatalf("CreateRsvp returned error: %v", err)
@@ -144,12 +144,12 @@ func TestUpdateRsvp(t *testing.T) {
 	ctx := newCtx()
 
 	repo.CreateRsvp(ctx, models.InsertRsvp{
-		Name: "Alice", Email: "alice@example.com", Attending: true,
+		Name: "Alice", Email: "alice@example.com", AttendanceType: "both",
 	})
 
 	gc := 5
 	r, err := repo.UpdateRsvp(ctx, 1, models.InsertRsvp{
-		Name: "Alice Updated", Email: "alice@example.com", Attending: false, GuestCount: &gc,
+		Name: "Alice Updated", Email: "alice@example.com", AttendanceType: "decline", GuestCount: &gc,
 	})
 	if err != nil {
 		t.Fatalf("UpdateRsvp returned error: %v", err)
@@ -160,8 +160,8 @@ func TestUpdateRsvp(t *testing.T) {
 	if r.Name != "Alice Updated" {
 		t.Fatalf("expected Alice Updated, got %s", r.Name)
 	}
-	if r.Attending {
-		t.Fatal("expected attending to be false")
+	if r.AttendanceType != "decline" {
+		t.Fatalf("expected attendance type decline, got %s", r.AttendanceType)
 	}
 	if r.GuestCount == nil || *r.GuestCount != 5 {
 		t.Fatalf("expected guestCount 5, got %v", r.GuestCount)
@@ -185,8 +185,8 @@ func TestGetRsvps(t *testing.T) {
 	repo := NewMemoryRepository()
 	ctx := newCtx()
 
-	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "A", Email: "a@a.com", Attending: true})
-	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "B", Email: "b@b.com", Attending: false})
+	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "A", Email: "a@a.com", AttendanceType: "both"})
+	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "B", Email: "b@b.com", AttendanceType: "decline"})
 
 	all, err := repo.GetRsvps(ctx)
 	if err != nil {
@@ -201,7 +201,7 @@ func TestGetRsvpByEmail(t *testing.T) {
 	repo := NewMemoryRepository()
 	ctx := newCtx()
 
-	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "A", Email: "a@a.com", Attending: true})
+	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "A", Email: "a@a.com", AttendanceType: "both"})
 
 	r, err := repo.GetRsvpByEmail(ctx, "a@a.com")
 	if err != nil {
@@ -229,7 +229,7 @@ func TestGetRsvpByName(t *testing.T) {
 	repo := NewMemoryRepository()
 	ctx := newCtx()
 
-	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "Alice", Email: "a@a.com", Attending: true})
+	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "Alice", Email: "a@a.com", AttendanceType: "both"})
 
 	r, err := repo.GetRsvpByName(ctx, "Alice")
 	if err != nil {
@@ -244,7 +244,7 @@ func TestDeleteRsvp(t *testing.T) {
 	repo := NewMemoryRepository()
 	ctx := newCtx()
 
-	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "A", Email: "a@a.com", Attending: true})
+	repo.CreateRsvp(ctx, models.InsertRsvp{Name: "A", Email: "a@a.com", AttendanceType: "both"})
 
 	ok, err := repo.DeleteRsvp(ctx, 1)
 	if err != nil {
@@ -1123,13 +1123,13 @@ func TestDeleteMessageNotFound(t *testing.T) {
 
 func TestRsvpJSONCamelCase(t *testing.T) {
 	gc := 3
-	r := models.Rsvp{ID: 1, Name: "Alice", Email: "a@a.com", Attending: true, GuestCount: &gc}
+	r := models.Rsvp{ID: 1, Name: "Alice", Email: "a@a.com", AttendanceType: "both", GuestCount: &gc}
 	data, err := json.Marshal(r)
 	if err != nil {
 		t.Fatalf("json.Marshal returned error: %v", err)
 	}
 	s := string(data)
-	for _, key := range []string{`"id"`, `"name"`, `"email"`, `"attending"`, `"guestCount"`} {
+	for _, key := range []string{`"id"`, `"name"`, `"email"`, `"attendanceType"`, `"guestCount"`} {
 		if !strings.Contains(s, key) {
 			t.Fatalf("expected camelCase key %s in JSON: %s", key, s)
 		}
