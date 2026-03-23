@@ -10,29 +10,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminContext } from "./AdminContext";
 import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Loader2, CheckCircle, XCircle, Users, Calendar, Trash2, Search, X } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Users, Trash2, Search, X } from "lucide-react";
 import type { Rsvp } from "@shared/schema";
 
 interface RsvpResponse {
   rsvps: Rsvp[];
-  stats: { attending: number; guestCount: number; notAttending: number };
-}
-
-function calculateAttendance(rsvps: Rsvp[]) {
-  let attending = 0;
-  let notAttending = 0;
-  let totalGuests = 0;
-
-  rsvps.forEach((rsvp) => {
-    if (rsvp.attending) {
-      attending++;
-      totalGuests += rsvp.guestCount || 1;
-    } else {
-      notAttending++;
-    }
-  });
-
-  return { attending, notAttending, totalGuests };
+  stats: {
+    total: number;
+    attending: number;
+    notAttending: number;
+    guestCount: number;
+    holyMatrimonyCount: number;
+    receptionCount: number;
+  };
 }
 
 export default function RsvpPage() {
@@ -68,11 +58,12 @@ export default function RsvpPage() {
     useDeleteConfirmation((id) => deleteRsvpMutation.mutate(id));
 
   const rsvps = data?.rsvps ?? [];
-  const totalStats = calculateAttendance(rsvps);
 
   // Search and filter state
   const [searchText, setSearchText] = useState("");
-  const [attendingFilter, setAttendingFilter] = useState<"all" | "attending" | "not-attending">("all");
+  const [attendingFilter, setAttendingFilter] = useState<
+    "all" | "holy_matrimony" | "reception" | "both" | "declined"
+  >("all");
   const debouncedSearch = useDebounce(searchText, 300);
 
   const filteredRsvps = useMemo(() => {
@@ -82,17 +73,20 @@ export default function RsvpPage() {
         rsvp.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         rsvp.email.toLowerCase().includes(debouncedSearch.toLowerCase());
 
-      const matchesFilter =
-        attendingFilter === "all" ||
-        (attendingFilter === "attending" && rsvp.attending) ||
-        (attendingFilter === "not-attending" && !rsvp.attending);
+      let matchesFilter = true;
+      if (attendingFilter === "holy_matrimony") {
+        matchesFilter = rsvp.attendanceType === "both" || rsvp.attendanceType === "holy_matrimony";
+      } else if (attendingFilter === "reception") {
+        matchesFilter = rsvp.attendanceType === "both" || rsvp.attendanceType === "reception";
+      } else if (attendingFilter === "both") {
+        matchesFilter = rsvp.attendanceType === "both";
+      } else if (attendingFilter === "declined") {
+        matchesFilter = rsvp.attendanceType === "decline";
+      }
 
       return matchesSearch && matchesFilter;
     });
   }, [rsvps, debouncedSearch, attendingFilter]);
-
-  const filteredStats = calculateAttendance(filteredRsvps);
-  const isFiltered = debouncedSearch !== "" || attendingFilter !== "all";
 
   if (isLoading) {
     return (
@@ -106,46 +100,40 @@ export default function RsvpPage() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-lg">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-lg" data-testid="stat-holy-matrimony">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-bold text-white">
-                  {filteredStats.attending}
-                </CardTitle>
-                <CardDescription className="text-rose-100">
-                  Confirmed Attending
-                </CardDescription>
-                {isFiltered && (
-                  <p className="text-xs text-rose-200 mt-1">
-                    {filteredStats.attending} of {totalStats.attending} shown
-                  </p>
-                )}
-              </div>
-              <Users className="h-8 w-8 text-rose-200" />
-            </div>
+            <CardTitle className="text-2xl font-bold text-white">
+              {data?.stats.holyMatrimonyCount ?? 0}
+            </CardTitle>
+            <CardDescription className="text-rose-100">Holy Matrimony RSVPs</CardDescription>
           </CardHeader>
         </Card>
 
-        <Card className="bg-gradient-to-r from-pink-400 to-rose-500 text-white shadow-lg">
+        <Card className="bg-gradient-to-r from-purple-400 to-indigo-500 text-white shadow-lg" data-testid="stat-reception">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-bold text-white">
-                  {filteredStats.totalGuests}
-                </CardTitle>
-                <CardDescription className="text-pink-100">
-                  Total Expected Guests
-                </CardDescription>
-                {isFiltered && (
-                  <p className="text-xs text-pink-200 mt-1">
-                    {filteredStats.totalGuests} of {totalStats.totalGuests} shown
-                  </p>
-                )}
-              </div>
-              <Calendar className="h-8 w-8 text-pink-200" />
-            </div>
+            <CardTitle className="text-2xl font-bold text-white">
+              {data?.stats.receptionCount ?? 0}
+            </CardTitle>
+            <CardDescription className="text-purple-100">Reception RSVPs</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg" data-testid="stat-declined">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-white">
+              {data?.stats.notAttending ?? 0}
+            </CardTitle>
+            <CardDescription className="text-gray-200">Declined</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-pink-400 to-rose-500 text-white shadow-lg" data-testid="stat-total-guests">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-white">
+              {data?.stats.guestCount ?? 0}
+            </CardTitle>
+            <CardDescription className="text-pink-100">Total Expected Guests</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -177,8 +165,10 @@ export default function RsvpPage() {
         >
           <TabsList data-testid="rsvp-filter-tabs">
             <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="attending">Attending</TabsTrigger>
-            <TabsTrigger value="not-attending">Not Attending</TabsTrigger>
+            <TabsTrigger value="holy_matrimony">Holy Matrimony</TabsTrigger>
+            <TabsTrigger value="reception">Reception</TabsTrigger>
+            <TabsTrigger value="both">Both</TabsTrigger>
+            <TabsTrigger value="declined">Declined</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -211,30 +201,36 @@ export default function RsvpPage() {
                       </h3>
                       <p className="text-sm text-gray-600">{rsvp.email}</p>
                     </div>
-                    <Badge
-                      className={`w-fit ${
-                        rsvp.attending
-                          ? "bg-green-100 text-green-800 border-green-200"
-                          : "bg-red-100 text-red-800 border-red-200"
-                      }`}
-                      variant="outline"
-                    >
-                      {rsvp.attending ? (
-                        <div className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Attending
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <XCircle className="h-3 w-3" />
-                          Not Attending
-                        </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {(rsvp.attendanceType === "both" || rsvp.attendanceType === "holy_matrimony") && (
+                        <Badge className="w-fit bg-rose-100 text-rose-800 border-rose-200" variant="outline">
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Holy Matrimony
+                          </div>
+                        </Badge>
                       )}
-                    </Badge>
+                      {(rsvp.attendanceType === "both" || rsvp.attendanceType === "reception") && (
+                        <Badge className="w-fit bg-purple-100 text-purple-800 border-purple-200" variant="outline">
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Reception
+                          </div>
+                        </Badge>
+                      )}
+                      {rsvp.attendanceType === "decline" && (
+                        <Badge className="w-fit bg-red-100 text-red-800 border-red-200" variant="outline">
+                          <div className="flex items-center gap-1">
+                            <XCircle className="h-3 w-3" />
+                            Declined
+                          </div>
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    {rsvp.attending && rsvp.guestCount ? (
+                    {rsvp.attendanceType !== "decline" && rsvp.guestCount ? (
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <p className="text-sm font-medium text-blue-900">
                           Number of Guests

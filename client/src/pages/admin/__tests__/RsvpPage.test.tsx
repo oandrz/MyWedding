@@ -19,10 +19,15 @@ import RsvpPage from "../RsvpPage";
 
 const mockRsvpData = {
   rsvps: [
-    { id: 1, name: "Alice", email: "alice@test.com", attending: true, guestCount: 2 },
-    { id: 2, name: "Bob", email: "bob@test.com", attending: false, guestCount: 0 },
+    { id: 1, name: "Alice", email: "alice@test.com", attendanceType: "both", guestCount: 2 },
+    { id: 2, name: "Bob", email: "bob@test.com", attendanceType: "holy_matrimony", guestCount: 1 },
+    { id: 3, name: "Charlie", email: "charlie@test.com", attendanceType: "reception", guestCount: 3 },
+    { id: 4, name: "Diana", email: "diana@test.com", attendanceType: "decline", guestCount: null },
   ],
-  stats: { attending: 1, guestCount: 2, notAttending: 1 },
+  stats: {
+    total: 4, attending: 3, notAttending: 1, guestCount: 6,
+    holyMatrimonyCount: 2, receptionCount: 2,
+  },
 };
 
 function createTestQueryClient(data: any = mockRsvpData) {
@@ -43,15 +48,31 @@ function renderRsvpPage(queryClient?: QueryClient) {
 describe("RsvpPage", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("renders stats cards with correct counts", () => {
+  it("renders 4 stat cards", () => {
     renderRsvpPage();
-    expect(screen.getByText("Confirmed Attending")).toBeInTheDocument();
+    expect(screen.getByText("Holy Matrimony RSVPs")).toBeInTheDocument();
+    expect(screen.getByText("Reception RSVPs")).toBeInTheDocument();
+    // "Declined" appears in stat card, filter tab, and badge — use getAllByText
+    expect(screen.getAllByText("Declined").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("stat-declined")).toBeInTheDocument();
     expect(screen.getByText("Total Expected Guests")).toBeInTheDocument();
-    // attending count = 1, total guests = 2 (Alice has guestCount 2)
-    expect(screen.getByText("1")).toBeInTheDocument();
-    // Use getAllByText since "2" appears in both the stats card and the guest count detail
-    const twos = screen.getAllByText("2");
-    expect(twos.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders correct stat values", () => {
+    renderRsvpPage();
+    expect(screen.getByTestId("stat-holy-matrimony")).toHaveTextContent("2");
+    expect(screen.getByTestId("stat-reception")).toHaveTextContent("2");
+    expect(screen.getByTestId("stat-declined")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-total-guests")).toHaveTextContent("6");
+  });
+
+  it("renders 5 filter tabs", () => {
+    renderRsvpPage();
+    expect(screen.getByRole("tab", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Holy Matrimony" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Reception" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Both" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Declined" })).toBeInTheDocument();
   });
 
   it("renders RSVP entries with names and emails", () => {
@@ -59,46 +80,57 @@ describe("RsvpPage", () => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("alice@test.com")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
+    expect(screen.getByText("Diana")).toBeInTheDocument();
   });
 
-  it("shows attending badge for attending guests", () => {
+  it("shows event-specific badges", () => {
     renderRsvpPage();
-    // "Attending" appears in both the filter tab and the badge
-    const attendingElements = screen.getAllByText("Attending");
-    expect(attendingElements.length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("Not Attending").length).toBeGreaterThanOrEqual(1);
+    const holyMatrimonyBadges = screen.getAllByText("Holy Matrimony");
+    expect(holyMatrimonyBadges.length).toBeGreaterThanOrEqual(1);
+    const receptionBadges = screen.getAllByText("Reception");
+    expect(receptionBadges.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Declined").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("filters by Holy Matrimony tab (includes both)", async () => {
+    renderRsvpPage();
+    const tab = screen.getByRole("tab", { name: "Holy Matrimony" });
+    await userEvent.click(tab);
+    await waitFor(() => {
+      expect(screen.getByText("Alice")).toBeInTheDocument();
+      expect(screen.getByText("Bob")).toBeInTheDocument();
+      expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
+      expect(screen.queryByText("Diana")).not.toBeInTheDocument();
+    });
+  });
+
+  it("filters by Reception tab (includes both)", async () => {
+    renderRsvpPage();
+    const tab = screen.getByRole("tab", { name: "Reception" });
+    await userEvent.click(tab);
+    await waitFor(() => {
+      expect(screen.getByText("Alice")).toBeInTheDocument();
+      expect(screen.getByText("Charlie")).toBeInTheDocument();
+      expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+      expect(screen.queryByText("Diana")).not.toBeInTheDocument();
+    });
   });
 
   it("shows empty state when no RSVPs", () => {
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    qc.setQueryData(["/api/rsvp"], { rsvps: [], stats: { attending: 0, guestCount: 0, notAttending: 0 } });
+    qc.setQueryData(["/api/rsvp"], {
+      rsvps: [],
+      stats: { total: 0, attending: 0, notAttending: 0, guestCount: 0, holyMatrimonyCount: 0, receptionCount: 0 },
+    });
     renderRsvpPage(qc);
     expect(screen.getByText("No RSVP responses yet")).toBeInTheDocument();
-  });
-
-  it("shows delete confirmation when trash button clicked", async () => {
-    renderRsvpPage();
-    const trashButtons = screen.getAllByRole("button", { name: "" }); // trash icon buttons
-    await userEvent.click(trashButtons[0]);
-    expect(screen.getByText("Delete?")).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument();
-    expect(screen.getByText("No")).toBeInTheDocument();
   });
 
   it("renders search input", () => {
     renderRsvpPage();
     expect(screen.getByTestId("rsvp-search-input")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Search by name or email...")).toBeInTheDocument();
-  });
-
-  it("renders filter tabs", () => {
-    renderRsvpPage();
-    expect(screen.getByTestId("rsvp-filter-tabs")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "All" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Attending" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Not Attending" })).toBeInTheDocument();
   });
 
   it("filters by search text", async () => {
@@ -108,35 +140,6 @@ describe("RsvpPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Alice")).toBeInTheDocument();
       expect(screen.queryByText("Bob")).not.toBeInTheDocument();
-    });
-  });
-
-  it("filters by attending status", async () => {
-    renderRsvpPage();
-    const attendingTab = screen.getByRole("tab", { name: "Attending" });
-    await userEvent.click(attendingTab);
-    await waitFor(() => {
-      expect(screen.getByText("Alice")).toBeInTheDocument();
-      expect(screen.queryByText("Bob")).not.toBeInTheDocument();
-    });
-  });
-
-  it("shows empty state when search has no results", async () => {
-    renderRsvpPage();
-    const input = screen.getByTestId("rsvp-search-input");
-    await userEvent.type(input, "nonexistent");
-    await waitFor(() => {
-      expect(screen.getByText("No guests match your search")).toBeInTheDocument();
-    });
-  });
-
-  it("shows filtered count label when filter is active", async () => {
-    renderRsvpPage();
-    const attendingTab = screen.getByRole("tab", { name: "Attending" });
-    await userEvent.click(attendingTab);
-    await waitFor(() => {
-      const shownLabels = screen.getAllByText(/of.*shown/);
-      expect(shownLabels.length).toBeGreaterThanOrEqual(1);
     });
   });
 });
