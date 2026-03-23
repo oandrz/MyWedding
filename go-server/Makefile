@@ -35,4 +35,4 @@ docker-down:
 
 # Database migration (run inside container or with DATABASE_URL set)
 migrate:
-	psql "$(DATABASE_URL)" -f migrations/001_init.sql
+	@for f in migrations/*.sql; do echo "Running $$f..."; psql "$(DATABASE_URL)" -f "$$f"; done
