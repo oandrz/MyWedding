@@ -95,11 +95,11 @@ func (m *MemoryRepository) CreateRsvp(_ context.Context, data models.InsertRsvp)
 	defer m.mu.Unlock()
 	m.rsvpIDSeq++
 	r := models.Rsvp{
-		ID:         m.rsvpIDSeq,
-		Name:       data.Name,
-		Email:      data.Email,
-		Attending:  data.Attending,
-		GuestCount: data.GuestCount,
+		ID:             m.rsvpIDSeq,
+		Name:           data.Name,
+		Email:          data.Email,
+		AttendanceType: data.AttendanceType,
+		GuestCount:     data.GuestCount,
 	}
 	m.rsvps[r.ID] = r
 	return &r, nil
@@ -114,7 +114,7 @@ func (m *MemoryRepository) UpdateRsvp(_ context.Context, id int, data models.Ins
 	}
 	r.Name = data.Name
 	r.Email = data.Email
-	r.Attending = data.Attending
+	r.AttendanceType = data.AttendanceType
 	r.GuestCount = data.GuestCount
 	m.rsvps[id] = r
 	return &r, nil
