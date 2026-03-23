@@ -439,7 +439,7 @@ func TestContract_Health(t *testing.T) {
 // Contract: { "message": "Thank you for your RSVP!",
 //
 //	"rsvp": { "id": <int>, "name": "...", "email": "...",
-//	          "attending": <bool>, "guestCount": <int|null> } }
+//	          "attendanceType": <string>, "guestCount": <int|null> } }
 //
 // Status: 201
 // ---------------------------------------------------------------------------
@@ -522,7 +522,8 @@ func TestContract_RsvpUpdate(t *testing.T) {
 // 7. GET /api/rsvp
 // Contract: { "rsvps": [...], "stats": { "total": <int>, "attending": <int>,
 //
-//	"notAttending": <int>, "guestCount": <int> } }
+//	"notAttending": <int>, "guestCount": <int>,
+//	"holyMatrimonyCount": <int>, "receptionCount": <int> } }
 //
 // ---------------------------------------------------------------------------
 func TestContract_RsvpList(t *testing.T) {

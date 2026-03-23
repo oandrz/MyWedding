@@ -558,6 +558,13 @@ func TestRsvpListWithStats(t *testing.T) {
 	if stats["guestCount"] != float64(3) {
 		t.Fatalf("expected guestCount 3, got %v", stats["guestCount"])
 	}
+	// Alice (both) + Bob (both) = 2 for holy matrimony and reception
+	if stats["holyMatrimonyCount"] != float64(2) {
+		t.Fatalf("expected holyMatrimonyCount 2, got %v", stats["holyMatrimonyCount"])
+	}
+	if stats["receptionCount"] != float64(2) {
+		t.Fatalf("expected receptionCount 2, got %v", stats["receptionCount"])
+	}
 }
 
 func TestRsvpCheck(t *testing.T) {
