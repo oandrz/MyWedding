@@ -172,10 +172,10 @@ func mapKeys(m map[string]interface{}) []string {
 }
 
 // createRsvp is a shortcut to POST /api/rsvp for setup.
-func createRsvp(t *testing.T, env *testEnv, name, email string, attending bool, guestCount *int) {
+func createRsvp(t *testing.T, env *testEnv, name, email string, attendanceType string, guestCount *int) {
 	t.Helper()
 	payload := map[string]interface{}{
-		"name": name, "email": email, "attending": attending,
+		"name": name, "email": email, "attendanceType": attendanceType,
 	}
 	if guestCount != nil {
 		payload["guestCount"] = *guestCount
@@ -253,7 +253,7 @@ func assertRsvpObject(t *testing.T, obj map[string]interface{}) {
 	assertKeyType(t, obj, "id", "float64")
 	assertKeyType(t, obj, "name", "string")
 	assertKeyType(t, obj, "email", "string")
-	assertKeyType(t, obj, "attending", "bool")
+	assertKeyType(t, obj, "attendanceType", "string")
 	// guestCount may be null or a number
 	assertKeyExists(t, obj, "guestCount")
 	assertNullableType(t, obj, "guestCount", "float64")
@@ -448,7 +448,7 @@ func TestContract_RsvpCreate(t *testing.T) {
 
 	gc := 3
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attending": true, "guestCount": gc,
+		"name": "Alice", "email": "alice@example.com", "attendanceType": "both", "guestCount": gc,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -463,7 +463,7 @@ func TestContract_RsvpCreate(t *testing.T) {
 	// Verify values
 	assertStringValue(t, rsvp, "name", "Alice")
 	assertStringValue(t, rsvp, "email", "alice@example.com")
-	assertBoolValue(t, rsvp, "attending", true)
+	assertStringValue(t, rsvp, "attendanceType", "both")
 	assertFloat64Value(t, rsvp, "guestCount", 3)
 }
 
@@ -474,7 +474,7 @@ func TestContract_RsvpCreateNullGuestCount(t *testing.T) {
 	env := newTestEnv()
 
 	body := jsonBody(map[string]interface{}{
-		"name": "Bob", "email": "bob@example.com", "attending": false,
+		"name": "Bob", "email": "bob@example.com", "attendanceType": "decline",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -499,11 +499,11 @@ func TestContract_RsvpUpdate(t *testing.T) {
 	env := newTestEnv()
 
 	// First create
-	createRsvp(t, env, "Alice", "alice@example.com", true, nil)
+	createRsvp(t, env, "Alice", "alice@example.com", "both", nil)
 
 	// Second POST with same email → update
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice Updated", "email": "alice@example.com", "attending": false,
+		"name": "Alice Updated", "email": "alice@example.com", "attendanceType": "decline",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -515,7 +515,7 @@ func TestContract_RsvpUpdate(t *testing.T) {
 	rsvp := assertObject(t, result, "rsvp")
 	assertRsvpObject(t, rsvp)
 	assertStringValue(t, rsvp, "email", "alice@example.com")
-	assertBoolValue(t, rsvp, "attending", false)
+	assertStringValue(t, rsvp, "attendanceType", "decline")
 }
 
 // ---------------------------------------------------------------------------
@@ -529,9 +529,9 @@ func TestContract_RsvpList(t *testing.T) {
 	env := newTestEnv()
 
 	gc := 2
-	createRsvp(t, env, "Alice", "alice@example.com", true, &gc)
-	createRsvp(t, env, "Bob", "bob@example.com", true, nil)
-	createRsvp(t, env, "Charlie", "charlie@example.com", false, nil)
+	createRsvp(t, env, "Alice", "alice@example.com", "both", &gc)
+	createRsvp(t, env, "Bob", "bob@example.com", "both", nil)
+	createRsvp(t, env, "Charlie", "charlie@example.com", "decline", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
@@ -556,6 +556,8 @@ func TestContract_RsvpList(t *testing.T) {
 	assertKeyType(t, stats, "attending", "float64")
 	assertKeyType(t, stats, "notAttending", "float64")
 	assertKeyType(t, stats, "guestCount", "float64")
+	assertKeyType(t, stats, "holyMatrimonyCount", "float64")
+	assertKeyType(t, stats, "receptionCount", "float64")
 
 	assertFloat64Value(t, stats, "total", 3)
 	assertFloat64Value(t, stats, "attending", 2)
@@ -584,6 +586,8 @@ func TestContract_RsvpListEmpty(t *testing.T) {
 	assertFloat64Value(t, stats, "attending", 0)
 	assertFloat64Value(t, stats, "notAttending", 0)
 	assertFloat64Value(t, stats, "guestCount", 0)
+	assertFloat64Value(t, stats, "holyMatrimonyCount", 0)
+	assertFloat64Value(t, stats, "receptionCount", 0)
 }
 
 // ---------------------------------------------------------------------------
@@ -593,7 +597,7 @@ func TestContract_RsvpListEmpty(t *testing.T) {
 // ---------------------------------------------------------------------------
 func TestContract_RsvpCheckFound(t *testing.T) {
 	env := newTestEnv()
-	createRsvp(t, env, "Alice", "alice@example.com", true, nil)
+	createRsvp(t, env, "Alice", "alice@example.com", "both", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp/check?name=Alice", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
@@ -624,7 +628,7 @@ func TestContract_RsvpCheckNotFound(t *testing.T) {
 // ---------------------------------------------------------------------------
 func TestContract_RsvpGetByEmail(t *testing.T) {
 	env := newTestEnv()
-	createRsvp(t, env, "Alice", "alice@example.com", true, nil)
+	createRsvp(t, env, "Alice", "alice@example.com", "both", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp/alice@example.com", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
@@ -1531,7 +1535,7 @@ func TestContract_NoCamelCaseViolations(t *testing.T) {
 
 	// Set up data so responses contain populated objects
 	gc := 2
-	createRsvp(t, env, "Alice", "alice@example.com", true, &gc)
+	createRsvp(t, env, "Alice", "alice@example.com", "both", &gc)
 	createMessage(t, env, "Alice", "Hello!")
 	createMedia(t, env, "Alice", "alice@example.com", "https://example.com/pic.jpg")
 
@@ -1658,7 +1662,7 @@ func TestContract_ContentTypeJSON(t *testing.T) {
 		{http.MethodGet, "/api/welcome-screen", nil},
 		{http.MethodGet, "/api/config-images", nil},
 		{http.MethodPost, "/api/rsvp", jsonBody(map[string]interface{}{
-			"name": "Alice", "email": "alice@test.com", "attending": true,
+			"name": "Alice", "email": "alice@test.com", "attendanceType": "both",
 		})},
 		{http.MethodPost, "/api/messages", jsonBody(map[string]interface{}{
 			"name": "Alice", "content": "Hello!",
