@@ -29,6 +29,16 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !models.ValidAttendanceTypes[body.AttendanceType] {
+		writeError(w, r, http.StatusBadRequest, "Invalid attendance type. Must be: both, holy_matrimony, reception, or decline")
+		return
+	}
+
+	// Force guestCount to nil for declined RSVPs
+	if body.AttendanceType == "decline" {
+		body.GuestCount = nil
+	}
+
 	if h.Sanitizer != nil {
 		body.Name = h.Sanitizer.Sanitize(body.Name)
 	}
@@ -84,9 +94,11 @@ func (h *RsvpHandler) List(w http.ResponseWriter, r *http.Request) {
 	attending := 0
 	notAttending := 0
 	guestCount := 0
+	holyMatrimonyCount := 0
+	receptionCount := 0
 
 	for _, rsvp := range rsvps {
-		if rsvp.Attending {
+		if rsvp.IsAttending() {
 			attending++
 			if rsvp.GuestCount != nil {
 				guestCount += *rsvp.GuestCount
@@ -96,15 +108,24 @@ func (h *RsvpHandler) List(w http.ResponseWriter, r *http.Request) {
 		} else {
 			notAttending++
 		}
+
+		if rsvp.AttendanceType == "both" || rsvp.AttendanceType == "holy_matrimony" {
+			holyMatrimonyCount++
+		}
+		if rsvp.AttendanceType == "both" || rsvp.AttendanceType == "reception" {
+			receptionCount++
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"rsvps": rsvps,
 		"stats": map[string]int{
-			"total":        total,
-			"attending":    attending,
-			"notAttending": notAttending,
-			"guestCount":   guestCount,
+			"total":              total,
+			"attending":          attending,
+			"notAttending":       notAttending,
+			"guestCount":         guestCount,
+			"holyMatrimonyCount": holyMatrimonyCount,
+			"receptionCount":     receptionCount,
 		},
 	})
 }
