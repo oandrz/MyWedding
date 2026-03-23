@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-$HOME/weddingAws}"
-BRANCH="${BRANCH:-phase/0-scaffold}"
+BRANCH="${BRANCH:-main}"
 COMPOSE="docker compose --env-file .env.production -f docker-compose.prod.yml"
 
 echo "==> Pulling latest code..."
@@ -16,10 +16,13 @@ $COMPOSE up -d
 
 # Run migration on first deploy (safe to re-run — uses IF NOT EXISTS)
 if [ "${MIGRATE:-}" = "1" ]; then
-  echo "==> Running database migration..."
-  $COMPOSE exec -T postgres \
-    psql -U wedding_user -d wedding_invitation_db \
-    -f /docker-entrypoint-initdb.d/001_init.sql
+  echo "==> Running database migrations..."
+    for f in migrations/*.sql; do
+      [ -e "$f" ] || continue
+      echo "Running $f..."
+      # Pipes the local file content directly into the container's psql
+      cat "$f" | $COMPOSE exec -T postgres psql -U wedding_user -d wedding_invitation_db
+    done
 fi
 
 echo "==> Waiting for app to start..."
