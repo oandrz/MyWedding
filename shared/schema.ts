@@ -12,7 +12,7 @@ export const rsvp = pgTable("rsvp", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  attending: boolean("attending").notNull(),
+  attendanceType: text("attendance_type").notNull().default("both"),
   guestCount: integer("guest_count"),
 });
 
@@ -24,7 +24,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertRsvpSchema = createInsertSchema(rsvp).pick({
   name: true,
   email: true,
-  attending: true,
+  attendanceType: true,
   guestCount: true,
 });
 
