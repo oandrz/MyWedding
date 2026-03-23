@@ -669,7 +669,7 @@ func TestRsvpDelete(t *testing.T) {
 	env.handler.ServeHTTP(rec, req)
 
 	// Delete with auth
-	req2 := adminRequest(http.MethodDelete, "/api/rsvp/1", nil, cookie, csrfToken)
+	req2 := adminRequest(http.MethodDelete, "/api/admin/rsvp/1", nil, cookie, csrfToken)
 	rec2 := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec2, req2)
 
@@ -682,7 +682,7 @@ func TestRsvpDeleteNotFound(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrfToken := adminLogin(t, env)
 
-	req := adminRequest(http.MethodDelete, "/api/rsvp/999", nil, cookie, csrfToken)
+	req := adminRequest(http.MethodDelete, "/api/admin/rsvp/999", nil, cookie, csrfToken)
 	rec := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec, req)
 
@@ -694,7 +694,7 @@ func TestRsvpDeleteNotFound(t *testing.T) {
 func TestRsvpDeleteUnauthorized(t *testing.T) {
 	env := newTestEnv()
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/rsvp/1", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/rsvp/1", nil)
 	rec := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec, req)
 
@@ -778,7 +778,7 @@ func TestMessageDelete(t *testing.T) {
 	env.handler.ServeHTTP(rec, req)
 
 	// Delete
-	req2 := adminRequest(http.MethodDelete, "/api/messages/1", nil, cookie, csrfToken)
+	req2 := adminRequest(http.MethodDelete, "/api/admin/messages/1", nil, cookie, csrfToken)
 	rec2 := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec2, req2)
 
@@ -791,7 +791,7 @@ func TestMessageDeleteNotFound(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrfToken := adminLogin(t, env)
 
-	req := adminRequest(http.MethodDelete, "/api/messages/999", nil, cookie, csrfToken)
+	req := adminRequest(http.MethodDelete, "/api/admin/messages/999", nil, cookie, csrfToken)
 	rec := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec, req)
 
@@ -803,7 +803,7 @@ func TestMessageDeleteNotFound(t *testing.T) {
 func TestMessageDeleteUnauthorized(t *testing.T) {
 	env := newTestEnv()
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/messages/1", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/messages/1", nil)
 	rec := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec, req)
 
@@ -1583,8 +1583,8 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 	}{
 		{http.MethodPost, "/api/admin/logout"},
 		{http.MethodPost, "/api/admin/validate"},
-		{http.MethodDelete, "/api/rsvp/1"},
-		{http.MethodDelete, "/api/messages/1"},
+		{http.MethodDelete, "/api/admin/rsvp/1"},
+		{http.MethodDelete, "/api/admin/messages/1"},
 		{http.MethodGet, "/api/admin/media"},
 		{http.MethodPatch, "/api/admin/media/1"},
 		{http.MethodPost, "/api/admin/config-images"},

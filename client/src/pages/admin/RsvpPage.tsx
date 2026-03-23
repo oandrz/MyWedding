@@ -35,7 +35,7 @@ export default function RsvpPage() {
 
   const deleteRsvpMutation = useMutation({
     mutationFn: (rsvpId: number) => {
-      return apiRequest("DELETE", `/api/rsvp/${rsvpId}`);
+      return apiRequest("DELETE", `/api/admin/rsvp/${rsvpId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rsvp"] });

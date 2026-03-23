@@ -122,14 +122,6 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 		r.Get("/api/drive-folder-contents", gdrive.GetDriveFolderContents)
 	}
 
-	// Routes that need auth but aren't under /api/admin prefix
-	authCSRF := chi.Chain(
-		middleware.Auth(sessions),
-		middleware.CSRFProtection(csrf),
-	)
-	r.With(authCSRF.Handler).Delete("/api/rsvp/{id}", rsvp.Delete)
-	r.With(authCSRF.Handler).Delete("/api/messages/{id}", message.Delete)
-
 	loginRateLimiter := middleware.NewRateLimiter(5, 60)
 
 	// Admin routes
@@ -168,6 +160,9 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Patch("/app-settings/{settingKey}", appSetting.Update)
 
 			r.Patch("/welcome-screen", welcomeScreen.Update)
+
+			r.Delete("/rsvp/{id}", rsvp.Delete)
+			r.Delete("/messages/{id}", message.Delete)
 		})
 	})
 
