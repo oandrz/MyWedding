@@ -16,14 +16,38 @@ type RsvpHandler struct {
 	Sanitizer *service.Sanitizer
 }
 
+// rsvpRequest is the combined request body for both email-based and code-based RSVP flows.
+type rsvpRequest struct {
+	Name           string `json:"name"`
+	Email          string `json:"email"`
+	Code           string `json:"code"`
+	AttendanceType string `json:"attendanceType"`
+	GuestCount     *int   `json:"guestCount"`
+}
+
 // Create handles POST /api/rsvp.
 func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var body models.InsertRsvp
+	var body rsvpRequest
 	if err := parseJSON(r, &body); err != nil {
 		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
+	// Check feature flag
+	useInviteCode := false
+	flag, _ := h.Repo.GetFeatureFlag(r.Context(), "invite_code_rsvp")
+	if flag != nil && flag.Enabled {
+		useInviteCode = true
+	}
+
+	if useInviteCode {
+		h.createWithCode(w, r, body)
+	} else {
+		h.createWithEmail(w, r, body)
+	}
+}
+
+func (h *RsvpHandler) createWithEmail(w http.ResponseWriter, r *http.Request, body rsvpRequest) {
 	if body.Name == "" || body.Email == "" {
 		writeError(w, r, http.StatusBadRequest, "Name and email are required")
 		return
@@ -34,16 +58,22 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Force guestCount to nil for declined RSVPs
 	if body.AttendanceType == "decline" {
 		body.GuestCount = nil
 	}
 
+	name := body.Name
 	if h.Sanitizer != nil {
-		body.Name = h.Sanitizer.Sanitize(body.Name)
+		name = h.Sanitizer.Sanitize(name)
 	}
 
-	// Check if RSVP already exists for this email
+	insertData := models.InsertRsvp{
+		Name:           name,
+		Email:          body.Email,
+		AttendanceType: body.AttendanceType,
+		GuestCount:     body.GuestCount,
+	}
+
 	existing, err := h.Repo.GetRsvpByEmail(r.Context(), body.Email)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "Failed to check existing RSVP")
@@ -51,8 +81,7 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if existing != nil {
-		// Update existing RSVP
-		updated, err := h.Repo.UpdateRsvp(r.Context(), existing.ID, body)
+		updated, err := h.Repo.UpdateRsvp(r.Context(), existing.ID, insertData)
 		if err != nil {
 			writeError(w, r, http.StatusInternalServerError, "Failed to update RSVP")
 			return
@@ -64,10 +93,76 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create new RSVP
-	rsvp, err := h.Repo.CreateRsvp(r.Context(), body)
+	rsvp, err := h.Repo.CreateRsvp(r.Context(), insertData)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "Failed to create RSVP")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"message": "Thank you for your RSVP!",
+		"rsvp":    rsvp,
+	})
+}
+
+func (h *RsvpHandler) createWithCode(w http.ResponseWriter, r *http.Request, body rsvpRequest) {
+	if body.Code == "" {
+		writeError(w, r, http.StatusBadRequest, "Invite code is required")
+		return
+	}
+
+	if !models.ValidAttendanceTypes[body.AttendanceType] {
+		writeError(w, r, http.StatusBadRequest, "Invalid attendance type. Must be: both, holy_matrimony, reception, or decline")
+		return
+	}
+
+	if body.AttendanceType == "decline" {
+		body.GuestCount = nil
+	}
+
+	invite, err := h.Repo.GetInviteByCode(r.Context(), body.Code)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "Failed to look up invite")
+		return
+	}
+	if invite == nil {
+		writeError(w, r, http.StatusNotFound, "Invalid invite code")
+		return
+	}
+
+	name := invite.Name
+	if h.Sanitizer != nil {
+		name = h.Sanitizer.Sanitize(name)
+	}
+
+	insertData := models.InsertRsvp{
+		Name:           name,
+		Email:          "",
+		AttendanceType: body.AttendanceType,
+		GuestCount:     body.GuestCount,
+	}
+
+	if invite.RsvpID != nil {
+		updated, err := h.Repo.UpdateRsvp(r.Context(), *invite.RsvpID, insertData)
+		if err != nil {
+			writeError(w, r, http.StatusInternalServerError, "Failed to update RSVP")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"message": "Your RSVP has been updated successfully!",
+			"rsvp":    updated,
+		})
+		return
+	}
+
+	rsvp, err := h.Repo.CreateRsvp(r.Context(), insertData)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "Failed to create RSVP")
+		return
+	}
+
+	if err := h.Repo.UpdateInviteRsvpID(r.Context(), invite.ID, &rsvp.ID); err != nil {
+		writeError(w, r, http.StatusInternalServerError, "Failed to link RSVP to invite")
 		return
 	}
 
