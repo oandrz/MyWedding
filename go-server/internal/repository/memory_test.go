@@ -1326,6 +1326,192 @@ func TestGetApprovedMediaPaginated(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Invite tests
+// ---------------------------------------------------------------------------
+
+func TestCreateInvite(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	inv, err := repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+	if err != nil {
+		t.Fatalf("CreateInvite returned error: %v", err)
+	}
+	if inv.ID != 1 {
+		t.Fatalf("expected ID 1, got %d", inv.ID)
+	}
+	if inv.Name != "Alice" {
+		t.Fatalf("expected name Alice, got %s", inv.Name)
+	}
+	if len(inv.Code) != 5 {
+		t.Fatalf("expected 5-char code, got %q (len %d)", inv.Code, len(inv.Code))
+	}
+	if inv.RsvpID != nil {
+		t.Fatalf("expected nil rsvpId, got %v", inv.RsvpID)
+	}
+}
+
+func TestGetInvites(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+	repo.CreateInvite(ctx, models.InsertInvite{Name: "Bob"})
+
+	invites, err := repo.GetInvites(ctx)
+	if err != nil {
+		t.Fatalf("GetInvites returned error: %v", err)
+	}
+	if len(invites) != 2 {
+		t.Fatalf("expected 2 invites, got %d", len(invites))
+	}
+}
+
+func TestGetInviteByID(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	created, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+
+	inv, err := repo.GetInviteByID(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetInviteByID returned error: %v", err)
+	}
+	if inv == nil {
+		t.Fatal("expected invite, got nil")
+	}
+	if inv.Name != "Alice" {
+		t.Fatalf("expected Alice, got %s", inv.Name)
+	}
+}
+
+func TestGetInviteByIDNotFound(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	inv, err := repo.GetInviteByID(ctx, 999)
+	if err != nil {
+		t.Fatalf("GetInviteByID returned error: %v", err)
+	}
+	if inv != nil {
+		t.Fatal("expected nil for missing id")
+	}
+}
+
+func TestGetInviteByCode(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	created, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+
+	inv, err := repo.GetInviteByCode(ctx, created.Code)
+	if err != nil {
+		t.Fatalf("GetInviteByCode returned error: %v", err)
+	}
+	if inv == nil {
+		t.Fatal("expected invite, got nil")
+	}
+	if inv.Name != "Alice" {
+		t.Fatalf("expected Alice, got %s", inv.Name)
+	}
+}
+
+func TestGetInviteByCodeNotFound(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	inv, err := repo.GetInviteByCode(ctx, "zzzzz")
+	if err != nil {
+		t.Fatalf("GetInviteByCode returned error: %v", err)
+	}
+	if inv != nil {
+		t.Fatal("expected nil for missing code")
+	}
+}
+
+func TestDeleteInvite(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+
+	deleted, err := repo.DeleteInvite(ctx, 1)
+	if err != nil {
+		t.Fatalf("DeleteInvite returned error: %v", err)
+	}
+	if !deleted {
+		t.Fatal("expected deleted=true")
+	}
+
+	invites, _ := repo.GetInvites(ctx)
+	if len(invites) != 0 {
+		t.Fatalf("expected 0 invites after delete, got %d", len(invites))
+	}
+}
+
+func TestDeleteInviteNotFound(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	deleted, err := repo.DeleteInvite(ctx, 999)
+	if err != nil {
+		t.Fatalf("DeleteInvite returned error: %v", err)
+	}
+	if deleted {
+		t.Fatal("expected deleted=false for missing invite")
+	}
+}
+
+func TestUpdateInviteRsvpID(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	created, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+
+	rsvpID := 42
+	err := repo.UpdateInviteRsvpID(ctx, created.ID, &rsvpID)
+	if err != nil {
+		t.Fatalf("UpdateInviteRsvpID returned error: %v", err)
+	}
+
+	inv, _ := repo.GetInviteByCode(ctx, created.Code)
+	if inv.RsvpID == nil || *inv.RsvpID != 42 {
+		t.Fatalf("expected rsvpId=42, got %v", inv.RsvpID)
+	}
+
+	// Clear rsvpID
+	err = repo.UpdateInviteRsvpID(ctx, created.ID, nil)
+	if err != nil {
+		t.Fatalf("UpdateInviteRsvpID (nil) returned error: %v", err)
+	}
+	inv, _ = repo.GetInviteByCode(ctx, created.Code)
+	if inv.RsvpID != nil {
+		t.Fatalf("expected nil rsvpId, got %v", inv.RsvpID)
+	}
+}
+
+func TestGetInviteByCode_PopulatesRsvp(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	gc := 2
+	rsvp, _ := repo.CreateRsvp(ctx, models.InsertRsvp{
+		Name: "Alice", Email: "a@a.com", AttendanceType: "both", GuestCount: &gc,
+	})
+
+	inv, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+	repo.UpdateInviteRsvpID(ctx, inv.ID, &rsvp.ID)
+
+	fetched, _ := repo.GetInviteByCode(ctx, inv.Code)
+	if fetched.Rsvp == nil {
+		t.Fatal("expected Rsvp to be populated")
+	}
+	if fetched.Rsvp.ID != rsvp.ID {
+		t.Fatalf("expected rsvp ID %d, got %d", rsvp.ID, fetched.Rsvp.ID)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Interface compliance — compile-time check
 // ---------------------------------------------------------------------------
 
