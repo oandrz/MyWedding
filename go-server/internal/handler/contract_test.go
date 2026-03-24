@@ -330,6 +330,16 @@ func assertConfigImageObject(t *testing.T, obj map[string]interface{}) {
 	assertKeyType(t, obj, "updatedAt", "string")
 }
 
+// assertInviteObject verifies the camelCase field contract for an invite object.
+func assertInviteObject(t *testing.T, obj map[string]interface{}) {
+	t.Helper()
+	assertKeyType(t, obj, "id", "float64")
+	assertKeyType(t, obj, "name", "string")
+	assertKeyType(t, obj, "code", "string")
+	assertNullableType(t, obj, "rsvpId", "float64")
+	assertKeyType(t, obj, "createdAt", "string")
+}
+
 // ===========================================================================
 // Contract Tests
 // ===========================================================================
@@ -1417,6 +1427,110 @@ func TestContract_WelcomeScreenAfterUpdate(t *testing.T) {
 // ===========================================================================
 // All errors follow: { "error": { "code": "...", "message": "...", "requestId": "..." } }
 
+// ---------------------------------------------------------------------------
+// Invite contract tests
+// ---------------------------------------------------------------------------
+
+func TestContract_InviteCreate(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invite := assertObject(t, result, "invite")
+	assertInviteObject(t, invite)
+	assertStringValue(t, invite, "name", "Alice")
+	// code should be a 5-char string
+	code := invite["code"].(string)
+	if len(code) != 5 {
+		t.Fatalf("expected 5-char code, got %q (len=%d)", code, len(code))
+	}
+}
+
+func TestContract_InviteList(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create two invites
+	for _, name := range []string{"Alice", "Bob"} {
+		body := jsonBody(map[string]interface{}{"name": name})
+		req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+		contractResponse(t, env, req, http.StatusCreated)
+	}
+
+	req := adminRequest(http.MethodGet, "/api/admin/invites", nil, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusOK)
+
+	invites := assertArray(t, result, "invites")
+	if len(invites) != 2 {
+		t.Fatalf("expected 2 invites, got %d", len(invites))
+	}
+	for _, item := range invites {
+		inv := item.(map[string]interface{})
+		assertInviteObject(t, inv)
+	}
+}
+
+func TestContract_InviteListEmpty(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	req := adminRequest(http.MethodGet, "/api/admin/invites", nil, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusOK)
+
+	invites := assertArray(t, result, "invites")
+	if len(invites) != 0 {
+		t.Fatalf("expected empty array, got %d items", len(invites))
+	}
+}
+
+func TestContract_InviteGetByCode(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create invite
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	code := createResult["invite"].(map[string]interface{})["code"].(string)
+
+	// Get by code (public route)
+	req2 := httptest.NewRequest(http.MethodGet, "/api/invites/"+code, nil)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := assertObject(t, result, "invite")
+	assertInviteObject(t, invite)
+	assertStringValue(t, invite, "name", "Alice")
+}
+
+func TestContract_InviteGetByCodeNotFound(t *testing.T) {
+	env := newTestEnv()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/invites/zzzzz", nil)
+	result := contractResponse(t, env, req, http.StatusNotFound)
+
+	assertKeyExists(t, result, "error")
+}
+
+func TestContract_InviteDelete(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create invite
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	// Delete
+	req2 := adminRequest(http.MethodDelete, fmt.Sprintf("/api/admin/invites/%d", inviteID), nil, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	assertKeyType(t, result, "message", "string")
+}
+
 func TestRespondError_Format(t *testing.T) {
 	env := newTestEnv()
 
@@ -1550,6 +1664,15 @@ func TestContract_NoCamelCaseViolations(t *testing.T) {
 	rec := httptest.NewRecorder()
 	env.handler.ServeHTTP(rec, approveReq)
 
+	// Create invite for camelCase check
+	invBody := jsonBody(map[string]interface{}{"name": "TestGuest"})
+	invReq := adminRequest(http.MethodPost, "/api/admin/invites", invBody, cookie, csrf)
+	invRec := httptest.NewRecorder()
+	env.handler.ServeHTTP(invRec, invReq)
+	var invResult map[string]interface{}
+	json.Unmarshal(invRec.Body.Bytes(), &invResult)
+	invCode := invResult["invite"].(map[string]interface{})["code"].(string)
+
 	endpoints := []struct {
 		method string
 		path   string
@@ -1569,6 +1692,8 @@ func TestContract_NoCamelCaseViolations(t *testing.T) {
 		{http.MethodGet, "/api/welcome-screen", false},
 		{http.MethodGet, "/api/config-images", false},
 		{http.MethodGet, "/api/config-images/hero", false},
+		{http.MethodGet, "/api/invites/" + invCode, false},
+		{http.MethodGet, "/api/admin/invites", true},
 	}
 
 	for _, ep := range endpoints {

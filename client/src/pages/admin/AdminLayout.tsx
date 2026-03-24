@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Switch, Route, Redirect, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3 } from "lucide-react";
+import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3, TicketCheck } from "lucide-react";
 import { AdminContext } from "./AdminContext";
 import RsvpPage from "./RsvpPage";
 import MessagesPage from "./MessagesPage";
@@ -10,9 +10,11 @@ import ConfigPage from "./ConfigPage";
 import WelcomePage from "./WelcomePage";
 import FlagsPage from "./FlagsPage";
 import StatsPage from "./StatsPage";
+import InvitesPage from "./InvitesPage";
 
 const NAV_ITEMS = [
   { path: "/rsvps", label: "RSVP", icon: Users },
+  { path: "/invites", label: "Invites", icon: TicketCheck },
   { path: "/messages", label: "Messages", icon: MessageSquare },
   { path: "/config", label: "Configuration", icon: Settings },
   { path: "/welcome", label: "Welcome", icon: Mail },
@@ -143,6 +145,7 @@ export function AdminLayout() {
                 <Redirect to="/rsvps" replace />
               </Route>
               <Route path="/rsvps" component={RsvpPage} />
+              <Route path="/invites" component={InvitesPage} />
               <Route path="/messages" component={MessagesPage} />
               <Route path="/config" component={ConfigPage} />
               <Route path="/welcome" component={WelcomePage} />

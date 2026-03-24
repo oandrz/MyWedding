@@ -21,11 +21,34 @@ const WelcomeOverlay = () => {
 
   const isAdminPage = location.includes('/admin');
 
+  // Read URL params once on mount
+  const [inviteCode, setInviteCode] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get("code");
+      if (code) setInviteCode(code);
+    }
+  }, []);
+
   // Fetch welcome screen configuration
   const { data } = useQuery<{ welcomeScreen: WelcomeScreen }>({
     queryKey: ["/api/welcome-screen"],
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
     enabled: !isAdminPage,
+  });
+
+  // Fetch invite details when code param is present
+  const { data: inviteData } = useQuery<{ invite: { name: string } }>({
+    queryKey: ["/api/invites", inviteCode],
+    queryFn: async () => {
+      const response = await fetch(`/api/invites/${encodeURIComponent(inviteCode)}`);
+      if (!response.ok) throw new Error("Invalid invite code");
+      return response.json();
+    },
+    enabled: !!inviteCode,
+    staleTime: 10 * 60 * 1000,
   });
 
   const welcomeScreen = data?.welcomeScreen;
@@ -49,14 +72,21 @@ const WelcomeOverlay = () => {
 
     // Only show overlay if it's enabled
     if (welcomeScreen && welcomeScreen.enabled) {
-      // Extract guest name from URL parameter
+      // Extract guest name from URL parameter or invite data
       const urlParams = new URLSearchParams(window.location.search);
       const toParam = urlParams.get("to");
 
-      if (toParam) {
+      if (inviteData?.invite?.name) {
+        setGuestName(inviteData.invite.name);
+      } else if (toParam) {
         setGuestName(decodeURIComponent(toParam));
       } else {
         setGuestName(welcomeScreen.fallbackName);
+      }
+
+      // If we have a code but invite hasn't loaded yet, wait
+      if (inviteCode && !inviteData) {
+        return;
       }
 
       setIsOpen(true);
@@ -64,7 +94,7 @@ const WelcomeOverlay = () => {
       // Lock body scroll while overlay is open
       document.body.style.overflow = "hidden";
     }
-  }, [welcomeScreen, isAdminPage]);
+  }, [welcomeScreen, isAdminPage, inviteData, inviteCode]);
 
   const handleOpen = () => {
     setIsOpen(false);
