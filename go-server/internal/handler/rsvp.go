@@ -33,14 +33,8 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check feature flag
-	useInviteCode := false
-	flag, _ := h.Repo.GetFeatureFlag(r.Context(), "invite_code_rsvp")
-	if flag != nil && flag.Enabled {
-		useInviteCode = true
-	}
-
-	if useInviteCode {
+	// Route based on request body: code present → invite code flow, otherwise → email flow
+	if body.Code != "" {
 		h.createWithCode(w, r, body)
 	} else {
 		h.createWithEmail(w, r, body)

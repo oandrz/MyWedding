@@ -43,11 +43,14 @@ const RsvpSection = () => {
   const isFormInView = useInView(formRef, { once: true, amount: 0.3 });
 
   const { toast } = useToast();
-  const { isFeatureEnabled, isLoading: isFlagsLoading } = useFeatureFlags();
-  const useInviteCode = isFeatureEnabled("invite_code_rsvp");
+  const { getFeatureFlag, isLoading: isFlagsLoading } = useFeatureFlags();
+  const rsvpEnabled = getFeatureFlag("rsvp")?.enabled === true;
+
+  // Flow determined by URL param: ?code= → code flow, otherwise → email flow
+  const useCodeFlow = !!inviteCode;
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EmailRsvpFormValues>({
-    resolver: zodResolver(useInviteCode ? codeRsvpSchema as any : emailRsvpSchema),
+    resolver: zodResolver(useCodeFlow ? codeRsvpSchema as any : emailRsvpSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -81,7 +84,7 @@ const RsvpSection = () => {
       if (!response.ok) throw new Error("Invalid invite code");
       return response.json();
     },
-    enabled: useInviteCode && !!inviteCode,
+    enabled: !!inviteCode,
   });
 
   // Set guest name from invite when loaded
@@ -92,7 +95,7 @@ const RsvpSection = () => {
   }, [inviteData]);
 
   // Check if this guest has already submitted an RSVP (code flow: use invite's rsvp; email flow: check by name)
-  const inviteHasRsvp = useInviteCode && inviteData?.invite?.rsvp;
+  const inviteHasRsvp = useCodeFlow && inviteData?.invite?.rsvp;
 
   const { data: rsvpCheck, isLoading: isCheckingRsvp } = useQuery<{ exists: boolean; rsvp: any }>({
     queryKey: ['/api/rsvp/check', guestName],
@@ -101,7 +104,7 @@ const RsvpSection = () => {
       const response = await fetch(`/api/rsvp/check?name=${encodeURIComponent(guestName)}`);
       return response.json();
     },
-    enabled: !useInviteCode && !!guestName,
+    enabled: !useCodeFlow && !!guestName,
   });
 
   const handleAttendanceChange = (type: "both" | "holy_matrimony" | "reception" | "decline") => {
@@ -118,7 +121,7 @@ const RsvpSection = () => {
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: RsvpFormValues) => {
       let payload: Record<string, unknown>;
-      if (useInviteCode) {
+      if (useCodeFlow) {
         payload = {
           code: inviteCode,
           attendanceType: data.attendanceType,
@@ -135,7 +138,7 @@ const RsvpSection = () => {
       setIsSubmitted(true);
 
       // Invalidate relevant queries so UI updates correctly
-      if (useInviteCode) {
+      if (useCodeFlow) {
         queryClient.invalidateQueries({ queryKey: ['/api/invites', inviteCode] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['/api/rsvp/check', guestName] });
@@ -193,6 +196,11 @@ const RsvpSection = () => {
     mutate(data);
   };
   
+  // Feature flag controls visibility of the entire RSVP section
+  if (!isFlagsLoading && !rsvpEnabled) {
+    return null;
+  }
+
   return (
     <section id="rsvp" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
@@ -228,21 +236,13 @@ const RsvpSection = () => {
           initial="hidden"
           animate={isFormInView ? "visible" : "hidden"}
         >
-          {/* Invite code flow: loading or missing code states */}
-          {useInviteCode && !inviteCode ? (
-            <div className="text-center py-8">
-              <i className="fas fa-envelope-open text-primary text-4xl mb-4 block"></i>
-              <h3 className="text-2xl font-cormorant text-foreground mb-3">Invite Code Required</h3>
-              <p className="text-muted-foreground font-montserrat">
-                Please use the personalized link from your invitation to RSVP.
-              </p>
-            </div>
-          ) : useInviteCode && isLoadingInvite ? (
+          {/* Invite code flow: loading or error states */}
+          {useCodeFlow && isLoadingInvite ? (
             <div className="text-center py-8">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-muted-foreground font-montserrat">Looking up your invitation...</p>
             </div>
-          ) : useInviteCode && inviteError ? (
+          ) : useCodeFlow && inviteError ? (
             <div className="text-center py-8">
               <i className="fas fa-exclamation-circle text-red-400 text-4xl mb-4 block"></i>
               <h3 className="text-2xl font-cormorant text-foreground mb-3">Invalid Invite Code</h3>
@@ -250,7 +250,7 @@ const RsvpSection = () => {
                 The invite code in your link is not valid. Please check your invitation and try again.
               </p>
             </div>
-          ) : (isFlagsLoading || isCheckingRsvp || (useInviteCode && isLoadingInvite)) ? (
+          ) : (isCheckingRsvp || (useCodeFlow && isLoadingInvite)) ? (
             <div className="text-center py-8">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-muted-foreground font-montserrat">Checking your RSVP status...</p>
@@ -293,7 +293,7 @@ const RsvpSection = () => {
               variants={fadeIn}
             >
               {/* Personalized greeting for invite code flow */}
-              {useInviteCode && inviteData?.invite && (
+              {useCodeFlow && inviteData?.invite && (
                 <div className="text-center pb-2">
                   <p className="text-lg font-cormorant text-foreground">
                     Dear <span className="font-semibold">{inviteData.invite.name}</span>,
@@ -305,7 +305,7 @@ const RsvpSection = () => {
               )}
 
               {/* Name & Email fields — only for email-based flow */}
-              {!useInviteCode && (
+              {!useCodeFlow && (
                 <>
                   {/* Name Field */}
                   <div>
