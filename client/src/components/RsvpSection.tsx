@@ -31,6 +31,7 @@ type RsvpFormValues = EmailRsvpFormValues | CodeRsvpFormValues;
 
 const RsvpSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [showGuestOptions, setShowGuestOptions] = useState(true);
   const [guestName, setGuestName] = useState<string>("");
   const [inviteCode, setInviteCode] = useState<string>("");
@@ -136,6 +137,7 @@ const RsvpSection = () => {
     },
     onSuccess: (data) => {
       setIsSubmitted(true);
+      setIsEditing(false);
 
       // Invalidate relevant queries so UI updates correctly
       if (useCodeFlow) {
@@ -255,8 +257,8 @@ const RsvpSection = () => {
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-muted-foreground font-montserrat">Checking your RSVP status...</p>
             </div>
-          ) : (rsvpCheck?.exists || inviteHasRsvp) ? (
-            <motion.div 
+          ) : ((rsvpCheck?.exists || inviteHasRsvp) && !isEditing) ? (
+            <motion.div
               className="p-8 text-center rounded-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -285,6 +287,25 @@ const RsvpSection = () => {
                   return "We've already received your RSVP.";
                 })()}
               </p>
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                onClick={() => {
+                  const existingRsvp = inviteHasRsvp ? inviteData.invite.rsvp : rsvpCheck?.rsvp;
+                  if (existingRsvp) {
+                    setValue("attendanceType", existingRsvp.attendanceType || "both");
+                    const gc = existingRsvp.guestCount ?? 1;
+                    setValue("guestCount", gc);
+                    setShowGuestOptions(existingRsvp.attendanceType !== "decline");
+                  }
+                  setIsEditing(true);
+                  setIsSubmitted(false);
+                }}
+                className="mt-6 px-6 py-2 border border-primary/40 text-primary font-montserrat text-sm rounded-full hover:bg-primary/5 transition-all duration-200"
+              >
+                Update RSVP
+              </motion.button>
             </motion.div>
           ) : !isSubmitted ? (
             <motion.form
@@ -396,7 +417,7 @@ const RsvpSection = () => {
                   disabled={isPending}
                   data-testid="button-submit-rsvp"
                 >
-                  {isPending ? "Sending..." : "Send RSVP"}
+                  {isPending ? "Sending..." : isEditing ? "Update RSVP" : "Send RSVP"}
                 </motion.button>
               </div>
             </motion.form>
