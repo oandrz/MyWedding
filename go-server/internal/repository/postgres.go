@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -758,4 +759,160 @@ func (r *PostgresRepository) DeleteMessage(ctx context.Context, id int) (bool, e
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+// ---------------------------------------------------------------------------
+// Invites
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) CreateInvite(ctx context.Context, data models.InsertInvite) (*models.Invite, error) {
+	for attempt := 0; attempt < 3; attempt++ {
+		code := models.GenerateInviteCode()
+		var inv models.Invite
+		var createdAt time.Time
+		err := r.pool.QueryRow(ctx,
+			`INSERT INTO invites (name, code)
+			 VALUES ($1, $2)
+			 RETURNING id, name, code, rsvp_id, created_at`,
+			data.Name, code,
+		).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt)
+		if err != nil {
+			if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+				continue
+			}
+			return nil, err
+		}
+		inv.CreatedAt = createdAt.Format(time.RFC3339)
+		return &inv, nil
+	}
+	return nil, fmt.Errorf("failed to generate unique invite code after 3 attempts")
+}
+
+func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,
+		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
+		 FROM invites i
+		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
+		 ORDER BY i.created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.Invite, 0)
+	for rows.Next() {
+		var inv models.Invite
+		var createdAt time.Time
+		var rsvpID, rsvpGuestCount *int
+		var rsvpName, rsvpEmail, rsvpAttendanceType *string
+
+		if err := rows.Scan(
+			&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt,
+			&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
+		); err != nil {
+			return nil, err
+		}
+		inv.CreatedAt = createdAt.Format(time.RFC3339)
+
+		if rsvpID != nil {
+			inv.Rsvp = &models.Rsvp{
+				ID:             *rsvpID,
+				Name:           *rsvpName,
+				Email:          *rsvpEmail,
+				AttendanceType: *rsvpAttendanceType,
+				GuestCount:     rsvpGuestCount,
+			}
+		}
+		result = append(result, inv)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) GetInviteByID(ctx context.Context, id int) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var rsvpID, rsvpGuestCount *int
+	var rsvpName, rsvpEmail, rsvpAttendanceType *string
+
+	err := r.pool.QueryRow(ctx,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,
+		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
+		 FROM invites i
+		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
+		 WHERE i.id = $1`, id,
+	).Scan(
+		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt,
+		&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+
+	if rsvpID != nil {
+		inv.Rsvp = &models.Rsvp{
+			ID:             *rsvpID,
+			Name:           *rsvpName,
+			Email:          *rsvpEmail,
+			AttendanceType: *rsvpAttendanceType,
+			GuestCount:     rsvpGuestCount,
+		}
+	}
+	return &inv, nil
+}
+
+func (r *PostgresRepository) GetInviteByCode(ctx context.Context, code string) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var rsvpID, rsvpGuestCount *int
+	var rsvpName, rsvpEmail, rsvpAttendanceType *string
+
+	err := r.pool.QueryRow(ctx,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,
+		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
+		 FROM invites i
+		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
+		 WHERE i.code = $1`, code,
+	).Scan(
+		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt,
+		&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+
+	if rsvpID != nil {
+		inv.Rsvp = &models.Rsvp{
+			ID:             *rsvpID,
+			Name:           *rsvpName,
+			Email:          *rsvpEmail,
+			AttendanceType: *rsvpAttendanceType,
+			GuestCount:     rsvpGuestCount,
+		}
+	}
+	return &inv, nil
+}
+
+func (r *PostgresRepository) DeleteInvite(ctx context.Context, id int) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM invites WHERE id = $1`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *PostgresRepository) UpdateInviteRsvpID(ctx context.Context, inviteID int, rsvpID *int) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE invites SET rsvp_id = $1 WHERE id = $2`,
+		rsvpID, inviteID,
+	)
+	return err
 }

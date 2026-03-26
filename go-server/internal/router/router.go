@@ -49,6 +49,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	featureFlag := &handler.FeatureFlagHandler{Repo: repo, Cache: cache}
 	appSetting := &handler.AppSettingHandler{Repo: repo}
 	welcomeScreen := &handler.WelcomeScreenHandler{Repo: repo, Sanitizer: sanitizer}
+	invite := &handler.InviteHandler{Repo: repo, Sanitizer: sanitizer}
 
 	// Health check
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +97,8 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	r.Get("/api/settings/{settingKey}", appSetting.Get)
 
 	r.Get("/api/welcome-screen", welcomeScreen.Get)
+
+	r.Get("/api/invites/{code}", invite.GetByCode)
 
 	// File upload routes (if storage is configured)
 	var upload *handler.UploadHandler
@@ -163,6 +166,10 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 
 			r.Delete("/rsvp/{id}", rsvp.Delete)
 			r.Delete("/messages/{id}", message.Delete)
+
+			r.Post("/invites", invite.Create)
+			r.Get("/invites", invite.List)
+			r.Delete("/invites/{id}", invite.Delete)
 		})
 	})
 

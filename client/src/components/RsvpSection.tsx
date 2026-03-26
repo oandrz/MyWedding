@@ -7,35 +7,51 @@ import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import confetti from "canvas-confetti";
 
-// Extended schema with validation
-const rsvpSchema = z.object({
+// Schema for email-based RSVP (flag off)
+const emailRsvpSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
   attendanceType: z.enum(["both", "holy_matrimony", "reception", "decline"]),
   guestCount: z.number().optional()
 });
 
-type RsvpFormValues = z.infer<typeof rsvpSchema>;
+// Schema for code-based RSVP (flag on) — no email needed
+const codeRsvpSchema = z.object({
+  attendanceType: z.enum(["both", "holy_matrimony", "reception", "decline"]),
+  guestCount: z.number().optional()
+});
+
+type EmailRsvpFormValues = z.infer<typeof emailRsvpSchema>;
+type CodeRsvpFormValues = z.infer<typeof codeRsvpSchema>;
+type RsvpFormValues = EmailRsvpFormValues | CodeRsvpFormValues;
 
 const RsvpSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [showGuestOptions, setShowGuestOptions] = useState(true);
   const [guestName, setGuestName] = useState<string>("");
+  const [inviteCode, setInviteCode] = useState<string>("");
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const formRef = useRef(null);
-  
+
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
   const isFormInView = useInView(formRef, { once: true, amount: 0.3 });
-  
+
   const { toast } = useToast();
-  
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<RsvpFormValues>({
-    resolver: zodResolver(rsvpSchema),
+  const { getFeatureFlag, isLoading: isFlagsLoading } = useFeatureFlags();
+  const rsvpEnabled = getFeatureFlag("rsvp")?.enabled === true;
+
+  // Flow determined by URL param: ?code= → code flow, otherwise → email flow
+  const useCodeFlow = !!inviteCode;
+
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EmailRsvpFormValues>({
+    resolver: zodResolver(useCodeFlow ? codeRsvpSchema as any : emailRsvpSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -44,21 +60,44 @@ const RsvpSection = () => {
     }
   });
 
-  // Get guest name from URL param on mount and pre-fill form
+  // Get guest name or invite code from URL params on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
+      const codeParam = urlParams.get("code");
+      if (codeParam) {
+        setInviteCode(codeParam);
+      }
       const toParam = urlParams.get("to");
       if (toParam) {
         const decodedName = decodeURIComponent(toParam);
         setGuestName(decodedName);
-        // Pre-fill the form name field to prevent typos
         setValue("name", decodedName);
       }
     }
   }, [setValue]);
-  
-  // Check if this guest has already submitted an RSVP
+
+  // Fetch invite details when using invite code flow
+  const { data: inviteData, isLoading: isLoadingInvite, error: inviteError } = useQuery<{ invite: any }>({
+    queryKey: ['/api/invites', inviteCode],
+    queryFn: async () => {
+      const response = await fetch(`/api/invites/${encodeURIComponent(inviteCode)}`);
+      if (!response.ok) throw new Error("Invalid invite code");
+      return response.json();
+    },
+    enabled: !!inviteCode,
+  });
+
+  // Set guest name from invite when loaded
+  useEffect(() => {
+    if (inviteData?.invite?.name) {
+      setGuestName(inviteData.invite.name);
+    }
+  }, [inviteData]);
+
+  // Check if this guest has already submitted an RSVP (code flow: use invite's rsvp; email flow: check by name)
+  const inviteHasRsvp = useCodeFlow && inviteData?.invite?.rsvp;
+
   const { data: rsvpCheck, isLoading: isCheckingRsvp } = useQuery<{ exists: boolean; rsvp: any }>({
     queryKey: ['/api/rsvp/check', guestName],
     queryFn: async () => {
@@ -66,7 +105,7 @@ const RsvpSection = () => {
       const response = await fetch(`/api/rsvp/check?name=${encodeURIComponent(guestName)}`);
       return response.json();
     },
-    enabled: !!guestName,
+    enabled: !useCodeFlow && !!guestName,
   });
 
   const handleAttendanceChange = (type: "both" | "holy_matrimony" | "reception" | "decline") => {
@@ -82,15 +121,30 @@ const RsvpSection = () => {
   
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: RsvpFormValues) => {
-      const response = await apiRequest("POST", "/api/rsvp", data);
+      let payload: Record<string, unknown>;
+      if (useCodeFlow) {
+        payload = {
+          code: inviteCode,
+          attendanceType: data.attendanceType,
+          guestCount: data.guestCount,
+        };
+      } else {
+        payload = data;
+      }
+      const response = await apiRequest("POST", "/api/rsvp", payload);
       const responseData = await response.json();
       return responseData;
     },
     onSuccess: (data) => {
       setIsSubmitted(true);
-      
-      // Invalidate RSVP check query so UI updates correctly
-      queryClient.invalidateQueries({ queryKey: ['/api/rsvp/check', guestName] });
+      setIsEditing(false);
+
+      // Invalidate relevant queries so UI updates correctly
+      if (useCodeFlow) {
+        queryClient.invalidateQueries({ queryKey: ['/api/invites', inviteCode] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/rsvp/check', guestName] });
+      }
       
       // Only fire confetti for attending guests
       if (data.rsvp?.attendanceType !== "decline") {
@@ -144,6 +198,11 @@ const RsvpSection = () => {
     mutate(data);
   };
   
+  // Feature flag controls visibility of the entire RSVP section
+  if (!isFlagsLoading && !rsvpEnabled) {
+    return null;
+  }
+
   return (
     <section id="rsvp" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture" ref={sectionRef}>
       <div className="container mx-auto px-4">
@@ -179,13 +238,27 @@ const RsvpSection = () => {
           initial="hidden"
           animate={isFormInView ? "visible" : "hidden"}
         >
-          {isCheckingRsvp ? (
+          {/* Invite code flow: loading or error states */}
+          {useCodeFlow && isLoadingInvite ? (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground font-montserrat">Looking up your invitation...</p>
+            </div>
+          ) : useCodeFlow && inviteError ? (
+            <div className="text-center py-8">
+              <i className="fas fa-exclamation-circle text-red-400 text-4xl mb-4 block"></i>
+              <h3 className="text-2xl font-cormorant text-foreground mb-3">Invalid Invite Code</h3>
+              <p className="text-muted-foreground font-montserrat">
+                The invite code in your link is not valid. Please check your invitation and try again.
+              </p>
+            </div>
+          ) : (isCheckingRsvp || (useCodeFlow && isLoadingInvite)) ? (
             <div className="text-center py-8">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-muted-foreground font-montserrat">Checking your RSVP status...</p>
             </div>
-          ) : rsvpCheck?.exists ? (
-            <motion.div 
+          ) : ((rsvpCheck?.exists || inviteHasRsvp) && !isEditing) ? (
+            <motion.div
               className="p-8 text-center rounded-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -199,52 +272,91 @@ const RsvpSection = () => {
               >
                 <i className="fas fa-heart text-primary text-4xl"></i>
               </motion.div>
-              <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You!</h3>
+              <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You{guestName ? `, ${guestName}` : ""}!</h3>
               <p className="text-foreground font-montserrat">
-                {rsvpCheck.rsvp?.attendanceType && rsvpCheck.rsvp.attendanceType !== "decline"
-                  ? `We've received your RSVP for the ${
-                      rsvpCheck.rsvp.attendanceType === "both"
-                        ? "Holy Matrimony and Reception"
-                        : rsvpCheck.rsvp.attendanceType === "holy_matrimony"
-                        ? "Holy Matrimony"
-                        : "Reception"
-                    } and look forward to celebrating with you.`
-                  : "We've already received your RSVP."}
+                {(() => {
+                  const existingRsvp = inviteHasRsvp ? inviteData.invite.rsvp : rsvpCheck?.rsvp;
+                  if (existingRsvp?.attendanceType && existingRsvp.attendanceType !== "decline") {
+                    const eventLabel = existingRsvp.attendanceType === "both"
+                      ? "Holy Matrimony and Reception"
+                      : existingRsvp.attendanceType === "holy_matrimony"
+                      ? "Holy Matrimony"
+                      : "Reception";
+                    return `We've received your RSVP for the ${eventLabel} and look forward to celebrating with you.`;
+                  }
+                  return "We've already received your RSVP.";
+                })()}
               </p>
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                onClick={() => {
+                  const existingRsvp = inviteHasRsvp ? inviteData.invite.rsvp : rsvpCheck?.rsvp;
+                  if (existingRsvp) {
+                    setValue("attendanceType", existingRsvp.attendanceType || "both");
+                    const gc = existingRsvp.guestCount ?? 1;
+                    setValue("guestCount", gc);
+                    setShowGuestOptions(existingRsvp.attendanceType !== "decline");
+                  }
+                  setIsEditing(true);
+                  setIsSubmitted(false);
+                }}
+                className="mt-6 px-6 py-2 border border-primary/40 text-primary font-montserrat text-sm rounded-full hover:bg-primary/5 transition-all duration-200"
+              >
+                Update RSVP
+              </motion.button>
             </motion.div>
           ) : !isSubmitted ? (
-            <motion.form 
+            <motion.form
               className="space-y-6"
               onSubmit={handleSubmit(onSubmit)}
               variants={fadeIn}
             >
-              {/* Name Field */}
-              <div>
-                <label htmlFor="name" className="block text-foreground font-montserrat text-sm mb-2">Name</label>
-                <input 
-                  type="text" 
-                  id="name" 
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                  {...register("name")}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
-                )}
-              </div>
-              
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="block text-foreground font-montserrat text-sm mb-2">Email</label>
-                <input 
-                  type="email" 
-                  id="email" 
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
-                )}
-              </div>
+              {/* Personalized greeting for invite code flow */}
+              {useCodeFlow && inviteData?.invite && (
+                <div className="text-center pb-2">
+                  <p className="text-lg font-cormorant text-foreground">
+                    Dear <span className="font-semibold">{inviteData.invite.name}</span>,
+                  </p>
+                  <p className="text-sm text-muted-foreground font-montserrat mt-1">
+                    Please confirm your attendance below
+                  </p>
+                </div>
+              )}
+
+              {/* Name & Email fields — only for email-based flow */}
+              {!useCodeFlow && (
+                <>
+                  {/* Name Field */}
+                  <div>
+                    <label htmlFor="name" className="block text-foreground font-montserrat text-sm mb-2">Name</label>
+                    <input
+                      type="text"
+                      id="name"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
+                      {...register("name")}
+                    />
+                    {errors.name && (
+                      <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label htmlFor="email" className="block text-foreground font-montserrat text-sm mb-2">Email</label>
+                    <input
+                      type="email"
+                      id="email"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
+                      {...register("email")}
+                    />
+                    {errors.email && (
+                      <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+                    )}
+                  </div>
+                </>
+              )}
               
               {/* Attendance Type */}
               <div>
@@ -305,7 +417,7 @@ const RsvpSection = () => {
                   disabled={isPending}
                   data-testid="button-submit-rsvp"
                 >
-                  {isPending ? "Sending..." : "Send RSVP"}
+                  {isPending ? "Sending..." : isEditing ? "Update RSVP" : "Send RSVP"}
                 </motion.button>
               </div>
             </motion.form>

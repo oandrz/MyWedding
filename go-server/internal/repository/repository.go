@@ -62,4 +62,12 @@ type Repository interface {
 	GetAllMessages(ctx context.Context) ([]models.Message, error)
 	GetMessagesPaginated(ctx context.Context, limit, offset int) ([]models.Message, int, error)
 	DeleteMessage(ctx context.Context, id int) (bool, error)
+
+	// Invites
+	CreateInvite(ctx context.Context, data models.InsertInvite) (*models.Invite, error)
+	GetInvites(ctx context.Context) ([]models.Invite, error)
+	GetInviteByID(ctx context.Context, id int) (*models.Invite, error)
+	GetInviteByCode(ctx context.Context, code string) (*models.Invite, error)
+	DeleteInvite(ctx context.Context, id int) (bool, error)
+	UpdateInviteRsvpID(ctx context.Context, inviteID int, rsvpID *int) error
 }

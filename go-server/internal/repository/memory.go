@@ -29,6 +29,8 @@ type MemoryRepository struct {
 	welcomeScreen *models.WelcomeScreen
 	messages      map[int]models.Message
 	messageIDSeq  int
+	invites       map[int]models.Invite
+	inviteIDSeq   int
 }
 
 // NewMemoryRepository creates a new in-memory repository with empty collections.
@@ -41,6 +43,7 @@ func NewMemoryRepository() *MemoryRepository {
 		featureFlags: make(map[int]models.FeatureFlag),
 		appSettings:  make(map[int]models.AppSetting),
 		messages:     make(map[int]models.Message),
+		invites:      make(map[int]models.Invite),
 	}
 }
 
@@ -661,4 +664,107 @@ func (m *MemoryRepository) DeleteMessage(_ context.Context, id int) (bool, error
 	}
 	delete(m.messages, id)
 	return true, nil
+}
+
+// ---------------------------------------------------------------------------
+// Invites
+// ---------------------------------------------------------------------------
+
+func (m *MemoryRepository) CreateInvite(_ context.Context, data models.InsertInvite) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.inviteIDSeq++
+
+	// Generate unique code (retry on collision)
+	var code string
+	for i := 0; i < 5; i++ {
+		code = models.GenerateInviteCode()
+		collision := false
+		for _, existing := range m.invites {
+			if existing.Code == code {
+				collision = true
+				break
+			}
+		}
+		if !collision {
+			break
+		}
+	}
+
+	inv := models.Invite{
+		ID:        m.inviteIDSeq,
+		Name:      data.Name,
+		Code:      code,
+		CreatedAt: now(),
+	}
+	m.invites[inv.ID] = inv
+	return &inv, nil
+}
+
+func (m *MemoryRepository) GetInvites(_ context.Context) ([]models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]models.Invite, 0, len(m.invites))
+	for _, inv := range m.invites {
+		if inv.RsvpID != nil {
+			if r, ok := m.rsvps[*inv.RsvpID]; ok {
+				inv.Rsvp = &r
+			}
+		}
+		result = append(result, inv)
+	}
+	return result, nil
+}
+
+func (m *MemoryRepository) GetInviteByID(_ context.Context, id int) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[id]
+	if !ok {
+		return nil, nil
+	}
+	if inv.RsvpID != nil {
+		if r, ok := m.rsvps[*inv.RsvpID]; ok {
+			inv.Rsvp = &r
+		}
+	}
+	return &inv, nil
+}
+
+func (m *MemoryRepository) GetInviteByCode(_ context.Context, code string) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, inv := range m.invites {
+		if inv.Code == code {
+			if inv.RsvpID != nil {
+				if r, ok := m.rsvps[*inv.RsvpID]; ok {
+					inv.Rsvp = &r
+				}
+			}
+			return &inv, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MemoryRepository) DeleteInvite(_ context.Context, id int) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.invites[id]; !ok {
+		return false, nil
+	}
+	delete(m.invites, id)
+	return true, nil
+}
+
+func (m *MemoryRepository) UpdateInviteRsvpID(_ context.Context, inviteID int, rsvpID *int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[inviteID]
+	if !ok {
+		return nil
+	}
+	inv.RsvpID = rsvpID
+	m.invites[inviteID] = inv
+	return nil
 }

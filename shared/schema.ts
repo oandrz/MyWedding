@@ -114,6 +114,18 @@ export const welcomeScreen = pgTable("welcome_screen", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
 });
 
+export const invites = pgTable("invites", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  rsvpId: integer("rsvp_id"),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull()
+});
+
+export const insertInviteSchema = createInsertSchema(invites).pick({
+  name: true,
+});
+
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -151,5 +163,7 @@ export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertWelcomeScreen = z.infer<typeof insertWelcomeScreenSchema>;
 export type WelcomeScreen = typeof welcomeScreen.$inferSelect;
+export type InsertInvite = z.infer<typeof insertInviteSchema>;
+export type Invite = typeof invites.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;

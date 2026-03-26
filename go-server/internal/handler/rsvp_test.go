@@ -1,10 +1,13 @@
 package handler_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/andreasronaldo/wedding-server/internal/models"
 )
 
 func TestRsvp_Create_WithAttendanceType(t *testing.T) {
@@ -160,4 +163,127 @@ func TestRsvp_MalformedJSON_Returns400(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", strings.NewReader("{invalid json"))
 	req.Header.Set("Content-Type", "application/json")
 	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+// ---------------------------------------------------------------------------
+// Code-based RSVP tests (invite_code_rsvp feature flag)
+// ---------------------------------------------------------------------------
+
+func TestRsvp_Create_WithInviteCode(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	enabled := true
+	env.repo.CreateFeatureFlag(context.Background(), models.InsertFeatureFlag{
+		FeatureKey: "invite_code_rsvp", FeatureName: "Invite Code RSVP", Enabled: &enabled,
+	})
+
+	// Create an invite
+	invBody := jsonBody(map[string]interface{}{"name": "Alice"})
+	invReq := adminRequest(http.MethodPost, "/api/admin/invites", invBody, cookie, csrf)
+	invResult := contractResponse(t, env, invReq, http.StatusCreated)
+	code := invResult["invite"].(map[string]interface{})["code"].(string)
+
+	// Submit RSVP with code
+	body := jsonBody(map[string]interface{}{
+		"code": code, "attendanceType": "both", "guestCount": 2,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+	req.Header.Set("Content-Type", "application/json")
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	rsvp := result["rsvp"].(map[string]interface{})
+	if rsvp["name"] != "Alice" {
+		t.Fatalf("expected name=Alice, got %v", rsvp["name"])
+	}
+	if rsvp["attendanceType"] != "both" {
+		t.Fatalf("expected attendanceType=both, got %v", rsvp["attendanceType"])
+	}
+}
+
+func TestRsvp_Create_WithInviteCode_Update(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	enabled := true
+	env.repo.CreateFeatureFlag(context.Background(), models.InsertFeatureFlag{
+		FeatureKey: "invite_code_rsvp", FeatureName: "Invite Code RSVP", Enabled: &enabled,
+	})
+
+	// Create invite
+	invBody := jsonBody(map[string]interface{}{"name": "Alice"})
+	invReq := adminRequest(http.MethodPost, "/api/admin/invites", invBody, cookie, csrf)
+	invResult := contractResponse(t, env, invReq, http.StatusCreated)
+	code := invResult["invite"].(map[string]interface{})["code"].(string)
+
+	// First RSVP
+	body1 := jsonBody(map[string]interface{}{
+		"code": code, "attendanceType": "both", "guestCount": 2,
+	})
+	req1 := httptest.NewRequest(http.MethodPost, "/api/rsvp", body1)
+	req1.Header.Set("Content-Type", "application/json")
+	contractResponse(t, env, req1, http.StatusCreated)
+
+	// Update RSVP with same code
+	body2 := jsonBody(map[string]interface{}{
+		"code": code, "attendanceType": "reception", "guestCount": 1,
+	})
+	req2 := httptest.NewRequest(http.MethodPost, "/api/rsvp", body2)
+	req2.Header.Set("Content-Type", "application/json")
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	rsvp := result["rsvp"].(map[string]interface{})
+	if rsvp["attendanceType"] != "reception" {
+		t.Fatalf("expected updated attendanceType=reception, got %v", rsvp["attendanceType"])
+	}
+}
+
+func TestRsvp_Create_WithInviteCode_InvalidCode(t *testing.T) {
+	env := newTestEnv()
+
+	enabled := true
+	env.repo.CreateFeatureFlag(context.Background(), models.InsertFeatureFlag{
+		FeatureKey: "invite_code_rsvp", FeatureName: "Invite Code RSVP", Enabled: &enabled,
+	})
+
+	body := jsonBody(map[string]interface{}{
+		"code": "zzzzz", "attendanceType": "both",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+	req.Header.Set("Content-Type", "application/json")
+	contractResponse(t, env, req, http.StatusNotFound)
+}
+
+func TestRsvp_Create_WithInviteCode_NoCode(t *testing.T) {
+	env := newTestEnv()
+
+	enabled := true
+	env.repo.CreateFeatureFlag(context.Background(), models.InsertFeatureFlag{
+		FeatureKey: "invite_code_rsvp", FeatureName: "Invite Code RSVP", Enabled: &enabled,
+	})
+
+	body := jsonBody(map[string]interface{}{
+		"attendanceType": "both",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+	req.Header.Set("Content-Type", "application/json")
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestRsvp_Create_FlagOff_StillUsesEmail(t *testing.T) {
+	env := newTestEnv()
+
+	// Flag off (default) — email-based flow should work
+	body := jsonBody(map[string]interface{}{
+		"name": "Alice", "email": "alice@test.com",
+		"attendanceType": "both", "guestCount": 2,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+	req.Header.Set("Content-Type", "application/json")
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	rsvp := result["rsvp"].(map[string]interface{})
+	if rsvp["name"] != "Alice" {
+		t.Fatalf("expected name=Alice, got %v", rsvp["name"])
+	}
 }
