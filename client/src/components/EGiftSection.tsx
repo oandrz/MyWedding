@@ -93,7 +93,18 @@ const EGiftSection = () => {
 
   const handleCopyAccount = async (accountNumber: string, accountHolder: string) => {
     try {
-      await navigator.clipboard.writeText(accountNumber);
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(accountNumber);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = accountNumber;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
       setCopiedAccount(accountNumber);
       toast({
         title: "Copied!",

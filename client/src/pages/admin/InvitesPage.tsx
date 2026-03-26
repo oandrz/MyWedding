@@ -88,14 +88,28 @@ export default function InvitesPage() {
     createInviteMutation.mutate(trimmed);
   };
 
-  const copyInviteLink = (invite: Invite) => {
+  const copyInviteLink = async (invite: Invite) => {
     const baseUrl = window.location.origin;
     const link = `${baseUrl}/?code=${invite.code}`;
-    navigator.clipboard.writeText(link).then(() => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = link;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
       setCopiedId(invite.id);
       setTimeout(() => setCopiedId(null), 2000);
       toast({ title: "Copied!", description: "Invite link copied to clipboard" });
-    });
+    } catch {
+      toast({ title: "Error", description: "Failed to copy link" });
+    }
   };
 
   if (isLoading) {
