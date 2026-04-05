@@ -27,9 +27,10 @@ Add a CSV upload flow to the admin Invites page. The user exports their Google S
 ```
 
 **Behavior:**
-- Validates all names are non-empty strings
+- Rejects if `names` array is empty or exceeds 500 entries → 400
+- Validates all names are non-empty strings after trimming
 - Sanitizes each name via the existing Sanitizer
-- Generates a unique invite code per name using `GenerateInviteCode()`
+- Generates a unique invite code per name using `GenerateInviteCode()`, with retry-on-collision (same pattern as existing `CreateInvite` in postgres.go — up to 3 retries per invite if the generated code hits a UNIQUE constraint)
 - Inserts all invites in a single database transaction (all-or-nothing)
 - Returns the created invites
 
@@ -43,14 +44,15 @@ Add a CSV upload flow to the admin Invites page. The user exports their Google S
 }
 ```
 
-**Error cases:**
-- Empty `names` array → 400
-- Any name is empty string after trim → 400
-- Database failure → 500 (transaction rolls back, no partial creates)
+**Error responses** (using existing `writeError` format):
+- Empty `names` array → 400 `{ "error": "Names array is required and cannot be empty" }`
+- Array exceeds 500 entries → 400 `{ "error": "Cannot import more than 500 names at once" }`
+- Any name is empty string after trim → 400 `{ "error": "All names must be non-empty" }`
+- Database failure → 500 `{ "error": "Failed to create invites" }` (transaction rolls back, no partial creates)
 
 **New model:**
 ```go
-type BulkInsertInvite struct {
+type BulkCreateInvitesRequest struct {
     Names []string `json:"names"`
 }
 ```
@@ -60,7 +62,7 @@ type BulkInsertInvite struct {
 CreateInvitesBulk(ctx context.Context, data []InsertInvite) ([]Invite, error)
 ```
 
-- Postgres implementation: single transaction, insert each invite, return all
+- Postgres implementation: single transaction, insert each invite with code-collision retry (up to 3 attempts per invite), return all
 - Memory implementation: loop through and append to in-memory slice
 
 ### Frontend — CSV Import Flow
@@ -91,14 +93,19 @@ CreateInvitesBulk(ctx context.Context, data []InsertInvite) ([]Invite, error)
 
 **CSV parsing approach:**
 - Use `FileReader.readAsText()` to read the file
-- Split by newlines, split each line by commas
+- Strip UTF-8 BOM (`\xEF\xBB\xBF`) if present at the start of the file (common in Excel/Google Sheets exports)
+- Parse using RFC 4180-aware logic: handle quoted fields (e.g., `"Doe, John & Jane"`) where commas inside double quotes are not treated as delimiters
 - First row is treated as headers
 - Extract the selected column from each subsequent row
 - Trim whitespace, filter out empty values
 
 **Duplicate detection:**
-- Compare parsed names (case-insensitive, trimmed) against the already-fetched `invites` array from the TanStack Query cache
-- No server round-trip needed for duplicate checking
+- Compare parsed names (case-insensitive, trimmed) against the already-fetched `invites` array from the TanStack Query cache — no server round-trip needed
+- Also detect duplicates **within the CSV itself**: if the same name appears multiple times in the file, flag subsequent occurrences as "duplicate in file" with a distinct indicator from the "already exists in DB" warning. These are also unchecked by default.
+
+**Cancel / re-upload:**
+- Clicking "Cancel" in the Preview state resets back to Upload state
+- The file input is hidden during Preview — user must cancel to select a different file
 
 ### Testing
 
@@ -106,7 +113,9 @@ CreateInvitesBulk(ctx context.Context, data []InsertInvite) ([]Invite, error)
 
 `handler/invite_test.go` — table-driven tests for `BulkCreate`:
 - Happy path: multiple names → all created with unique codes, returns 201
+- All returned codes are unique (bulk of 20 invites, assert distinct codes)
 - Empty names array → 400
+- Array exceeds 500 entries → 400
 - Names containing empty strings → 400
 - Sanitization applied to each name
 
@@ -127,7 +136,7 @@ CreateInvitesBulk(ctx context.Context, data []InsertInvite) ([]Invite, error)
 
 | Layer | File | Change |
 |-------|------|--------|
-| Model | `go-server/internal/models/invite.go` | Add `BulkInsertInvite` struct |
+| Model | `go-server/internal/models/invite.go` | Add `BulkCreateInvitesRequest` struct |
 | Repository Interface | `go-server/internal/repository/repository.go` | Add `CreateInvitesBulk` method |
 | Repository (Postgres) | `go-server/internal/repository/postgres.go` | Implement bulk insert in transaction |
 | Repository (Memory) | `go-server/internal/repository/memory.go` | Implement bulk insert |
