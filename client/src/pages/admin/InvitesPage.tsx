@@ -157,64 +157,6 @@ export default function InvitesPage() {
     },
   });
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        const rows = parseCSV(text);
-        if (rows.length < 2) {
-          toast({ title: "Error", description: "CSV has no data rows", variant: "destructive" });
-          return;
-        }
-
-        const headers = rows[0].map((h) => h.trim());
-        // Auto-detect name column
-        let nameCol = headers.findIndex((h) =>
-          NAME_HEADERS.includes(h.toLowerCase())
-        );
-        if (nameCol === -1) nameCol = 0; // fallback to first column
-
-        const existingNames = new Set(
-          (data?.invites ?? []).map((inv) => inv.name.toLowerCase().trim())
-        );
-        const seenNames = new Set<string>();
-
-        const entries = rows
-          .slice(1)
-          .map((row) => {
-            const raw = row[nameCol]?.trim() ?? "";
-            return raw;
-          })
-          .filter((name) => name.length > 0)
-          .map((name) => {
-            const lower = name.toLowerCase();
-            let dupType: "none" | "existing" | "inFile" = "none";
-            if (existingNames.has(lower)) {
-              dupType = "existing";
-            } else if (seenNames.has(lower)) {
-              dupType = "inFile";
-            }
-            seenNames.add(lower);
-            return { name, checked: dupType === "none", dupType };
-          });
-
-        if (entries.length === 0) {
-          toast({ title: "Error", description: "No names found in CSV", variant: "destructive" });
-          return;
-        }
-
-        const rawRows = rows.slice(1);
-        setImportState({ step: "preview", headers, rawRows, nameColumnIndex: nameCol, entries });
-      };
-      reader.readAsText(file);
-    },
-    [data, toast]
-  );
-
   /** Derive entries from raw CSV rows for a given column index. */
   const deriveEntries = useCallback(
     (rawRows: string[][], colIndex: number): ImportEntry[] => {
@@ -241,20 +183,63 @@ export default function InvitesPage() {
     [data]
   );
 
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          toast({ title: "Error", description: "CSV has no data rows", variant: "destructive" });
+          return;
+        }
+
+        const headers = rows[0].map((h) => h.trim());
+        // Auto-detect name column
+        let nameCol = headers.findIndex((h) =>
+          NAME_HEADERS.includes(h.toLowerCase())
+        );
+        if (nameCol === -1) nameCol = 0; // fallback to first column
+
+        const rawRows = rows.slice(1);
+        const entries = deriveEntries(rawRows, nameCol);
+
+        if (entries.length === 0) {
+          toast({ title: "Error", description: "No names found in CSV", variant: "destructive" });
+          return;
+        }
+
+        setImportState({ step: "preview", headers, rawRows, nameColumnIndex: nameCol, entries });
+      };
+      reader.onerror = () => {
+        toast({ title: "Error", description: "Failed to read file", variant: "destructive" });
+      };
+      reader.readAsText(file);
+    },
+    [data, toast, deriveEntries]
+  );
+
   const handleToggleEntry = (index: number) => {
-    if (importState.step !== "preview") return;
-    setImportState({
-      ...importState,
-      entries: importState.entries.map((entry, i) =>
-        i === index ? { ...entry, checked: !entry.checked } : entry
-      ),
+    setImportState((prev) => {
+      if (prev.step !== "preview") return prev;
+      return {
+        ...prev,
+        entries: prev.entries.map((entry, i) =>
+          i === index ? { ...entry, checked: !entry.checked } : entry
+        ),
+      };
     });
   };
 
   const handleColumnChange = (newIndex: number) => {
-    if (importState.step !== "preview") return;
-    const entries = deriveEntries(importState.rawRows, newIndex);
-    setImportState({ ...importState, nameColumnIndex: newIndex, entries });
+    setImportState((prev) => {
+      if (prev.step !== "preview") return prev;
+      const entries = deriveEntries(prev.rawRows, newIndex);
+      return { ...prev, nameColumnIndex: newIndex, entries };
+    });
   };
 
   const handleImport = () => {
@@ -409,8 +394,9 @@ export default function InvitesPage() {
               {/* Column selector */}
               {importState.headers.length > 1 && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">Name column:</span>
+                  <label htmlFor="csv-name-column" className="text-gray-500">Name column:</label>
                   <select
+                    id="csv-name-column"
                     value={importState.nameColumnIndex}
                     onChange={(e) => handleColumnChange(Number(e.target.value))}
                     className="border rounded px-2 py-1 text-sm"
