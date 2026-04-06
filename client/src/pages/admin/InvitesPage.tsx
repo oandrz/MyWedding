@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +8,74 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminContext } from "./AdminContext";
 import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check } from "lucide-react";
+import { Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check, Upload } from "lucide-react";
 import type { Invite } from "@shared/schema";
 
 interface InvitesResponse {
   invites: (Invite & { rsvp?: { id: number; attendanceType: string; guestCount: number | null } | null })[];
 }
+
+/** RFC 4180-aware CSV parser. Handles quoted fields and BOM. */
+function parseCSV(text: string): string[][] {
+  // Strip UTF-8 BOM
+  const content = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    const next = content[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i++; // skip escaped quote
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        row.push(field);
+        field = "";
+      } else if (ch === "\n" || (ch === "\r" && next === "\n")) {
+        row.push(field);
+        field = "";
+        if (row.some((cell) => cell.trim())) rows.push(row);
+        row = [];
+        if (ch === "\r") i++; // skip \n in \r\n
+      } else {
+        field += ch;
+      }
+    }
+  }
+  // Last field/row
+  if (field || row.length > 0) {
+    row.push(field);
+    if (row.some((cell) => cell.trim())) rows.push(row);
+  }
+  return rows;
+}
+
+const NAME_HEADERS = ["full name", "name", "guest name", "guest", "nama", "nama lengkap"];
+
+type ImportEntry = { name: string; checked: boolean; dupType: "none" | "existing" | "inFile" };
+
+type ImportState =
+  | { step: "upload" }
+  | {
+      step: "preview";
+      headers: string[];
+      rawRows: string[][];
+      nameColumnIndex: number;
+      entries: ImportEntry[];
+    }
+  | { step: "importing" };
 
 export default function InvitesPage() {
   const { toast } = useToast();
@@ -66,6 +128,149 @@ export default function InvitesPage() {
 
   const { itemToDelete, requestDelete, confirmDelete, cancelDelete } =
     useDeleteConfirmation((id) => deleteInviteMutation.mutate(id));
+
+  const [importState, setImportState] = useState<ImportState>({ step: "upload" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const bulkCreateMutation = useMutation({
+    mutationFn: async (names: string[]) => {
+      const response = await apiRequest("POST", "/api/admin/invites/bulk", { names });
+      return response.json();
+    },
+    onSuccess: (data: { invites: Invite[] }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
+      setImportState({ step: "upload" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast({
+        title: "Success",
+        description: `Created ${data.invites.length} invites`,
+      });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      setImportState({ step: "upload" });
+      toast({
+        title: "Error",
+        description: `Failed to import invites: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          toast({ title: "Error", description: "CSV has no data rows", variant: "destructive" });
+          return;
+        }
+
+        const headers = rows[0].map((h) => h.trim());
+        // Auto-detect name column
+        let nameCol = headers.findIndex((h) =>
+          NAME_HEADERS.includes(h.toLowerCase())
+        );
+        if (nameCol === -1) nameCol = 0; // fallback to first column
+
+        const existingNames = new Set(
+          (data?.invites ?? []).map((inv) => inv.name.toLowerCase().trim())
+        );
+        const seenNames = new Set<string>();
+
+        const entries = rows
+          .slice(1)
+          .map((row) => {
+            const raw = row[nameCol]?.trim() ?? "";
+            return raw;
+          })
+          .filter((name) => name.length > 0)
+          .map((name) => {
+            const lower = name.toLowerCase();
+            let dupType: "none" | "existing" | "inFile" = "none";
+            if (existingNames.has(lower)) {
+              dupType = "existing";
+            } else if (seenNames.has(lower)) {
+              dupType = "inFile";
+            }
+            seenNames.add(lower);
+            return { name, checked: dupType === "none", dupType };
+          });
+
+        if (entries.length === 0) {
+          toast({ title: "Error", description: "No names found in CSV", variant: "destructive" });
+          return;
+        }
+
+        const rawRows = rows.slice(1);
+        setImportState({ step: "preview", headers, rawRows, nameColumnIndex: nameCol, entries });
+      };
+      reader.readAsText(file);
+    },
+    [data, toast]
+  );
+
+  /** Derive entries from raw CSV rows for a given column index. */
+  const deriveEntries = useCallback(
+    (rawRows: string[][], colIndex: number): ImportEntry[] => {
+      const existingNames = new Set(
+        (data?.invites ?? []).map((inv) => inv.name.toLowerCase().trim())
+      );
+      const seenNames = new Set<string>();
+
+      return rawRows
+        .map((row) => (row[colIndex]?.trim() ?? ""))
+        .filter((name) => name.length > 0)
+        .map((name) => {
+          const lower = name.toLowerCase();
+          let dupType: "none" | "existing" | "inFile" = "none";
+          if (existingNames.has(lower)) {
+            dupType = "existing";
+          } else if (seenNames.has(lower)) {
+            dupType = "inFile";
+          }
+          seenNames.add(lower);
+          return { name, checked: dupType === "none", dupType };
+        });
+    },
+    [data]
+  );
+
+  const handleToggleEntry = (index: number) => {
+    if (importState.step !== "preview") return;
+    setImportState({
+      ...importState,
+      entries: importState.entries.map((entry, i) =>
+        i === index ? { ...entry, checked: !entry.checked } : entry
+      ),
+    });
+  };
+
+  const handleColumnChange = (newIndex: number) => {
+    if (importState.step !== "preview") return;
+    const entries = deriveEntries(importState.rawRows, newIndex);
+    setImportState({ ...importState, nameColumnIndex: newIndex, entries });
+  };
+
+  const handleImport = () => {
+    if (importState.step !== "preview") return;
+    const selectedNames = importState.entries
+      .filter((e) => e.checked)
+      .map((e) => e.name);
+    if (selectedNames.length === 0) return;
+    setImportState({ step: "importing" });
+    bulkCreateMutation.mutate(selectedNames);
+  };
+
+  const handleCancelImport = () => {
+    setImportState({ step: "upload" });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const invites = data?.invites ?? [];
 
@@ -175,6 +380,113 @@ export default function InvitesPage() {
               Create
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Import from CSV */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Import from CSV</CardTitle>
+          <CardDescription>
+            Upload a CSV file exported from Google Sheets to bulk-create invites
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {importState.step === "upload" && (
+            <div className="flex items-center gap-3">
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="flex-1"
+              />
+            </div>
+          )}
+
+          {importState.step === "preview" && (
+            <div className="space-y-4">
+              {/* Column selector */}
+              {importState.headers.length > 1 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-500">Name column:</span>
+                  <select
+                    value={importState.nameColumnIndex}
+                    onChange={(e) => handleColumnChange(Number(e.target.value))}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    {importState.headers.map((h, i) => (
+                      <option key={i} value={i}>
+                        {h || `Column ${i + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Summary */}
+              <div className="text-sm text-gray-600">
+                Found <strong>{importState.entries.length}</strong> names
+                {importState.entries.filter((e) => e.dupType !== "none").length > 0 && (
+                  <> — <strong className="text-amber-600">
+                    {importState.entries.filter((e) => e.dupType !== "none").length} duplicates
+                  </strong></>
+                )}
+              </div>
+
+              {/* Name list */}
+              <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
+                {importState.entries.map((entry, i) => (
+                  <label
+                    key={i}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={entry.checked}
+                      onChange={() => handleToggleEntry(i)}
+                      className="rounded"
+                    />
+                    <span className={entry.dupType !== "none" ? "text-amber-600" : ""}>
+                      {entry.name}
+                    </span>
+                    {entry.dupType === "existing" && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        Already exists
+                      </span>
+                    )}
+                    {entry.dupType === "inFile" && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                        Duplicate in file
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleImport}
+                  disabled={!importState.entries.some((e) => e.checked)}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import {importState.entries.filter((e) => e.checked).length} Selected
+                </Button>
+                <Button variant="outline" onClick={handleCancelImport}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {importState.step === "importing" && (
+            <div className="flex items-center gap-3 py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              <span className="text-gray-500">Creating invites...</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
