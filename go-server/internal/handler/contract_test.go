@@ -1531,6 +1531,42 @@ func TestContract_InviteDelete(t *testing.T) {
 	assertKeyType(t, result, "message", "string")
 }
 
+// ---------------------------------------------------------------------------
+// Invite Bulk — Contract
+// ---------------------------------------------------------------------------
+
+func TestContract_InviteBulkCreate(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"names": []string{"Alice", "Bob"},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	// Response must have "invites" array
+	assertKeyExists(t, result, "invites")
+	invites := result["invites"].([]interface{})
+	if len(invites) != 2 {
+		t.Fatalf("expected 2 invites, got %d", len(invites))
+	}
+
+	// Each invite must have the expected fields and types
+	for i, raw := range invites {
+		inv := raw.(map[string]interface{})
+		assertKeyType(t, inv, "id", "float64")
+		assertKeyType(t, inv, "name", "string")
+		assertKeyType(t, inv, "code", "string")
+		assertKeyType(t, inv, "createdAt", "string")
+		// rsvpId should be nil for new invites
+		assertKeyExists(t, inv, "rsvpId")
+		if inv["rsvpId"] != nil {
+			t.Fatalf("invite %d: expected rsvpId to be nil, got %v", i, inv["rsvpId"])
+		}
+	}
+}
+
 func TestRespondError_Format(t *testing.T) {
 	env := newTestEnv()
 
