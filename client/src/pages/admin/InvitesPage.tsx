@@ -4,11 +4,16 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminContext } from "./AdminContext";
 import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check, Upload } from "lucide-react";
+import { Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check, Upload, FileSpreadsheet, AlertTriangle, Users } from "lucide-react";
 import type { Invite } from "@shared/schema";
 
 interface InvitesResponse {
@@ -131,6 +136,8 @@ export default function InvitesPage() {
 
   const [importState, setImportState] = useState<ImportState>({ step: "upload" });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const bulkCreateMutation = useMutation({
     mutationFn: async (names: string[]) => {
@@ -165,9 +172,13 @@ export default function InvitesPage() {
       );
       const seenNames = new Set<string>();
 
+      /** Skip values that aren't plausible names: empty, purely numeric, or summary rows. */
+      const isValidName = (val: string) =>
+        val.length > 0 && !/^\d+$/.test(val) && !/^total\b/i.test(val);
+
       return rawRows
         .map((row) => (row[colIndex]?.trim() ?? ""))
-        .filter((name) => name.length > 0)
+        .filter(isValidName)
         .map((name) => {
           const lower = name.toLowerCase();
           let dupType: "none" | "existing" | "inFile" = "none";
@@ -183,11 +194,12 @@ export default function InvitesPage() {
     [data]
   );
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
+  const processFile = useCallback(
+    (file: File) => {
+      if (!file.name.endsWith(".csv")) {
+        toast({ title: "Invalid file", description: "Please upload a .csv file", variant: "destructive" });
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         const text = ev.target?.result as string;
@@ -196,22 +208,15 @@ export default function InvitesPage() {
           toast({ title: "Error", description: "CSV has no data rows", variant: "destructive" });
           return;
         }
-
         const headers = rows[0].map((h) => h.trim());
-        // Auto-detect name column
-        let nameCol = headers.findIndex((h) =>
-          NAME_HEADERS.includes(h.toLowerCase())
-        );
-        if (nameCol === -1) nameCol = 0; // fallback to first column
-
+        let nameCol = headers.findIndex((h) => NAME_HEADERS.includes(h.toLowerCase()));
+        if (nameCol === -1) nameCol = 0;
         const rawRows = rows.slice(1);
         const entries = deriveEntries(rawRows, nameCol);
-
         if (entries.length === 0) {
           toast({ title: "Error", description: "No names found in CSV", variant: "destructive" });
           return;
         }
-
         setImportState({ step: "preview", headers, rawRows, nameColumnIndex: nameCol, entries });
       };
       reader.onerror = () => {
@@ -219,8 +224,43 @@ export default function InvitesPage() {
       };
       reader.readAsText(file);
     },
-    [data, toast, deriveEntries]
+    [toast, deriveEntries]
   );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      dragCounterRef.current = 0;
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
 
   const handleToggleEntry = (index: number) => {
     setImportState((prev) => {
@@ -230,6 +270,16 @@ export default function InvitesPage() {
         entries: prev.entries.map((entry, i) =>
           i === index ? { ...entry, checked: !entry.checked } : entry
         ),
+      };
+    });
+  };
+
+  const handleToggleAll = (checked: boolean) => {
+    setImportState((prev) => {
+      if (prev.step !== "preview") return prev;
+      return {
+        ...prev,
+        entries: prev.entries.map((entry) => ({ ...entry, checked })),
       };
     });
   };
@@ -368,113 +418,200 @@ export default function InvitesPage() {
         </CardContent>
       </Card>
 
-      {/* Import from CSV */}
+      {/* Import from CSV — drag-and-drop zone */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Import from CSV</CardTitle>
-          <CardDescription>
-            Upload a CSV file exported from Google Sheets to bulk-create invites
-          </CardDescription>
+          <div className="flex items-center gap-3">
+            <FileSpreadsheet className="h-5 w-5 text-amber-600" />
+            <div>
+              <CardTitle className="text-lg">Bulk Import</CardTitle>
+              <CardDescription>
+                Drop a CSV file or click to browse — works with Google Sheets exports
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {importState.step === "upload" && (
-            <div className="flex items-center gap-3">
-              <Input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFileSelect}
-                className="flex-1"
-              />
-            </div>
-          )}
-
-          {importState.step === "preview" && (
-            <div className="space-y-4">
-              {/* Column selector */}
-              {importState.headers.length > 1 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <label htmlFor="csv-name-column" className="text-gray-500">Name column:</label>
-                  <select
-                    id="csv-name-column"
-                    value={importState.nameColumnIndex}
-                    onChange={(e) => handleColumnChange(Number(e.target.value))}
-                    className="border rounded px-2 py-1 text-sm"
-                  >
-                    {importState.headers.map((h, i) => (
-                      <option key={i} value={i}>
-                        {h || `Column ${i + 1}`}
-                      </option>
-                    ))}
-                  </select>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleFileSelect}
+            className="hidden"
+            aria-label="Upload CSV file"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            className={`
+              w-full rounded-lg border-2 border-dashed p-8
+              flex flex-col items-center gap-3
+              transition-all duration-200 cursor-pointer
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+              ${isDragging
+                ? "border-amber-400 bg-amber-50 scale-[1.01]"
+                : "border-gray-200 hover:border-amber-300 hover:bg-amber-50/50"
+              }
+            `}
+          >
+            {importState.step === "importing" ? (
+              <>
+                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <span className="text-sm font-medium text-gray-600">Creating invites...</span>
+              </>
+            ) : (
+              <>
+                <div className={`rounded-full p-3 transition-colors ${isDragging ? "bg-amber-100" : "bg-gray-100"}`}>
+                  <Upload className={`h-6 w-6 ${isDragging ? "text-amber-600" : "text-gray-400"}`} />
                 </div>
-              )}
-
-              {/* Summary */}
-              <div className="text-sm text-gray-600">
-                Found <strong>{importState.entries.length}</strong> names
-                {importState.entries.filter((e) => e.dupType !== "none").length > 0 && (
-                  <> — <strong className="text-amber-600">
-                    {importState.entries.filter((e) => e.dupType !== "none").length} duplicates
-                  </strong></>
-                )}
-              </div>
-
-              {/* Name list */}
-              <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
-                {importState.entries.map((entry, i) => (
-                  <label
-                    key={i}
-                    className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={entry.checked}
-                      onChange={() => handleToggleEntry(i)}
-                      className="rounded"
-                    />
-                    <span className={entry.dupType !== "none" ? "text-amber-600" : ""}>
-                      {entry.name}
-                    </span>
-                    {entry.dupType === "existing" && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                        Already exists
-                      </span>
-                    )}
-                    {entry.dupType === "inFile" && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
-                        Duplicate in file
-                      </span>
-                    )}
-                  </label>
-                ))}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleImport}
-                  disabled={!importState.entries.some((e) => e.checked)}
-                  className="gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Import {importState.entries.filter((e) => e.checked).length} Selected
-                </Button>
-                <Button variant="outline" onClick={handleCancelImport}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {importState.step === "importing" && (
-            <div className="flex items-center gap-3 py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-              <span className="text-gray-500">Creating invites...</span>
-            </div>
-          )}
+                <div className="text-center">
+                  <span className="text-sm font-medium text-gray-700">
+                    {isDragging ? "Drop your CSV file here" : "Drag & drop a CSV file"}
+                  </span>
+                  <p className="text-xs text-gray-400 mt-1">or click to browse your files</p>
+                </div>
+              </>
+            )}
+          </button>
         </CardContent>
       </Card>
+
+      {/* CSV Preview Dialog */}
+      <Dialog
+        open={importState.step === "preview"}
+        onOpenChange={(open) => { if (!open) handleCancelImport(); }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-amber-600" />
+              Review Import
+            </DialogTitle>
+            <DialogDescription>
+              Select which guests to import. Duplicates are unchecked by default.
+            </DialogDescription>
+          </DialogHeader>
+
+          {importState.step === "preview" && (() => {
+            const checkedCount = importState.entries.filter((e) => e.checked).length;
+            const dupCount = importState.entries.filter((e) => e.dupType !== "none").length;
+            const allChecked = checkedCount === importState.entries.length;
+
+            return (
+              <div className="flex flex-col gap-4 min-h-0">
+                {/* Column selector */}
+                {importState.headers.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="csv-name-column" className="text-sm text-muted-foreground whitespace-nowrap">
+                      Name column:
+                    </label>
+                    <Select
+                      value={String(importState.nameColumnIndex)}
+                      onValueChange={(v) => handleColumnChange(Number(v))}
+                    >
+                      <SelectTrigger id="csv-name-column" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {importState.headers.map((h, i) => (
+                          <SelectItem key={i} value={String(i)}>
+                            {h || `Column ${i + 1}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Stats bar */}
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-gray-400" />
+                    <span className="font-medium">{importState.entries.length}</span>
+                    <span className="text-muted-foreground">found</span>
+                  </div>
+                  <Separator orientation="vertical" className="h-4" />
+                  <div className="flex items-center gap-1.5">
+                    <Check className="h-4 w-4 text-emerald-500" />
+                    <span className="font-medium">{checkedCount}</span>
+                    <span className="text-muted-foreground">selected</span>
+                  </div>
+                  {dupCount > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <div className="flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <span className="font-medium text-amber-600">{dupCount}</span>
+                        <span className="text-muted-foreground">duplicates</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Select all toggle */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={allChecked}
+                      onCheckedChange={(checked) => handleToggleAll(!!checked)}
+                    />
+                    <span className="text-muted-foreground">Select all</span>
+                  </label>
+                </div>
+
+                {/* Name list — plain scrollable div for reliable behavior inside Dialog */}
+                <div className="max-h-[40vh] overflow-y-auto rounded-md border">
+                  <div className="divide-y">
+                    {importState.entries.map((entry, i) => (
+                      <label
+                        key={i}
+                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        <Checkbox
+                          checked={entry.checked}
+                          onCheckedChange={() => handleToggleEntry(i)}
+                        />
+                        <span className={`flex-1 text-sm ${entry.dupType !== "none" ? "text-muted-foreground" : ""}`}>
+                          {entry.name}
+                        </span>
+                        {entry.dupType === "existing" && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-xs">
+                            Already exists
+                          </Badge>
+                        )}
+                        {entry.dupType === "inFile" && (
+                          <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-xs">
+                            Duplicate in file
+                          </Badge>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button variant="outline" onClick={handleCancelImport}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleImport}
+                    disabled={checkedCount === 0}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Import {checkedCount} {checkedCount === 1 ? "guest" : "guests"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}</DialogContent>
+      </Dialog>
 
       {/* Search */}
       {invites.length > 0 && (
