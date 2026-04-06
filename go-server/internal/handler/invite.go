@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,7 +62,7 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(body.Names) > maxBulkInvites {
-		writeError(w, r, http.StatusBadRequest, "Cannot import more than 500 names at once")
+		writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Cannot import more than %d names at once", maxBulkInvites))
 		return
 	}
 
@@ -75,6 +76,10 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		if h.Sanitizer != nil {
 			trimmed = h.Sanitizer.SanitizeStrict(trimmed)
+			if trimmed == "" {
+				writeError(w, r, http.StatusBadRequest, "All names must be non-empty")
+				return
+			}
 		}
 		inserts = append(inserts, models.InsertInvite{Name: trimmed})
 	}
