@@ -817,7 +817,9 @@ func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []model
 			).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt)
 			if err != nil {
 				if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-					tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp)
+					if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp); err != nil {
+						return nil, fmt.Errorf("rollback to savepoint %s: %w", sp, err)
+					}
 					continue
 				}
 				return nil, fmt.Errorf("insert invite %q: %w", d.Name, err)
