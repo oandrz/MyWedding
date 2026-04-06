@@ -788,6 +788,61 @@ func (r *PostgresRepository) CreateInvite(ctx context.Context, data models.Inser
 	return nil, fmt.Errorf("failed to generate unique invite code after 3 attempts")
 }
 
+func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []models.InsertInvite) ([]models.Invite, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	result := make([]models.Invite, 0, len(data))
+	for i, d := range data {
+		var inv models.Invite
+		var createdAt time.Time
+		inserted := false
+		sp := fmt.Sprintf("sp_%d", i)
+
+		for attempt := 0; attempt < 3; attempt++ {
+			code := models.GenerateInviteCode()
+
+			if _, err := tx.Exec(ctx, "SAVEPOINT "+sp); err != nil {
+				return nil, fmt.Errorf("savepoint %s: %w", sp, err)
+			}
+
+			err := tx.QueryRow(ctx,
+				`INSERT INTO invites (name, code)
+				 VALUES ($1, $2)
+				 RETURNING id, name, code, rsvp_id, created_at`,
+				d.Name, code,
+			).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt)
+			if err != nil {
+				if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+					tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp)
+					continue
+				}
+				return nil, fmt.Errorf("insert invite %q: %w", d.Name, err)
+			}
+
+			if _, err := tx.Exec(ctx, "RELEASE SAVEPOINT "+sp); err != nil {
+				return nil, fmt.Errorf("release savepoint %s: %w", sp, err)
+			}
+			inv.CreatedAt = createdAt.Format(time.RFC3339)
+			inserted = true
+			break
+		}
+
+		if !inserted {
+			return nil, fmt.Errorf("failed to generate unique invite code for %q after 3 attempts", d.Name)
+		}
+		result = append(result, inv)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit transaction: %w", err)
+	}
+	return result, nil
+}
+
 func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,

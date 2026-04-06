@@ -1512,6 +1512,72 @@ func TestGetInviteByCode_PopulatesRsvp(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Invite Bulk tests
+// ---------------------------------------------------------------------------
+
+func TestCreateInvitesBulk(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	names := []models.InsertInvite{
+		{Name: "Alice"},
+		{Name: "Bob"},
+		{Name: "Charlie"},
+	}
+
+	invites, err := repo.CreateInvitesBulk(ctx, names)
+	if err != nil {
+		t.Fatalf("CreateInvitesBulk returned error: %v", err)
+	}
+	if len(invites) != 3 {
+		t.Fatalf("expected 3 invites, got %d", len(invites))
+	}
+
+	// Verify each invite has correct name, unique code, and sequential IDs
+	codes := make(map[string]bool)
+	for i, inv := range invites {
+		if inv.Name != names[i].Name {
+			t.Fatalf("invite %d: expected name %q, got %q", i, names[i].Name, inv.Name)
+		}
+		if len(inv.Code) != 5 {
+			t.Fatalf("invite %d: expected 5-char code, got %q", i, inv.Code)
+		}
+		if codes[inv.Code] {
+			t.Fatalf("invite %d: duplicate code %q", i, inv.Code)
+		}
+		codes[inv.Code] = true
+		if inv.ID == 0 {
+			t.Fatalf("invite %d: expected non-zero ID", i)
+		}
+		if inv.CreatedAt == "" {
+			t.Fatalf("invite %d: expected non-empty CreatedAt", i)
+		}
+	}
+
+	// Verify all invites are retrievable via GetInvites
+	all, err := repo.GetInvites(ctx)
+	if err != nil {
+		t.Fatalf("GetInvites returned error: %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("expected 3 invites from GetInvites, got %d", len(all))
+	}
+}
+
+func TestCreateInvitesBulk_Empty(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := newCtx()
+
+	invites, err := repo.CreateInvitesBulk(ctx, []models.InsertInvite{})
+	if err != nil {
+		t.Fatalf("CreateInvitesBulk with empty slice returned error: %v", err)
+	}
+	if len(invites) != 0 {
+		t.Fatalf("expected 0 invites, got %d", len(invites))
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Interface compliance — compile-time check
 // ---------------------------------------------------------------------------
 

@@ -768,3 +768,39 @@ func (m *MemoryRepository) UpdateInviteRsvpID(_ context.Context, inviteID int, r
 	m.invites[inviteID] = inv
 	return nil
 }
+
+func (m *MemoryRepository) CreateInvitesBulk(_ context.Context, data []models.InsertInvite) ([]models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	result := make([]models.Invite, 0, len(data))
+	for _, d := range data {
+		m.inviteIDSeq++
+
+		// Generate unique code (retry on collision)
+		var code string
+		for i := 0; i < 5; i++ {
+			code = models.GenerateInviteCode()
+			collision := false
+			for _, existing := range m.invites {
+				if existing.Code == code {
+					collision = true
+					break
+				}
+			}
+			if !collision {
+				break
+			}
+		}
+
+		inv := models.Invite{
+			ID:        m.inviteIDSeq,
+			Name:      d.Name,
+			Code:      code,
+			CreatedAt: now(),
+		}
+		m.invites[inv.ID] = inv
+		result = append(result, inv)
+	}
+	return result, nil
+}
