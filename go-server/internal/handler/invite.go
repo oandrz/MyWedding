@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
@@ -41,6 +43,55 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"invite": invite,
+	})
+}
+
+const maxBulkInvites = 500
+
+// BulkCreate handles POST /api/admin/invites/bulk.
+func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
+	var body models.BulkCreateInvitesRequest
+	if err := parseJSON(r, &body); err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if len(body.Names) == 0 {
+		writeError(w, r, http.StatusBadRequest, "Names array is required and cannot be empty")
+		return
+	}
+
+	if len(body.Names) > maxBulkInvites {
+		writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Cannot import more than %d names at once", maxBulkInvites))
+		return
+	}
+
+	// Validate and sanitize all names
+	inserts := make([]models.InsertInvite, 0, len(body.Names))
+	for _, name := range body.Names {
+		trimmed := strings.TrimSpace(name)
+		if trimmed == "" {
+			writeError(w, r, http.StatusBadRequest, "All names must be non-empty")
+			return
+		}
+		if h.Sanitizer != nil {
+			trimmed = h.Sanitizer.SanitizeStrict(trimmed)
+			if trimmed == "" {
+				writeError(w, r, http.StatusBadRequest, "All names must be non-empty")
+				return
+			}
+		}
+		inserts = append(inserts, models.InsertInvite{Name: trimmed})
+	}
+
+	invites, err := h.Repo.CreateInvitesBulk(r.Context(), inserts)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "Failed to create invites")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"invites": invites,
 	})
 }
 

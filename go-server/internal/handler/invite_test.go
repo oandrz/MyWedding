@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -141,4 +142,139 @@ func TestInvite_Delete_CascadesRsvp(t *testing.T) {
 	if len(rsvps) != 0 {
 		t.Fatalf("expected 0 rsvps after cascade delete, got %d", len(rsvps))
 	}
+}
+
+func TestInvite_BulkCreate(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"names": []string{"Alice", "Bob", "Charlie"},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	if len(invites) != 3 {
+		t.Fatalf("expected 3 invites, got %d", len(invites))
+	}
+
+	// Verify each invite has correct structure and unique codes
+	codes := make(map[string]bool)
+	expectedNames := []string{"Alice", "Bob", "Charlie"}
+	for i, raw := range invites {
+		inv := raw.(map[string]interface{})
+		if inv["name"] != expectedNames[i] {
+			t.Fatalf("invite %d: expected name %q, got %v", i, expectedNames[i], inv["name"])
+		}
+		code, ok := inv["code"].(string)
+		if !ok || len(code) != 5 {
+			t.Fatalf("invite %d: expected 5-char code, got %v", i, inv["code"])
+		}
+		if codes[code] {
+			t.Fatalf("invite %d: duplicate code %q", i, code)
+		}
+		codes[code] = true
+		assertKeyExists(t, inv, "id")
+		assertKeyExists(t, inv, "rsvpId")
+		assertKeyExists(t, inv, "createdAt")
+	}
+}
+
+func TestInvite_BulkCreate_UniqueCodesLargeBatch(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	names := make([]string, 20)
+	for i := range names {
+		names[i] = fmt.Sprintf("Guest %d", i+1)
+	}
+
+	body := jsonBody(map[string]interface{}{
+		"names": names,
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	if len(invites) != 20 {
+		t.Fatalf("expected 20 invites, got %d", len(invites))
+	}
+
+	codes := make(map[string]bool)
+	for i, raw := range invites {
+		inv := raw.(map[string]interface{})
+		code := inv["code"].(string)
+		if codes[code] {
+			t.Fatalf("invite %d: duplicate code %q", i, code)
+		}
+		codes[code] = true
+	}
+}
+
+func TestInvite_BulkCreate_EmptyNames_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"names": []string{},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestInvite_BulkCreate_MissingNames_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestInvite_BulkCreate_EmptyStringInNames_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"names": []string{"Alice", "", "Charlie"},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestInvite_BulkCreate_SanitizesNames(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"names": []string{"<script>alert('xss')</script>Alice", "Bob<b>Bold</b>"},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	for _, raw := range invites {
+		inv := raw.(map[string]interface{})
+		name := inv["name"].(string)
+		if strings.Contains(name, "<script>") || strings.Contains(name, "<b>") {
+			t.Fatalf("expected sanitized name, got %q", name)
+		}
+	}
+}
+
+func TestInvite_BulkCreate_ExceedsLimit_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	names := make([]string, 501)
+	for i := range names {
+		names[i] = fmt.Sprintf("Guest %d", i+1)
+	}
+
+	body := jsonBody(map[string]interface{}{
+		"names": names,
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
 }

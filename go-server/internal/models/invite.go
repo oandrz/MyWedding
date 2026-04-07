@@ -20,6 +20,11 @@ type InsertInvite struct {
 	Name string `json:"name"`
 }
 
+// BulkCreateInvitesRequest is the request body for bulk invite creation.
+type BulkCreateInvitesRequest struct {
+	Names []string `json:"names"`
+}
+
 // GenerateInviteCode creates a random 5-character lowercase alphanumeric code.
 func GenerateInviteCode() string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
