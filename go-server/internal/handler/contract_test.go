@@ -1854,3 +1854,92 @@ func TestContract_ContentTypeJSON(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// WhatsApp invite contract tests
+// ---------------------------------------------------------------------------
+
+func TestContract_InviteUpdate_Phone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice", "phone": "+6281234567890"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"phone": "+6591234567"})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	assertKeyExists(t, invite, "id")
+	assertKeyType(t, invite, "id", "float64")
+	assertKeyExists(t, invite, "name")
+	assertKeyType(t, invite, "name", "string")
+	assertKeyExists(t, invite, "code")
+	assertKeyType(t, invite, "code", "string")
+	assertKeyExists(t, invite, "phone")
+	assertKeyType(t, invite, "phone", "string")
+}
+
+func TestContract_InviteMarkWaSent(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	req2 := adminRequest(http.MethodPut, fmt.Sprintf("/api/admin/invites/%d/wa-sent", inviteID), nil, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	assertKeyExists(t, invite, "id")
+	assertKeyExists(t, invite, "waSentAt")
+	assertKeyType(t, invite, "waSentAt", "string")
+}
+
+func TestContract_InviteUnmarkWaSent(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	req2 := adminRequest(http.MethodPut, fmt.Sprintf("/api/admin/invites/%d/wa-sent", inviteID), nil, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusOK)
+
+	req3 := adminRequest(http.MethodDelete, fmt.Sprintf("/api/admin/invites/%d/wa-sent", inviteID), nil, cookie, csrf)
+	result := contractResponse(t, env, req3, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	assertKeyExists(t, invite, "id")
+	if _, ok := invite["waSentAt"]; ok {
+		t.Fatalf("expected waSentAt to be omitted after unmark, got %v", invite["waSentAt"])
+	}
+}
+
+func TestContract_InviteGetByCode_NoPII(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice", "phone": "+6281234567890"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	code := createResult["invite"].(map[string]interface{})["code"].(string)
+
+	req2 := httptest.NewRequest(http.MethodGet, "/api/invites/"+code, nil)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if _, ok := invite["phone"]; ok {
+		t.Fatalf("public endpoint should not expose phone, got %v", invite["phone"])
+	}
+	if _, ok := invite["waSentAt"]; ok {
+		t.Fatalf("public endpoint should not expose waSentAt, got %v", invite["waSentAt"])
+	}
+}

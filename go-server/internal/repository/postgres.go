@@ -770,12 +770,13 @@ func (r *PostgresRepository) CreateInvite(ctx context.Context, data models.Inser
 		code := models.GenerateInviteCode()
 		var inv models.Invite
 		var createdAt time.Time
+		var waSentAt *time.Time
 		err := r.pool.QueryRow(ctx,
-			`INSERT INTO invites (name, code)
-			 VALUES ($1, $2)
-			 RETURNING id, name, code, rsvp_id, created_at`,
-			data.Name, code,
-		).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt)
+			`INSERT INTO invites (name, code, phone)
+			 VALUES ($1, $2, $3)
+			 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+			data.Name, code, data.Phone,
+		).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
 		if err != nil {
 			if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 				continue
@@ -783,6 +784,7 @@ func (r *PostgresRepository) CreateInvite(ctx context.Context, data models.Inser
 			return nil, err
 		}
 		inv.CreatedAt = createdAt.Format(time.RFC3339)
+		inv.WaSentAt = scanWaSentAt(waSentAt)
 		return &inv, nil
 	}
 	return nil, fmt.Errorf("failed to generate unique invite code after 3 attempts")
@@ -809,12 +811,13 @@ func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []model
 				return nil, fmt.Errorf("savepoint %s: %w", sp, err)
 			}
 
+			var waSentAt *time.Time
 			err := tx.QueryRow(ctx,
-				`INSERT INTO invites (name, code)
-				 VALUES ($1, $2)
-				 RETURNING id, name, code, rsvp_id, created_at`,
-				d.Name, code,
-			).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt)
+				`INSERT INTO invites (name, code, phone)
+				 VALUES ($1, $2, $3)
+				 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+				d.Name, code, d.Phone,
+			).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
 			if err != nil {
 				if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 					if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp); err != nil {
@@ -829,6 +832,7 @@ func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []model
 				return nil, fmt.Errorf("release savepoint %s: %w", sp, err)
 			}
 			inv.CreatedAt = createdAt.Format(time.RFC3339)
+			inv.WaSentAt = scanWaSentAt(waSentAt)
 			inserted = true
 			break
 		}
@@ -847,7 +851,7 @@ func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []model
 
 func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.wa_sent_at,
 		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
 		 FROM invites i
 		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
@@ -861,16 +865,18 @@ func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, e
 	for rows.Next() {
 		var inv models.Invite
 		var createdAt time.Time
+		var waSentAt *time.Time
 		var rsvpID, rsvpGuestCount *int
 		var rsvpName, rsvpEmail, rsvpAttendanceType *string
 
 		if err := rows.Scan(
-			&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt,
+			&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt,
 			&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
 		); err != nil {
 			return nil, err
 		}
 		inv.CreatedAt = createdAt.Format(time.RFC3339)
+		inv.WaSentAt = scanWaSentAt(waSentAt)
 
 		if rsvpID != nil {
 			inv.Rsvp = &models.Rsvp{
@@ -889,17 +895,18 @@ func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, e
 func (r *PostgresRepository) GetInviteByID(ctx context.Context, id int) (*models.Invite, error) {
 	var inv models.Invite
 	var createdAt time.Time
+	var waSentAt *time.Time
 	var rsvpID, rsvpGuestCount *int
 	var rsvpName, rsvpEmail, rsvpAttendanceType *string
 
 	err := r.pool.QueryRow(ctx,
-		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.wa_sent_at,
 		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
 		 FROM invites i
 		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
 		 WHERE i.id = $1`, id,
 	).Scan(
-		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt,
+		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt,
 		&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -909,6 +916,7 @@ func (r *PostgresRepository) GetInviteByID(ctx context.Context, id int) (*models
 		return nil, err
 	}
 	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
 
 	if rsvpID != nil {
 		inv.Rsvp = &models.Rsvp{
@@ -925,17 +933,18 @@ func (r *PostgresRepository) GetInviteByID(ctx context.Context, id int) (*models
 func (r *PostgresRepository) GetInviteByCode(ctx context.Context, code string) (*models.Invite, error) {
 	var inv models.Invite
 	var createdAt time.Time
+	var waSentAt *time.Time
 	var rsvpID, rsvpGuestCount *int
 	var rsvpName, rsvpEmail, rsvpAttendanceType *string
 
 	err := r.pool.QueryRow(ctx,
-		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.wa_sent_at,
 		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
 		 FROM invites i
 		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
 		 WHERE i.code = $1`, code,
 	).Scan(
-		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt,
+		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt,
 		&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -945,6 +954,7 @@ func (r *PostgresRepository) GetInviteByCode(ctx context.Context, code string) (
 		return nil, err
 	}
 	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
 
 	if rsvpID != nil {
 		inv.Rsvp = &models.Rsvp{
@@ -972,4 +982,73 @@ func (r *PostgresRepository) UpdateInviteRsvpID(ctx context.Context, inviteID in
 		rsvpID, inviteID,
 	)
 	return err
+}
+
+// scanWaSentAt converts a *time.Time from pgx scan into the *string format used by the Invite model.
+func scanWaSentAt(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format(time.RFC3339)
+	return &s
+}
+
+func (r *PostgresRepository) UpdateInvitePhone(ctx context.Context, id int, phone *string) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var waSentAt *time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE invites SET phone = $1 WHERE id = $2
+		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		phone, id,
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("invite not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
+	return &inv, nil
+}
+
+func (r *PostgresRepository) MarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var waSentAt *time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE invites SET wa_sent_at = NOW() WHERE id = $1
+		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		id,
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("invite not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
+	return &inv, nil
+}
+
+func (r *PostgresRepository) UnmarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var waSentAt *time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE invites SET wa_sent_at = NULL WHERE id = $1
+		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		id,
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("invite not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
+	return &inv, nil
 }
