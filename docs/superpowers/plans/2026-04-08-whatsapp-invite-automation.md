@@ -469,17 +469,9 @@ Update `GetInvites` (line 848). Add `i.phone, i.wa_sent_at` to SELECT. Add `var 
 
 Update `GetInviteByID` (line 889) — same pattern with `*time.Time` intermediary.
 
-- [ ] **Step 6: Update GetInviteByCode — strip PII for public endpoint**
+- [ ] **Step 6: Update GetInviteByCode**
 
-Update `GetInviteByCode` (line 925) — add `i.phone, i.wa_sent_at` to SELECT and scan with `*time.Time` intermediary like the other methods. **Then, zero out PII fields before returning** since this is a public endpoint:
-
-```go
-// Strip PII — phone and waSentAt are admin-only fields
-inv.Phone = nil
-inv.WaSentAt = nil
-```
-
-Add these two lines after building the Rsvp sub-object, before the `return &inv, nil`. This ensures the public endpoint never leaks phone numbers regardless of `omitempty`.
+Update `GetInviteByCode` (line 925) — add `i.phone, i.wa_sent_at` to SELECT and scan with `*time.Time` intermediary like the other methods. Do NOT strip PII here — the repository returns full data and the **handler** is responsible for redacting admin-only fields (see Task 6 Step 4 for handler-level PII stripping).
 
 - [ ] **Step 7: Add new methods**
 
@@ -678,17 +670,31 @@ func TestInvite_BulkCreate_LegacyNamesFormat(t *testing.T) {
 	}
 }
 
-func TestInvite_BulkCreate_InvalidPhone_Returns400(t *testing.T) {
+func TestInvite_BulkCreate_InvalidPhone_SkipsPhone(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrf := adminLogin(t, env)
 
+	// Invalid phone should be silently skipped (stored as NULL), not reject the batch
 	body := jsonBody(map[string]interface{}{
 		"invites": []map[string]interface{}{
 			{"name": "Alice", "phone": "bad-phone"},
 		},
 	})
 	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
-	contractResponse(t, env, req, http.StatusBadRequest)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	if len(invites) != 1 {
+		t.Fatalf("expected 1 invite, got %d", len(invites))
+	}
+	inv := invites[0].(map[string]interface{})
+	if inv["name"] != "Alice" {
+		t.Fatalf("expected Alice, got %v", inv["name"])
+	}
+	// Phone should be omitted (nil + omitempty) since it was invalid
+	if _, hasPhone := inv["phone"]; hasPhone {
+		t.Fatalf("expected phone to be omitted for invalid input, got %v", inv["phone"])
+	}
 }
 ```
 
@@ -740,14 +746,15 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 
 		insert := models.InsertInvite{Name: trimmed}
 
-		// Validate and normalize phone if provided (do NOT sanitize phone)
+		// Validate and normalize phone if provided (do NOT sanitize phone).
+		// Invalid phones are silently skipped (stored as NULL) — per spec,
+		// "can be fixed later via inline edit". Frontend shows warning badges.
 		if entry.Phone != nil && *entry.Phone != "" {
 			normalized, err := models.NormalizePhone(*entry.Phone)
-			if err != nil {
-				writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid phone for %q: %s", trimmed, err.Error()))
-				return
+			if err == nil {
+				insert.Phone = &normalized
 			}
-			insert.Phone = &normalized
+			// Invalid phone → stored as NULL, fixable via inline edit later
 		}
 
 		inserts = append(inserts, insert)
@@ -1016,7 +1023,19 @@ func (h *InviteHandler) UnmarkWaSent(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-- [ ] **Step 4: Register routes in router.go**
+- [ ] **Step 4: Strip PII from GetByCode handler**
+
+In `go-server/internal/handler/invite.go`, update the existing `GetByCode` handler (line 115-133). After the nil check and before `writeJSON`, add:
+
+```go
+// Strip PII — phone and waSentAt are admin-only fields
+invite.Phone = nil
+invite.WaSentAt = nil
+```
+
+This ensures the public endpoint never leaks phone numbers. The stripping happens at the handler layer (not repository) so it works with both memory and postgres repos, and the contract test `TestContract_InviteGetByCode_NoPII` will pass.
+
+- [ ] **Step 5: Register routes in router.go**
 
 In `go-server/internal/router/router.go`, add after line 173 (`r.Delete("/invites/{id}", invite.Delete)`):
 
@@ -1026,17 +1045,17 @@ r.Put("/invites/{id}/wa-sent", invite.MarkWaSent)
 r.Delete("/invites/{id}/wa-sent", invite.UnmarkWaSent)
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **Step 6: Run tests to verify they pass**
 
 Run: `cd go-server && go test ./internal/handler -run "TestInvite_(Update|MarkWaSent|UnmarkWaSent)" -v`
 Expected: PASS
 
-- [ ] **Step 6: Run ALL handler tests to confirm no regressions**
+- [ ] **Step 7: Run ALL handler tests to confirm no regressions**
 
 Run: `cd go-server && go test ./internal/handler/... -v -race`
 Expected: ALL PASS
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add go-server/internal/handler/invite.go go-server/internal/handler/invite_test.go go-server/internal/router/router.go
