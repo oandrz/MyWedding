@@ -47,9 +47,11 @@ No changes to the `rsvp` table.
 Add fields to `Invite` struct:
 
 ```go
-Phone    *string `json:"phone"`
-WaSentAt *string `json:"waSentAt"`
+Phone    *string `json:"phone,omitempty"`
+WaSentAt *string `json:"waSentAt,omitempty"`
 ```
+
+Using `omitempty` ensures these fields are excluded from JSON responses when nil (e.g., the public `GET /api/invites/{code}` endpoint returns invites without phone/waSentAt populated, avoiding PII exposure to unauthenticated guests). Admin list endpoint populates these fields.
 
 Update `InsertInvite` to accept optional phone:
 
@@ -76,9 +78,26 @@ Add `phone` (text, nullable) and `waSentAt` (timestamp, nullable) to the invites
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `PUT` | `/api/admin/invites/{id}` | Admin+CSRF | Update invite fields (phone number) |
+| `PATCH` | `/api/admin/invites/{id}` | Admin+CSRF | Partial update of invite fields |
 | `PUT` | `/api/admin/invites/{id}/wa-sent` | Admin+CSRF | Mark invite as sent (sets `wa_sent_at = NOW()`) |
 | `DELETE` | `/api/admin/invites/{id}/wa-sent` | Admin+CSRF | Unmark sent (sets `wa_sent_at = NULL`) |
+
+### `PATCH /api/admin/invites/{id}` — Update Invite
+
+Partial update. Only provided fields are changed; omitted fields are untouched.
+
+**Request body:**
+```json
+{
+  "phone": "+6281234567890"
+}
+```
+
+Accepted fields: `phone` (string | null). Send `null` to clear the phone number. Name is not editable via this endpoint (delete and re-create instead).
+
+**Response:** `{ "invite": Invite }`
+
+**Errors:** `400` if phone format invalid, `404` if invite not found.
 
 ### Bulk Create Breaking Change
 
@@ -99,13 +118,16 @@ Add `phone` (text, nullable) and `waSentAt` (timestamp, nullable) to the invites
 
 Phone is optional per entry. Max 500 invites per request (unchanged).
 
+**Backward compatibility:** Since this is an admin-only endpoint on a single-deployment platform, frontend and backend are deployed simultaneously. No transition period needed. However, for safety the backend should accept both formats: if `invites` is absent but `names` is present, treat each name as an invite without a phone number.
+
 ### Message Template Storage
 
 Uses existing `app_settings` table — no new endpoints needed.
 
 - **Key:** `wa_message_template`
 - **Read:** `GET /api/settings/wa_message_template`
-- **Write:** `PATCH /api/admin/app-settings/wa_message_template`
+- **Write:** `PATCH /api/admin/app-settings/bulk` (upsert — use the bulk endpoint since the single-key `PATCH` returns 404 if the setting doesn't exist yet)
+- **Setting type:** `"text"`
 
 Default template (client-side fallback if setting not found):
 
@@ -128,10 +150,14 @@ Available variables: `{name}`, `{code}`, `{link}`
 
 Input: `+62 812-3456-7890` → Stored: `+6281234567890`
 
-### wa.me Link Generation
+Phone numbers are normalized (strip non-digit characters except leading `+`) but are **NOT** passed through the HTML sanitizer. The sanitizer would strip the `+` prefix, breaking E.164 format.
+
+### wa.me Link Generation (Client-Side)
+
+Link generation is performed entirely client-side (no server round-trip).
 
 1. Strip `+` prefix: `+6281234567890` → `6281234567890`
-2. Replace template variables: `{name}` → guest name, `{code}` → invite code, `{link}` → full invite URL
+2. Replace template variables: `{name}` → guest name, `{code}` → invite code, `{link}` → `{window.location.origin}/?code={invite.code}` (matches existing copy-link behavior)
 3. URL-encode the message
 4. Build: `https://wa.me/6281234567890?text={urlEncodedMessage}`
 
@@ -158,7 +184,7 @@ Shows two columns: Name and Phone (if phone column detected). Duplicate detectio
 ### 7a. Invites Table (`InvitesPage.tsx`)
 
 - **New columns:** "Phone" (editable inline) and "WA Status" (sent/unsent badge with timestamp)
-- **Inline phone edit:** Click phone cell to edit, validates E.164, saves via `PUT /api/admin/invites/{id}`
+- **Inline phone edit:** Click phone cell to edit, validates E.164, saves via `PATCH /api/admin/invites/{id}`
 - **WhatsApp icon button** per row: Opens `wa.me` deep link in new tab (disabled if no phone). After opening, prompts "Mark as sent?"
 - **Stats bar:** Add "Sent" / "Unsent" counts
 
@@ -176,7 +202,7 @@ Located on the Invites page (collapsible section or tab):
 
 Trigger: "Send All Unsent" button (shown when unsent invites with phone numbers exist).
 
-**Dialog flow:**
+**Dialog flow** (unsent invites presented in alphabetical order by name):
 
 1. Opens showing progress: "1 of N unsent"
 2. Displays current invite: name, phone, rendered message preview
@@ -219,5 +245,6 @@ Trigger: "Send All Unsent" button (shown when unsent invites with phone numbers 
 | `go-server/internal/repository/memory.go` | Implement new repo methods for testing |
 | `go-server/internal/router/router.go` | Register new routes |
 | `go-server/internal/handler/contract_test.go` | Add contract tests for new endpoints |
+| `go-server/internal/handler/invite_test.go` | Update existing bulk create tests, add tests for new endpoints |
 | `shared/schema.ts` | Add `phone`, `waSentAt` to invites schema |
 | `client/src/pages/admin/InvitesPage.tsx` | Phone column, inline edit, WA status, template editor, Send All dialog |
