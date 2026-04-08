@@ -195,7 +195,7 @@ Located on the Invites page (collapsible section or tab):
 - Textarea for template string
 - Available variables shown as clickable chips: `{name}`, `{code}`, `{link}`
 - Live preview panel showing rendered message with sample data
-- Save button → `PATCH /api/admin/app-settings/wa_message_template`
+- Save button → `PATCH /api/admin/app-settings/bulk` (wraps single template in bulk format for upsert support)
 - Loaded on mount via `GET /api/settings/wa_message_template`, falls back to default
 
 ### 7c. "Send All" Step-by-Step Dialog
