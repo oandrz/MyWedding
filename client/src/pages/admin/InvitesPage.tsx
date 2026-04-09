@@ -1020,13 +1020,6 @@ export default function InvitesPage() {
 
           {currentSendInvite && (
             <div className="space-y-4">
-              {/* Search (focus here to test keyboard shortcut guard) */}
-              <Input
-                placeholder="Search guests..."
-                className="h-8 text-sm"
-                aria-label="Search guests"
-              />
-
               {/* Progress */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>{sendAllIndex + 1} of {sendAllListRef.current.length}</span>
@@ -1118,7 +1111,7 @@ export default function InvitesPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Filter by name, code, or phone..."
+            placeholder="Search by name, code, or phone..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="pl-10 pr-10"

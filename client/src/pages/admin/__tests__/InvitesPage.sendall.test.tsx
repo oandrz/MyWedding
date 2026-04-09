@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -153,18 +153,19 @@ describe("Send All Dialog — Keyboard Shortcuts", () => {
     renderInvitesPage();
     await openSendAllDialog(user);
 
-    // Focus the search input
-    const searchInput = screen.getByPlaceholderText(/search/i);
-    await user.click(searchInput);
-
     expect(screen.getByText("Alice")).toBeInTheDocument();
 
-    // Press S while input is focused — should not skip
-    await user.keyboard("s");
+    // Create a temporary input inside the dialog to simulate focus on an editable element.
+    // Radix Dialog traps focus, so we can't click the background search input.
+    // Instead, dispatch a keydown event with an INPUT element as the target.
+    const tempInput = document.createElement("input");
+    document.body.appendChild(tempInput);
+    tempInput.focus();
+    fireEvent.keyDown(tempInput, { key: "s" });
+    document.body.removeChild(tempInput);
 
     // Alice should still be visible (not advanced to Bob)
     expect(screen.getByText("Alice")).toBeInTheDocument();
-    // window.open should not have been called
     expect(mockWindowOpen).not.toHaveBeenCalled();
   });
 });
