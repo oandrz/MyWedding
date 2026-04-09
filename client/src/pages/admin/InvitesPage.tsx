@@ -134,6 +134,7 @@ export default function InvitesPage() {
   const [sendAllIndex, setSendAllIndex] = useState(0);
   const [sendAllSentCount, setSendAllSentCount] = useState(0);
   const [sendAllSkipCount, setSendAllSkipCount] = useState(0);
+  const sendAllListRef = useRef<typeof invites>([]);
 
   const { data, isLoading } = useQuery<InvitesResponse>({
     queryKey: ["/api/admin/invites"],
@@ -539,14 +540,14 @@ export default function InvitesPage() {
   };
 
   // Send All handlers
-  const currentSendInvite = unsentWithPhone[sendAllIndex];
+  const currentSendInvite = sendAllListRef.current[sendAllIndex];
 
   const handleSendAllMarkSent = () => {
     if (!currentSendInvite) return;
     markWaSentMutation.mutate(currentSendInvite.id, {
       onSuccess: () => {
         setSendAllSentCount((c) => c + 1);
-        if (sendAllIndex + 1 >= unsentWithPhone.length) {
+        if (sendAllIndex + 1 >= sendAllListRef.current.length) {
           setSendAllOpen(false);
           toast({ title: "Done!", description: `Sent: ${sendAllSentCount + 1}, Skipped: ${sendAllSkipCount}` });
         } else {
@@ -558,7 +559,7 @@ export default function InvitesPage() {
 
   const handleSendAllSkip = () => {
     setSendAllSkipCount((c) => c + 1);
-    if (sendAllIndex + 1 >= unsentWithPhone.length) {
+    if (sendAllIndex + 1 >= sendAllListRef.current.length) {
       setSendAllOpen(false);
       toast({ title: "Done!", description: `Sent: ${sendAllSentCount}, Skipped: ${sendAllSkipCount + 1}` });
     } else {
@@ -616,7 +617,7 @@ export default function InvitesPage() {
       {/* Send All button */}
       {unsentWithPhone.length > 0 && (
         <Button
-          onClick={() => { setSendAllIndex(0); setSendAllSentCount(0); setSendAllSkipCount(0); setSendAllOpen(true); }}
+          onClick={() => { sendAllListRef.current = [...unsentWithPhone]; setSendAllIndex(0); setSendAllSentCount(0); setSendAllSkipCount(0); setSendAllOpen(true); }}
           className="gap-2"
           variant="outline"
         >
@@ -976,7 +977,7 @@ export default function InvitesPage() {
             <div className="space-y-4">
               {/* Progress */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{sendAllIndex + 1} of {unsentWithPhone.length}</span>
+                <span>{sendAllIndex + 1} of {sendAllListRef.current.length}</span>
                 <div className="flex gap-3">
                   <span className="text-green-600">Sent: {sendAllSentCount}</span>
                   <span className="text-gray-400">Skipped: {sendAllSkipCount}</span>
@@ -985,7 +986,7 @@ export default function InvitesPage() {
               <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
                   className="bg-green-500 h-1.5 rounded-full transition-all"
-                  style={{ width: `${((sendAllIndex) / unsentWithPhone.length) * 100}%` }}
+                  style={{ width: `${((sendAllIndex) / sendAllListRef.current.length) * 100}%` }}
                 />
               </div>
 

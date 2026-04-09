@@ -1,4 +1,4 @@
-.PHONY: build test run run-dev lint clean
+.PHONY: build test run run-dev lint clean migrate migrate-docker
 
 # Binary output
 BINARY=wedding-server
@@ -36,3 +36,7 @@ docker-down:
 # Database migration (run inside container or with DATABASE_URL set)
 migrate:
 	@for f in migrations/*.sql; do echo "Running $$f..."; psql "$(DATABASE_URL)" -f "$$f"; done
+
+# Database migration via Docker (no DATABASE_URL needed)
+migrate-docker:
+	@for f in migrations/*.sql; do echo "Running $$f..."; docker compose -f docker-compose.dev.yml exec -T postgres psql -U wedding_user -d wedding_invitation_db -f /docker-entrypoint-initdb.d/$$(basename $$f); done
