@@ -16,7 +16,7 @@ import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check, Upload, FileSpreadsheet,
-  AlertTriangle, Users, Phone, MessageCircle, Send, ChevronDown, ChevronUp, SkipForward, Pause,
+  AlertTriangle, Users, Phone, MessageCircle, Send, ChevronDown, ChevronUp, SkipForward, Pause, Undo2,
 } from "lucide-react";
 import type { Invite } from "@shared/schema";
 
@@ -134,6 +134,7 @@ export default function InvitesPage() {
   const [sendAllIndex, setSendAllIndex] = useState(0);
   const [sendAllSentCount, setSendAllSentCount] = useState(0);
   const [sendAllSkipCount, setSendAllSkipCount] = useState(0);
+  const [lastSentInviteId, setLastSentInviteId] = useState<number | null>(null);
   const sendAllListRef = useRef<typeof invites>([]);
 
   const { data, isLoading } = useQuery<InvitesResponse>({
@@ -542,30 +543,74 @@ export default function InvitesPage() {
   // Send All handlers
   const currentSendInvite = sendAllListRef.current[sendAllIndex];
 
-  const handleSendAllMarkSent = () => {
+  const handleSendAndNext = () => {
     if (!currentSendInvite) return;
+
+    // Open wa.me deep link
+    const msg = renderTemplate(templateText, currentSendInvite);
+    const result = window.open(buildWaLink(currentSendInvite.phone!, msg), "_blank");
+    if (!result) {
+      toast({ title: "Popup blocked", description: "Please allow popups for this site", variant: "destructive" });
+    }
+
+    // Track for undo
+    setLastSentInviteId(currentSendInvite.id);
+
+    // Mark sent and advance
     markWaSentMutation.mutate(currentSendInvite.id, {
       onSuccess: () => {
         setSendAllSentCount((c) => c + 1);
-        if (sendAllIndex + 1 >= sendAllListRef.current.length) {
-          setSendAllOpen(false);
-          toast({ title: "Done!", description: `Sent: ${sendAllSentCount + 1}, Skipped: ${sendAllSkipCount}` });
-        } else {
-          setSendAllIndex((i) => i + 1);
-        }
+        setSendAllIndex((i) => i + 1);
       },
     });
   };
 
   const handleSendAllSkip = () => {
     setSendAllSkipCount((c) => c + 1);
-    if (sendAllIndex + 1 >= sendAllListRef.current.length) {
-      setSendAllOpen(false);
-      toast({ title: "Done!", description: `Sent: ${sendAllSentCount}, Skipped: ${sendAllSkipCount + 1}` });
-    } else {
-      setSendAllIndex((i) => i + 1);
-    }
+    setSendAllIndex((i) => i + 1);
   };
+
+  const handleUndo = () => {
+    if (lastSentInviteId === null) return;
+    unmarkWaSentMutation.mutate(lastSentInviteId, {
+      onSuccess: () => {
+        setSendAllSentCount((c) => Math.max(0, c - 1));
+        setLastSentInviteId(null);
+      },
+    });
+  };
+
+  // Refs for stable keyboard shortcut access to handlers
+  const handleSendAndNextRef = useRef(handleSendAndNext);
+  handleSendAndNextRef.current = handleSendAndNext;
+  const handleSendAllSkipRef = useRef(handleSendAllSkip);
+  handleSendAllSkipRef.current = handleSendAllSkip;
+  const isPendingRef = useRef(false);
+  isPendingRef.current = markWaSentMutation.isPending || unmarkWaSentMutation.isPending;
+
+  // Keyboard shortcuts for Send All dialog
+  useEffect(() => {
+    if (!sendAllOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isEditable = (e.target as HTMLElement).isContentEditable;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || isEditable) return;
+
+      if (isPendingRef.current) return;
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSendAndNextRef.current();
+      } else if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        handleSendAllSkipRef.current();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [sendAllOpen]);
 
   if (isLoading) {
     return (
@@ -617,7 +662,7 @@ export default function InvitesPage() {
       {/* Send All button */}
       {unsentWithPhone.length > 0 && (
         <Button
-          onClick={() => { sendAllListRef.current = [...unsentWithPhone]; setSendAllIndex(0); setSendAllSentCount(0); setSendAllSkipCount(0); setSendAllOpen(true); }}
+          onClick={() => { sendAllListRef.current = [...unsentWithPhone]; setSendAllIndex(0); setSendAllSentCount(0); setSendAllSkipCount(0); setLastSentInviteId(null); setSendAllOpen(true); }}
           className="gap-2"
           variant="outline"
         >
@@ -975,6 +1020,13 @@ export default function InvitesPage() {
 
           {currentSendInvite && (
             <div className="space-y-4">
+              {/* Search (focus here to test keyboard shortcut guard) */}
+              <Input
+                placeholder="Search guests..."
+                className="h-8 text-sm"
+                aria-label="Search guests"
+              />
+
               {/* Progress */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>{sendAllIndex + 1} of {sendAllListRef.current.length}</span>
@@ -1012,26 +1064,27 @@ export default function InvitesPage() {
               {/* Actions */}
               <div className="flex gap-2">
                 <Button
-                  onClick={() => {
-                    const msg = renderTemplate(templateText, currentSendInvite);
-                    window.open(buildWaLink(currentSendInvite.phone!, msg), "_blank");
-                  }}
+                  onClick={handleSendAndNext}
+                  disabled={markWaSentMutation.isPending}
                   className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                  autoFocus
                 >
-                  <Send className="h-4 w-4" />
-                  Open WhatsApp
+                  {markWaSentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Send & Next
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button
-                  onClick={handleSendAllMarkSent}
-                  disabled={markWaSentMutation.isPending}
-                  className="flex-1 gap-2"
-                  variant="outline"
-                >
-                  {markWaSentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Mark Sent & Next
-                </Button>
+                {lastSentInviteId !== null && (
+                  <Button
+                    onClick={handleUndo}
+                    disabled={unmarkWaSentMutation.isPending}
+                    variant="ghost"
+                    className="gap-2"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    Undo
+                  </Button>
+                )}
                 <Button onClick={handleSendAllSkip} variant="ghost" className="gap-2">
                   <SkipForward className="h-4 w-4" />
                   Skip
@@ -1041,6 +1094,9 @@ export default function InvitesPage() {
                   Pause
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Enter to send &middot; S to skip &middot; Esc to pause
+              </p>
             </div>
           )}
 
@@ -1062,7 +1118,7 @@ export default function InvitesPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by name, code, or phone..."
+            placeholder="Filter by name, code, or phone..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="pl-10 pr-10"
@@ -1093,7 +1149,7 @@ export default function InvitesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredInvites.map((invite) => (
+            {!sendAllOpen && filteredInvites.map((invite) => (
               <Card key={invite.id} className="shadow-sm border-l-4 border-l-amber-500">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
