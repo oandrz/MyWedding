@@ -27,7 +27,7 @@ Optimize the existing "Send All" WhatsApp dialog to reduce per-invite actions fr
 
 **Single file:** `client/src/pages/admin/InvitesPage.tsx`
 
-No backend changes. No new dependencies.
+No backend changes. No new package dependencies. Add `Undo2` to the existing `lucide-react` import.
 
 ## 2. Dialog Button Changes
 
@@ -39,9 +39,9 @@ Replaces the current "Open WhatsApp" button. On activation:
 2. Calls `PUT /api/admin/invites/{id}/wa-sent` (existing `markWaSentMutation`)
 3. Stores the invite ID as `lastSentInviteId` (for undo)
 4. Advances to next invite (`sendAllIndex + 1`)
-5. If this was the last invite, shows completion summary and closes
+5. If this was the last invite, advance `sendAllIndex` past the list length so the in-dialog completion summary renders (do NOT close the dialog — keep it open so undo remains available)
 
-Visual: Green button with Send icon, label "Send & Next".
+Visual: Green button with Send icon, label "Send & Next". Auto-focused when the dialog opens and when `currentSendInvite` changes (so `Enter` naturally activates it).
 
 ### Removed: "Mark Sent & Next" Button
 
@@ -50,15 +50,16 @@ This is now merged into the primary "Send & Next" button. The separate "Mark Sen
 ### Added: "Undo" Button
 
 - Ghost button, appears only when `lastSentInviteId` is set (i.e., after at least one send)
-- Label: "Undo" with an undo icon
+- Label: "Undo" with `Undo2` icon from lucide-react
 - On click: calls `DELETE /api/admin/invites/{lastSentInviteId}/wa-sent` (existing `unmarkWaSentMutation`)
-- Decrements `sendAllSentCount` by 1
+- Disabled while `unmarkWaSentMutation.isPending` to prevent double-clicks
+- Decrements `sendAllSentCount` by 1 (floored at 0: `Math.max(0, c - 1)`)
 - Clears `lastSentInviteId` (single-level undo — can't undo twice in a row)
 - Does NOT rewind `sendAllIndex` — the dialog stays on the current invite
 
 ### Kept: "Skip" and "Pause" Buttons
 
-Unchanged behavior. "Skip" advances without marking sent. "Pause" closes the dialog.
+Unchanged behavior. "Skip" advances without marking sent (if last invite, advances past list length to show in-dialog completion summary — same as "Send & Next"). "Pause" closes the dialog.
 
 ## 3. Keyboard Shortcuts
 
@@ -74,8 +75,13 @@ Implemented via a `useEffect` with a `keydown` event listener, active only when 
 
 - Listener added on mount of dialog open state, removed on close
 - All key handlers check `markWaSentMutation.isPending` to prevent double-triggers
-- `Enter` handler calls `e.preventDefault()` to avoid triggering focused button clicks
-- `S` key only fires when no input/textarea is focused (guard via `e.target` tagName check)
+- `Enter` handler calls `e.preventDefault()` to avoid triggering focused button clicks. As a complementary measure, the "Send & Next" button receives `autoFocus` so `Enter` via native button activation does the right thing.
+- `S` key only fires when no editable element is focused. Guard via tagName and contentEditable check:
+  ```typescript
+  const tag = (e.target as HTMLElement).tagName;
+  const isEditable = (e.target as HTMLElement).isContentEditable;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || isEditable) return;
+  ```
 
 ### Keyboard Hints
 
@@ -105,7 +111,7 @@ Renamed to reflect the merged behavior. New logic:
 1. Open wa.me link (window.open)
 2. Set lastSentInviteId = currentSendInvite.id
 3. Call markWaSentMutation.mutate(currentSendInvite.id)
-4. On success: increment sentCount, advance index (or close if done)
+4. On success: increment sentCount, advance index (if last invite, advance past list length to show in-dialog completion summary)
 ```
 
 ### New: `handleUndo`
@@ -113,7 +119,7 @@ Renamed to reflect the merged behavior. New logic:
 ```
 1. If lastSentInviteId is null, no-op
 2. Call unmarkWaSentMutation.mutate(lastSentInviteId)
-3. On success: decrement sendAllSentCount, clear lastSentInviteId
+3. On success: decrement sendAllSentCount (floored at 0), clear lastSentInviteId
 ```
 
 ## 5. Updated Dialog Layout
