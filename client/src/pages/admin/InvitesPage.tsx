@@ -1100,7 +1100,20 @@ export default function InvitesPage() {
               <p className="text-sm text-muted-foreground mt-1">
                 Sent: {sendAllSentCount}, Skipped: {sendAllSkipCount}
               </p>
-              <Button onClick={() => setSendAllOpen(false)} className="mt-4">Close</Button>
+              <div className="flex justify-center gap-2 mt-4">
+                {lastSentInviteId !== null && (
+                  <Button
+                    onClick={handleUndo}
+                    disabled={unmarkWaSentMutation.isPending}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    Undo Last
+                  </Button>
+                )}
+                <Button onClick={() => setSendAllOpen(false)}>Close</Button>
+              </div>
             </div>
           )}
         </DialogContent>
