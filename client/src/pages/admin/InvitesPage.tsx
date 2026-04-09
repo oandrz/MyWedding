@@ -542,9 +542,11 @@ export default function InvitesPage() {
 
   // Send All handlers
   const currentSendInvite = sendAllListRef.current[sendAllIndex];
+  const sendInFlightRef = useRef(false);
 
   const handleSendAndNext = () => {
-    if (!currentSendInvite) return;
+    if (!currentSendInvite || sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
 
     // Open wa.me deep link
     const msg = renderTemplate(templateText, currentSendInvite);
@@ -561,6 +563,9 @@ export default function InvitesPage() {
       onSuccess: () => {
         setSendAllSentCount((c) => c + 1);
         setSendAllIndex((i) => i + 1);
+      },
+      onSettled: () => {
+        sendInFlightRef.current = false;
       },
     });
   };
@@ -1078,7 +1083,7 @@ export default function InvitesPage() {
                     Undo
                   </Button>
                 )}
-                <Button onClick={handleSendAllSkip} variant="ghost" className="gap-2">
+                <Button onClick={handleSendAllSkip} disabled={markWaSentMutation.isPending} variant="ghost" className="gap-2">
                   <SkipForward className="h-4 w-4" />
                   Skip
                 </Button>
