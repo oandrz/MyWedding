@@ -131,11 +131,12 @@ export default function InvitesPage() {
 
   // Send All dialog state
   const [sendAllOpen, setSendAllOpen] = useState(false);
-  const [sendAllIndex, setSendAllIndex] = useState(0);
+  const [sendAllTotal, setSendAllTotal] = useState(0);
   const [sendAllSentCount, setSendAllSentCount] = useState(0);
   const [sendAllSkipCount, setSendAllSkipCount] = useState(0);
   const [lastSentInviteId, setLastSentInviteId] = useState<number | null>(null);
-  const sendAllListRef = useRef<typeof invites>([]);
+  const [sentIds, setSentIds] = useState<Set<number>>(new Set());
+  const [skippedIds, setSkippedIds] = useState<Set<number>>(new Set());
 
   const { data, isLoading } = useQuery<InvitesResponse>({
     queryKey: ["/api/admin/invites"],
@@ -541,7 +542,9 @@ export default function InvitesPage() {
   };
 
   // Send All handlers
-  const currentSendInvite = sendAllListRef.current[sendAllIndex];
+  const currentSendInvite = sendAllOpen
+    ? unsentWithPhone.find((i) => !sentIds.has(i.id) && !skippedIds.has(i.id))
+    : undefined;
   const sendInFlightRef = useRef(false);
 
   const handleSendAndNext = () => {
@@ -562,7 +565,7 @@ export default function InvitesPage() {
     markWaSentMutation.mutate(currentSendInvite.id, {
       onSuccess: () => {
         setSendAllSentCount((c) => c + 1);
-        setSendAllIndex((i) => i + 1);
+        setSentIds((prev) => { const next = new Set(prev); next.add(currentSendInvite.id); return next; });
       },
       onSettled: () => {
         sendInFlightRef.current = false;
@@ -571,15 +574,22 @@ export default function InvitesPage() {
   };
 
   const handleSendAllSkip = () => {
+    if (!currentSendInvite) return;
     setSendAllSkipCount((c) => c + 1);
-    setSendAllIndex((i) => i + 1);
+    setSkippedIds((prev) => { const next = new Set(prev); next.add(currentSendInvite.id); return next; });
   };
 
   const handleUndo = () => {
     if (lastSentInviteId === null) return;
-    unmarkWaSentMutation.mutate(lastSentInviteId, {
+    const idToUndo = lastSentInviteId;
+    unmarkWaSentMutation.mutate(idToUndo, {
       onSuccess: () => {
         setSendAllSentCount((c) => Math.max(0, c - 1));
+        setSentIds((prev) => {
+          const next = new Set(prev);
+          next.delete(idToUndo);
+          return next;
+        });
         setLastSentInviteId(null);
       },
     });
@@ -667,7 +677,7 @@ export default function InvitesPage() {
       {/* Send All button */}
       {unsentWithPhone.length > 0 && (
         <Button
-          onClick={() => { sendAllListRef.current = [...unsentWithPhone]; setSendAllIndex(0); setSendAllSentCount(0); setSendAllSkipCount(0); setLastSentInviteId(null); setSendAllOpen(true); }}
+          onClick={() => { setSendAllTotal(unsentWithPhone.length); setSentIds(new Set()); setSkippedIds(new Set()); setSendAllSentCount(0); setSendAllSkipCount(0); setLastSentInviteId(null); setSendAllOpen(true); }}
           className="gap-2"
           variant="outline"
         >
@@ -1027,7 +1037,7 @@ export default function InvitesPage() {
             <div className="space-y-4">
               {/* Progress */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{sendAllIndex + 1} of {sendAllListRef.current.length}</span>
+                <span>{sendAllSentCount + sendAllSkipCount + 1} of {sendAllTotal}</span>
                 <div className="flex gap-3">
                   <span className="text-green-600">Sent: {sendAllSentCount}</span>
                   <span className="text-gray-400">Skipped: {sendAllSkipCount}</span>
@@ -1036,7 +1046,7 @@ export default function InvitesPage() {
               <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
                   className="bg-green-500 h-1.5 rounded-full transition-all"
-                  style={{ width: `${((sendAllIndex) / sendAllListRef.current.length) * 100}%` }}
+                  style={{ width: `${((sendAllSentCount + sendAllSkipCount) / sendAllTotal) * 100}%` }}
                 />
               </div>
 

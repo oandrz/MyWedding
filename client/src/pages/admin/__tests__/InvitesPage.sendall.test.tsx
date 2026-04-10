@@ -269,4 +269,116 @@ describe("Send All Dialog — Undo", () => {
     expect(screen.getByText(/sent: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/skipped: 1/i)).toBeInTheDocument();
   });
+
+  it("advances through all 4 items when query data updates after each send", async () => {
+    // This test simulates the real app behavior where invalidateQueries
+    // causes the invites list to refetch with updated waSentAt values
+    const fourInvites = {
+      invites: [
+        { id: 1, name: "Alice", code: "ABC1", phone: "+6281111111111", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+        { id: 2, name: "Bob", code: "ABC2", phone: "+6282222222222", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+        { id: 3, name: "Charlie", code: "ABC3", phone: "+6283333333333", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+        { id: 4, name: "Diana", code: "ABC4", phone: "+6284444444444", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+      ],
+    };
+
+    const user = userEvent.setup();
+    const { qc } = renderInvitesPage(fourInvites);
+    await openSendAllDialog(user);
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+
+    // Send Alice → simulate refetch updating Alice's waSentAt
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Bob")).toBeInTheDocument();
+    });
+    // Simulate the invalidateQueries refetch returning updated data
+    qc.setQueryData(["/api/admin/invites"], {
+      invites: fourInvites.invites.map((i) =>
+        i.id === 1 ? { ...i, waSentAt: new Date().toISOString() } : i
+      ),
+    });
+    // Bob should still be showing (not "All done!")
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+
+    // Send Bob → simulate refetch
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Charlie")).toBeInTheDocument();
+    });
+    qc.setQueryData(["/api/admin/invites"], {
+      invites: fourInvites.invites.map((i) =>
+        i.id <= 2 ? { ...i, waSentAt: new Date().toISOString() } : i
+      ),
+    });
+    expect(screen.getByText("Charlie")).toBeInTheDocument();
+
+    // Send Charlie → simulate refetch
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Diana")).toBeInTheDocument();
+    });
+    qc.setQueryData(["/api/admin/invites"], {
+      invites: fourInvites.invites.map((i) =>
+        i.id <= 3 ? { ...i, waSentAt: new Date().toISOString() } : i
+      ),
+    });
+    expect(screen.getByText("Diana")).toBeInTheDocument();
+
+    // Send Diana → "All done!"
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/all done/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/sent: 4/i)).toBeInTheDocument();
+  });
+
+  it("advances through all 4 items via Send & Next without closing early", async () => {
+    const fourInvites = {
+      invites: [
+        { id: 1, name: "Alice", code: "ABC1", phone: "+6281111111111", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+        { id: 2, name: "Bob", code: "ABC2", phone: "+6282222222222", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+        { id: 3, name: "Charlie", code: "ABC3", phone: "+6283333333333", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+        { id: 4, name: "Diana", code: "ABC4", phone: "+6284444444444", waSentAt: null, rsvp: null, createdAt: "2026-04-01T00:00:00Z" },
+      ],
+    };
+
+    const user = userEvent.setup();
+    renderInvitesPage(fourInvites);
+    await openSendAllDialog(user);
+
+    // Should show Alice first (sorted alphabetically)
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4")).toBeInTheDocument();
+
+    // Send Alice → advance to Bob
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Bob")).toBeInTheDocument();
+    });
+    expect(screen.getByText("2 of 4")).toBeInTheDocument();
+
+    // Send Bob → advance to Charlie
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Charlie")).toBeInTheDocument();
+    });
+    expect(screen.getByText("3 of 4")).toBeInTheDocument();
+
+    // Send Charlie → advance to Diana
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Diana")).toBeInTheDocument();
+    });
+    expect(screen.getByText("4 of 4")).toBeInTheDocument();
+
+    // Send Diana → should show "All done!"
+    await user.click(screen.getByRole("button", { name: /send & next/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/all done/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/sent: 4/i)).toBeInTheDocument();
+    expect(screen.getByText(/skipped: 0/i)).toBeInTheDocument();
+  });
 });
