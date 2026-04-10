@@ -263,6 +263,106 @@ func TestInvite_BulkCreate_SanitizesNames(t *testing.T) {
 	}
 }
 
+func TestInvite_Create_WithPhone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"name":  "Alice",
+		"phone": "+6281234567890",
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invite := result["invite"].(map[string]interface{})
+	if invite["name"] != "Alice" {
+		t.Fatalf("expected name=Alice, got %v", invite["name"])
+	}
+	if invite["phone"] != "+6281234567890" {
+		t.Fatalf("expected phone, got %v", invite["phone"])
+	}
+}
+
+func TestInvite_Create_InvalidPhone_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"name":  "Alice",
+		"phone": "not-a-phone",
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestInvite_BulkCreate_WithInvitesFormat(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"invites": []map[string]interface{}{
+			{"name": "Alice", "phone": "+6281234567890"},
+			{"name": "Bob"},
+		},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	if len(invites) != 2 {
+		t.Fatalf("expected 2, got %d", len(invites))
+	}
+
+	first := invites[0].(map[string]interface{})
+	if first["phone"] != "+6281234567890" {
+		t.Fatalf("expected phone on first invite, got %v", first["phone"])
+	}
+}
+
+func TestInvite_BulkCreate_LegacyNamesFormat(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Old format still works for backward compatibility
+	body := jsonBody(map[string]interface{}{
+		"names": []string{"Alice", "Bob"},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	if len(invites) != 2 {
+		t.Fatalf("expected 2, got %d", len(invites))
+	}
+}
+
+func TestInvite_BulkCreate_InvalidPhone_SkipsPhone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Invalid phone should be silently skipped (stored as NULL), not reject the batch
+	body := jsonBody(map[string]interface{}{
+		"invites": []map[string]interface{}{
+			{"name": "Alice", "phone": "bad-phone"},
+		},
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	invites := result["invites"].([]interface{})
+	if len(invites) != 1 {
+		t.Fatalf("expected 1 invite, got %d", len(invites))
+	}
+	inv := invites[0].(map[string]interface{})
+	if inv["name"] != "Alice" {
+		t.Fatalf("expected Alice, got %v", inv["name"])
+	}
+	// Phone should be omitted (nil + omitempty) since it was invalid
+	if _, hasPhone := inv["phone"]; hasPhone {
+		t.Fatalf("expected phone to be omitted for invalid input, got %v", inv["phone"])
+	}
+}
+
 func TestInvite_BulkCreate_ExceedsLimit_Returns400(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrf := adminLogin(t, env)
@@ -277,4 +377,125 @@ func TestInvite_BulkCreate_ExceedsLimit_Returns400(t *testing.T) {
 	})
 	req := adminRequest(http.MethodPost, "/api/admin/invites/bulk", body, cookie, csrf)
 	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+func TestInvite_Update_Phone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"phone": "+6281234567890"})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if invite["phone"] != "+6281234567890" {
+		t.Fatalf("expected phone, got %v", invite["phone"])
+	}
+}
+
+func TestInvite_Update_ClearPhone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice", "phone": "+6281234567890"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"phone": nil})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if _, hasPhone := invite["phone"]; hasPhone {
+		t.Fatalf("expected phone to be omitted (nil), got %v", invite["phone"])
+	}
+}
+
+func TestInvite_Update_InvalidPhone_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"phone": "bad"})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusBadRequest)
+}
+
+func TestInvite_Update_NotFound_Returns404(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	updateBody := jsonBody(map[string]interface{}{"phone": "+6281234567890"})
+	req := adminRequest(http.MethodPatch, "/api/admin/invites/9999", updateBody, cookie, csrf)
+	contractResponse(t, env, req, http.StatusNotFound)
+}
+
+func TestInvite_MarkWaSent(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	req2 := adminRequest(http.MethodPut, fmt.Sprintf("/api/admin/invites/%d/wa-sent", inviteID), nil, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if _, ok := invite["waSentAt"]; !ok {
+		t.Fatal("expected waSentAt to be set")
+	}
+}
+
+func TestInvite_UnmarkWaSent(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	req2 := adminRequest(http.MethodPut, fmt.Sprintf("/api/admin/invites/%d/wa-sent", inviteID), nil, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusOK)
+
+	req3 := adminRequest(http.MethodDelete, fmt.Sprintf("/api/admin/invites/%d/wa-sent", inviteID), nil, cookie, csrf)
+	result := contractResponse(t, env, req3, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if _, ok := invite["waSentAt"]; ok {
+		t.Fatalf("expected waSentAt to be omitted, got %v", invite["waSentAt"])
+	}
+}
+
+func TestInvite_GetByCode_NoPII(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice", "phone": "+6281234567890"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	code := createResult["invite"].(map[string]interface{})["code"].(string)
+
+	req2 := httptest.NewRequest(http.MethodGet, "/api/invites/"+code, nil)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if _, ok := invite["phone"]; ok {
+		t.Fatalf("public endpoint should not expose phone, got %v", invite["phone"])
+	}
+	if _, ok := invite["waSentAt"]; ok {
+		t.Fatalf("public endpoint should not expose waSentAt, got %v", invite["waSentAt"])
+	}
 }

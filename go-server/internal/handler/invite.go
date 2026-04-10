@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -35,6 +36,16 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		body.Name = h.Sanitizer.Sanitize(body.Name)
 	}
 
+	// Validate and normalize phone if provided
+	if body.Phone != nil && *body.Phone != "" {
+		normalized, err := models.NormalizePhone(*body.Phone)
+		if err != nil {
+			writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid phone: %s", err.Error()))
+			return
+		}
+		body.Phone = &normalized
+	}
+
 	invite, err := h.Repo.CreateInvite(r.Context(), body)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "Failed to create invite")
@@ -56,20 +67,28 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(body.Names) == 0 {
-		writeError(w, r, http.StatusBadRequest, "Names array is required and cannot be empty")
+	// Support both formats: new "invites" array and legacy "names" array
+	entries := body.Invites
+	if len(entries) == 0 && len(body.Names) > 0 {
+		entries = make([]models.BulkInviteEntry, len(body.Names))
+		for i, name := range body.Names {
+			entries[i] = models.BulkInviteEntry{Name: name}
+		}
+	}
+
+	if len(entries) == 0 {
+		writeError(w, r, http.StatusBadRequest, "Invites array is required and cannot be empty")
 		return
 	}
 
-	if len(body.Names) > maxBulkInvites {
-		writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Cannot import more than %d names at once", maxBulkInvites))
+	if len(entries) > maxBulkInvites {
+		writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Cannot import more than %d invites at once", maxBulkInvites))
 		return
 	}
 
-	// Validate and sanitize all names
-	inserts := make([]models.InsertInvite, 0, len(body.Names))
-	for _, name := range body.Names {
-		trimmed := strings.TrimSpace(name)
+	inserts := make([]models.InsertInvite, 0, len(entries))
+	for _, entry := range entries {
+		trimmed := strings.TrimSpace(entry.Name)
 		if trimmed == "" {
 			writeError(w, r, http.StatusBadRequest, "All names must be non-empty")
 			return
@@ -81,7 +100,19 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		inserts = append(inserts, models.InsertInvite{Name: trimmed})
+
+		insert := models.InsertInvite{Name: trimmed}
+
+		// Validate and normalize phone if provided.
+		// Invalid phones are silently skipped (stored as NULL) — can be fixed via inline edit.
+		if entry.Phone != nil && *entry.Phone != "" {
+			normalized, err := models.NormalizePhone(*entry.Phone)
+			if err == nil {
+				insert.Phone = &normalized
+			}
+		}
+
+		inserts = append(inserts, insert)
 	}
 
 	invites, err := h.Repo.CreateInvitesBulk(r.Context(), inserts)
@@ -127,6 +158,10 @@ func (h *InviteHandler) GetByCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Strip PII — phone and waSentAt are admin-only fields
+	invite.Phone = nil
+	invite.WaSentAt = nil
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"invite": invite,
 	})
@@ -170,5 +205,109 @@ func (h *InviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]string{
 		"message": "Invite deleted successfully",
+	})
+}
+
+// Update handles PATCH /api/admin/invites/{id}.
+// Partial update — uses json.RawMessage to distinguish between "phone": null (clear) and absent phone.
+func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid invite ID")
+		return
+	}
+
+	var raw map[string]json.RawMessage
+	if err := parseJSON(r, &raw); err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	phoneRaw, phonePresent := raw["phone"]
+	if !phonePresent {
+		writeError(w, r, http.StatusBadRequest, "No updatable fields provided")
+		return
+	}
+
+	var phone *string
+	if string(phoneRaw) == "null" {
+		phone = nil
+	} else {
+		var phoneVal string
+		if err := json.Unmarshal(phoneRaw, &phoneVal); err != nil {
+			writeError(w, r, http.StatusBadRequest, "Invalid phone value")
+			return
+		}
+		if phoneVal != "" {
+			normalized, err := models.NormalizePhone(phoneVal)
+			if err != nil {
+				writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid phone: %s", err.Error()))
+				return
+			}
+			phone = &normalized
+		}
+	}
+
+	invite, err := h.Repo.UpdateInvitePhone(r.Context(), id, phone)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, r, http.StatusNotFound, "Invite not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "Failed to update invite")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"invite": invite,
+	})
+}
+
+// MarkWaSent handles PUT /api/admin/invites/{id}/wa-sent.
+func (h *InviteHandler) MarkWaSent(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid invite ID")
+		return
+	}
+
+	invite, err := h.Repo.MarkInviteWaSent(r.Context(), id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, r, http.StatusNotFound, "Invite not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "Failed to mark invite as sent")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"invite": invite,
+	})
+}
+
+// UnmarkWaSent handles DELETE /api/admin/invites/{id}/wa-sent.
+func (h *InviteHandler) UnmarkWaSent(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid invite ID")
+		return
+	}
+
+	invite, err := h.Repo.UnmarkInviteWaSent(r.Context(), id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, r, http.StatusNotFound, "Invite not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "Failed to unmark invite sent status")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"invite": invite,
 	})
 }

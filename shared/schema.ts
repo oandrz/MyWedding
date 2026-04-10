@@ -119,11 +119,14 @@ export const invites = pgTable("invites", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   rsvpId: integer("rsvp_id"),
+  phone: text("phone"),
+  waSentAt: timestamp("wa_sent_at", { mode: 'string' }),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull()
 });
 
 export const insertInviteSchema = createInsertSchema(invites).pick({
   name: true,
+  phone: true,
 });
 
 export const messages = pgTable("messages", {

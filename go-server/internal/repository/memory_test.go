@@ -1578,6 +1578,106 @@ func TestCreateInvitesBulk_Empty(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Invite WhatsApp fields tests
+// ---------------------------------------------------------------------------
+
+func TestMemory_UpdateInvitePhone(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := context.Background()
+
+	inv, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Alice"})
+
+	phone := "+6281234567890"
+	updated, err := repo.UpdateInvitePhone(ctx, inv.ID, &phone)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated == nil {
+		t.Fatal("expected invite, got nil")
+	}
+	if updated.Phone == nil || *updated.Phone != phone {
+		t.Fatalf("expected phone %q, got %v", phone, updated.Phone)
+	}
+
+	// Clear phone
+	updated2, err := repo.UpdateInvitePhone(ctx, inv.ID, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated2.Phone != nil {
+		t.Fatalf("expected nil phone, got %v", updated2.Phone)
+	}
+
+	// Not found
+	_, err = repo.UpdateInvitePhone(ctx, 9999, &phone)
+	if err == nil {
+		t.Fatal("expected error for non-existent invite")
+	}
+}
+
+func TestMemory_MarkUnmarkInviteWaSent(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := context.Background()
+
+	inv, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Bob"})
+
+	// Mark sent
+	updated, err := repo.MarkInviteWaSent(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated.WaSentAt == nil {
+		t.Fatal("expected waSentAt to be set")
+	}
+
+	// Unmark sent
+	updated2, err := repo.UnmarkInviteWaSent(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated2.WaSentAt != nil {
+		t.Fatalf("expected waSentAt to be nil, got %v", updated2.WaSentAt)
+	}
+}
+
+func TestMemory_CreateInvite_WithPhone(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := context.Background()
+
+	phone := "+6591234567"
+	inv, err := repo.CreateInvite(ctx, models.InsertInvite{Name: "Charlie", Phone: &phone})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if inv.Phone == nil || *inv.Phone != phone {
+		t.Fatalf("expected phone %q, got %v", phone, inv.Phone)
+	}
+}
+
+func TestMemory_CreateInvitesBulk_WithPhone(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := context.Background()
+
+	phone := "+6281234567890"
+	invites, err := repo.CreateInvitesBulk(ctx, []models.InsertInvite{
+		{Name: "Alice", Phone: &phone},
+		{Name: "Bob"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(invites) != 2 {
+		t.Fatalf("expected 2, got %d", len(invites))
+	}
+	if invites[0].Phone == nil || *invites[0].Phone != phone {
+		t.Fatalf("expected phone on first invite")
+	}
+	if invites[1].Phone != nil {
+		t.Fatalf("expected nil phone on second invite")
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Interface compliance — compile-time check
 // ---------------------------------------------------------------------------
 

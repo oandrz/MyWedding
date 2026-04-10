@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -695,6 +696,7 @@ func (m *MemoryRepository) CreateInvite(_ context.Context, data models.InsertInv
 		ID:        m.inviteIDSeq,
 		Name:      data.Name,
 		Code:      code,
+		Phone:     data.Phone,
 		CreatedAt: now(),
 	}
 	m.invites[inv.ID] = inv
@@ -797,10 +799,48 @@ func (m *MemoryRepository) CreateInvitesBulk(_ context.Context, data []models.In
 			ID:        m.inviteIDSeq,
 			Name:      d.Name,
 			Code:      code,
+			Phone:     d.Phone,
 			CreatedAt: now(),
 		}
 		m.invites[inv.ID] = inv
 		result = append(result, inv)
 	}
 	return result, nil
+}
+
+func (m *MemoryRepository) UpdateInvitePhone(_ context.Context, id int, phone *string) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[id]
+	if !ok {
+		return nil, fmt.Errorf("invite not found")
+	}
+	inv.Phone = phone
+	m.invites[id] = inv
+	return &inv, nil
+}
+
+func (m *MemoryRepository) MarkInviteWaSent(_ context.Context, id int) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[id]
+	if !ok {
+		return nil, fmt.Errorf("invite not found")
+	}
+	ts := now()
+	inv.WaSentAt = &ts
+	m.invites[id] = inv
+	return &inv, nil
+}
+
+func (m *MemoryRepository) UnmarkInviteWaSent(_ context.Context, id int) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[id]
+	if !ok {
+		return nil, fmt.Errorf("invite not found")
+	}
+	inv.WaSentAt = nil
+	m.invites[id] = inv
+	return &inv, nil
 }

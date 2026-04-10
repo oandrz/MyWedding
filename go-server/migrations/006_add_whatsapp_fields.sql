@@ -1,0 +1,3 @@
+ALTER TABLE invites
+  ADD COLUMN phone TEXT,
+  ADD COLUMN wa_sent_at TIMESTAMPTZ;
