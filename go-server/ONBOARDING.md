@@ -188,10 +188,10 @@ go-server/
   Browser → Vite (:5173) ──proxy /api,/storage,/auth──→ Go (:5000) → Repository
 ```
 
-**Production mode** (single process):
+**Production mode** (single process, behind CloudFront):
 ```
-  Browser → Go (:5000) ─┬─ /api/*, /storage/*, /auth/* → Handlers → Repository
-                         └─ everything else → static files (SPA fallback to index.html)
+  Browser (HTTPS) → CloudFront (*.cloudfront.net) → Nginx (:80) → Go (:5000) ─┬─ /api/*, /storage/*, /auth/* → Handlers → Repository
+                                                                                 └─ everything else → static files (SPA fallback to index.html)
 ```
 
 **Internal architecture:**
@@ -567,7 +567,7 @@ Workflow at `.github/workflows/go-ci.yml` runs on pushes to `golang_master` or `
 
 ## Production Deployment (AWS EC2)
 
-The app runs on a single EC2 instance: Go backend + React SPA served by Nginx, with PostgreSQL and Redis in Docker Compose on the same VM. Google Cloud Storage handles file uploads.
+The app runs on a single EC2 instance: Go backend + React SPA served by Nginx, with PostgreSQL and Redis in Docker Compose on the same VM. Google Cloud Storage handles file uploads. CloudFront sits in front of EC2 providing HTTPS and CDN caching — users access the site via the CloudFront URL, not the EC2 IP directly.
 
 **Key files:**
 
@@ -592,7 +592,7 @@ Before deploying, have these ready:
 ### AWS Setup
 
 - [ ] Launch EC2 instance: **t3.small**, Ubuntu 24.04 LTS, 20GB gp3 storage
-- [ ] Security Group: allow SSH (port 22, your IP only) and HTTP (port 80, anywhere)
+- [ ] Security Group: allow SSH (port 22, your IP only) and HTTP (port 80, CloudFront prefix list `com.amazonaws.global.cloudfront.origin-facing` only — not `0.0.0.0/0`)
 - [ ] Allocate an Elastic IP and associate it with the instance
 - [ ] SSH in: `ssh -i your-key.pem ubuntu@<elastic-ip>`
 
@@ -623,7 +623,7 @@ DB_PASSWORD=CHANGE_ME_strong_db_password
 REDIS_URL=redis://redis:6379
 ADMIN_PASSWORD=CHANGE_ME_strong_admin_password
 SESSION_MAX_AGE=1800
-CORS_ORIGINS=http://YOUR_ELASTIC_IP
+CORS_ORIGINS=https://YOUR_CLOUDFRONT_DOMAIN.cloudfront.net
 GCS_BUCKET_ID=your-gcs-bucket-name
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
@@ -692,13 +692,27 @@ cd ~/weddingAws && APP_DIR=~/weddingAws ./deploy.sh
 
 The deploy script pulls latest code, rebuilds Docker images, restarts services, and verifies the health check. Add `MIGRATE=1` if the update includes schema changes.
 
-### Adding a Domain + HTTPS (Later)
+### CloudFront (already configured)
 
-1. Buy a domain and point an A record to your Elastic IP
-2. Update `CORS_ORIGINS` in `.env.production` to `https://yourdomain.com`
-3. Install Certbot: `sudo apt install -y certbot python3-certbot-nginx`
-4. Run: `sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com`
-5. Redeploy: `cd ~/weddingAws && APP_DIR=~/weddingAws ./deploy.sh`
+HTTPS is handled by CloudFront — no cert needed on EC2. Users access the site at `https://<cloudfront-domain>.cloudfront.net`.
+
+Cache behaviours:
+| Path | Cache |
+|------|-------|
+| `/api/*`, `/auth/*`, `/storage/*` | No cache — forwarded directly to EC2 |
+| `/*` (default) | Cached — Vite static assets |
+
+EC2 security group port 80 is restricted to the CloudFront prefix list (`com.amazonaws.global.cloudfront.origin-facing`). Direct `http://<ec2-ip>` access is blocked.
+
+### Adding a Custom Domain (Later)
+
+CloudFront already provides HTTPS. To use a custom domain (e.g. `wedding.yourdomain.com`) instead of the `*.cloudfront.net` URL:
+
+1. Buy a domain
+2. Request a cert in **AWS Certificate Manager** (ACM) for `yourdomain.com` in `us-east-1` (required for CloudFront)
+3. Add `yourdomain.com` as an **Alternate domain name** on the CloudFront distribution and attach the ACM cert
+4. Point a DNS CNAME record at the CloudFront domain
+5. Update `CORS_ORIGINS` in `.env.production` to `https://yourdomain.com` and restart the app
 
 ### Troubleshooting
 
@@ -706,7 +720,8 @@ The deploy script pulls latest code, rebuilds Docker images, restarts services, 
 |-------|-----|
 | Health check fails | `cd ~/weddingAws/go-server && docker compose --env-file .env.production -f docker-compose.prod.yml logs app` |
 | Postgres won't start | Verify `DB_PASSWORD` in `.env.production` hasn't changed after first run |
-| Can't reach site | Check Security Group has port 80 open; check `sudo systemctl status nginx` |
+| Can't reach site via CloudFront | Check CloudFront distribution status is "Enabled"; check `sudo systemctl status nginx` on EC2 |
+| Direct EC2 IP not accessible | Expected — port 80 is restricted to CloudFront only. Use the CloudFront URL. |
 | GCS upload fails | Verify `gcs-key.json` exists at `~/weddingAws/gcs-key.json` |
 | Out of memory (t3.micro) | Enable swap: `sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
 
