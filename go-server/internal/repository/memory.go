@@ -34,17 +34,27 @@ type MemoryRepository struct {
 	inviteIDSeq   int
 }
 
-// NewMemoryRepository creates a new in-memory repository with empty collections.
+// NewMemoryRepository creates a new in-memory repository with seeded defaults.
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{
 		users:        make(map[int]models.User),
 		rsvps:        make(map[int]models.Rsvp),
 		media:        make(map[int]models.Media),
 		configImages: make(map[int]models.ConfigImage),
-		featureFlags: make(map[int]models.FeatureFlag),
-		appSettings:  make(map[int]models.AppSetting),
-		messages:     make(map[int]models.Message),
-		invites:      make(map[int]models.Invite),
+		flagIDSeq:    1,
+		featureFlags: map[int]models.FeatureFlag{
+			1: {
+				ID:          1,
+				FeatureKey:  "music_autoplay",
+				FeatureName: "Music Autoplay",
+				Description: "Autoplay background music when invitation opens",
+				Enabled:     true,
+				UpdatedAt:   now(),
+			},
+		},
+		appSettings: make(map[int]models.AppSetting),
+		messages:    make(map[int]models.Message),
+		invites:     make(map[int]models.Invite),
 	}
 }
 

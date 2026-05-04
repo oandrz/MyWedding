@@ -1027,10 +1027,32 @@ func TestContract_FeatureFlagList(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/feature-flags", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
 
+	// music_autoplay is seeded by NewMemoryRepository
 	flags := assertArray(t, result, "featureFlags")
-	if len(flags) != 0 {
-		t.Fatalf("expected 0 feature flags, got %d", len(flags))
+	if len(flags) != 1 {
+		t.Fatalf("expected 1 seeded feature flag, got %d", len(flags))
 	}
+}
+
+// TestContract_FeatureFlagListDefaultSeed verifies music_autoplay is seeded by default.
+func TestContract_FeatureFlagListDefaultSeed(t *testing.T) {
+	env := newTestEnv()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/feature-flags", nil)
+	result := contractResponse(t, env, req, http.StatusOK)
+
+	flags := assertArray(t, result, "featureFlags")
+	if len(flags) != 1 {
+		t.Fatalf("expected 1 seeded feature flag, got %d", len(flags))
+	}
+
+	obj, ok := flags[0].(map[string]interface{})
+	if !ok {
+		t.Fatal("featureFlags[0] is not an object")
+	}
+	assertFeatureFlagObject(t, obj)
+	assertStringValue(t, obj, "featureKey", "music_autoplay")
+	assertBoolValue(t, obj, "enabled", true)
 }
 
 func TestContract_FeatureFlagListWithData(t *testing.T) {
@@ -1044,8 +1066,9 @@ func TestContract_FeatureFlagListWithData(t *testing.T) {
 	result := contractResponse(t, env, req, http.StatusOK)
 
 	flags := assertArray(t, result, "featureFlags")
-	if len(flags) != 2 {
-		t.Fatalf("expected 2 feature flags, got %d", len(flags))
+	// seed adds 1 to the count
+	if len(flags) != 3 {
+		t.Fatalf("expected 3 feature flags (1 seed + 2 created), got %d", len(flags))
 	}
 
 	for i, item := range flags {

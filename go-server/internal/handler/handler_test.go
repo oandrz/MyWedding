@@ -832,8 +832,9 @@ func TestFeatureFlagList(t *testing.T) {
 	if !ok {
 		t.Fatal("expected featureFlags array")
 	}
-	if len(flags) != 0 {
-		t.Fatalf("expected 0 flags, got %d", len(flags))
+	// music_autoplay is seeded by NewMemoryRepository
+	if len(flags) != 1 {
+		t.Fatalf("expected 1 seeded flag, got %d", len(flags))
 	}
 }
 

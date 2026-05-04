@@ -674,8 +674,9 @@ func TestCreateFeatureFlag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateFeatureFlag returned error: %v", err)
 	}
-	if ff.ID != 1 {
-		t.Fatalf("expected ID 1, got %d", ff.ID)
+	// seed occupies ID 1 and flagIDSeq starts at 1, so first CreateFeatureFlag gets ID 2
+	if ff.ID != 2 {
+		t.Fatalf("expected ID 2, got %d", ff.ID)
 	}
 	if ff.Enabled {
 		t.Fatal("expected enabled to default to false")
@@ -788,8 +789,9 @@ func TestGetAllFeatureFlags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAllFeatureFlags returned error: %v", err)
 	}
-	if len(all) != 2 {
-		t.Fatalf("expected 2, got %d", len(all))
+	// seed adds 1 to the count
+	if len(all) != 3 {
+		t.Fatalf("expected 3 (1 seed + 2 created), got %d", len(all))
 	}
 }
 
