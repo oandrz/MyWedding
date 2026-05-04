@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
-import { useFeatureFlags } from "../useFeatureFlags";
+import { useFeatureFlags, useMusicAutoplayEnabled } from "../useFeatureFlags";
 
 function createWrapper(queryClient: QueryClient) {
   return ({ children }: { children: React.ReactNode }) =>
@@ -101,5 +101,81 @@ describe("useFeatureFlags", () => {
     expect(result.current.isFeatureEnabled("rsvp_enabled")).toBe(true);
     expect(result.current.isFeatureEnabled("nonexistent_feature")).toBe(true);
     expect(result.current.featureFlags).toEqual([]);
+  });
+
+  it("useMusicAutoplayEnabled returns true when music_autoplay flag is enabled", async () => {
+    const mockFlags = {
+      featureFlags: [
+        { id: 1, featureKey: "music_autoplay", featureName: "Music Autoplay", description: "", enabled: true, updatedAt: "2026-01-01T00:00:00Z" },
+      ],
+    };
+
+    global.fetch = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(mockFlags), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    ) as any;
+
+    const qc = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          queryFn: async ({ queryKey }) => {
+            const res = await fetch(queryKey[0] as string, { credentials: "include" });
+            if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+            return res.json();
+          },
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useMusicAutoplayEnabled(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("useMusicAutoplayEnabled returns false when music_autoplay flag is disabled", async () => {
+    const mockFlags = {
+      featureFlags: [
+        { id: 1, featureKey: "music_autoplay", featureName: "Music Autoplay", description: "", enabled: false, updatedAt: "2026-01-01T00:00:00Z" },
+      ],
+    };
+
+    global.fetch = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(mockFlags), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    ) as any;
+
+    const qc = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          queryFn: async ({ queryKey }) => {
+            const res = await fetch(queryKey[0] as string, { credentials: "include" });
+            if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+            return res.json();
+          },
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useMusicAutoplayEnabled(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(false);
+    });
   });
 });

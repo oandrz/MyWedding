@@ -103,3 +103,8 @@ export function useEGiftEnabled() {
   const { isFeatureEnabled } = useFeatureFlags();
   return isFeatureEnabled('egift');
 }
+
+export function useMusicAutoplayEnabled() {
+  const { isFeatureEnabled } = useFeatureFlags();
+  return isFeatureEnabled('music_autoplay');
+}
