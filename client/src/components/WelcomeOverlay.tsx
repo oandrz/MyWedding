@@ -14,7 +14,11 @@ const PETALS = [
   { top: "25%", left: "80%", size: 8, rotate: -15, delay: 5, duration: 23, color: "rgba(212,175,55,0.05)" },
 ];
 
-const WelcomeOverlay = () => {
+interface WelcomeOverlayProps {
+  onDismiss?: () => void;
+}
+
+const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [guestName, setGuestName] = useState<string>("");
   const [location] = useLocation();
@@ -108,6 +112,8 @@ const WelcomeOverlay = () => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem("welcome_overlay_opened", "true");
     }
+
+    onDismiss?.();
   };
 
   if (isAdminPage || !welcomeScreen || !welcomeScreen.enabled) {
