@@ -9,7 +9,7 @@ export interface AudioPlayerHandle {
   startAutoplay: () => void;
 }
 
-const AudioPlayer = forwardRef<AudioPlayerHandle, Record<string, never>>((_, ref) => {
+const AudioPlayer = forwardRef<AudioPlayerHandle, Record<never, never>>((_, ref) => {
   const isMusicEnabled = useMusicEnabled();
   const [isPlaying, setIsPlaying] = useState(false);
   const audioEl = useRef<HTMLAudioElement>(null);

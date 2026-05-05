@@ -11,8 +11,10 @@ import GoogleDriveInstructions from "@/pages/GoogleDriveInstructions";
 import { AdminLayout } from "@/pages/admin/AdminLayout";
 import AdminLogin from "@/pages/AdminLogin";
 import NotFound from "@/pages/not-found";
-import AudioPlayer from "@/components/AudioPlayer";
+import AudioPlayer, { AudioPlayerHandle } from "@/components/AudioPlayer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
+import { useRef, useCallback } from "react";
+import { useMusicAutoplayEnabled } from "@/hooks/useFeatureFlags";
 
 function Router() {
   return (
@@ -36,13 +38,30 @@ function Router() {
   );
 }
 
+function AppContent() {
+  const audioPlayerRef = useRef<AudioPlayerHandle>(null);
+  const isMusicAutoplayEnabled = useMusicAutoplayEnabled();
+
+  const handleOverlayDismiss = useCallback(() => {
+    if (isMusicAutoplayEnabled) {
+      audioPlayerRef.current?.startAutoplay();
+    }
+  }, [isMusicAutoplayEnabled]);
+
+  return (
+    <>
+      <WelcomeOverlay onDismiss={handleOverlayDismiss} />
+      <Router />
+      <AudioPlayer ref={audioPlayerRef} />
+      <Toaster />
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <WelcomeOverlay />
-      <Router />
-      <AudioPlayer />
-      <Toaster />
+      <AppContent />
     </QueryClientProvider>
   );
 }
