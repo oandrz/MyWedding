@@ -14,7 +14,7 @@ import NotFound from "@/pages/not-found";
 import AudioPlayer, { AudioPlayerHandle } from "@/components/AudioPlayer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import { useRef, useCallback } from "react";
-import { useMusicAutoplayEnabled } from "@/hooks/useFeatureFlags";
+import { useMusicAutoplayEnabled, useMusicEnabled } from "@/hooks/useFeatureFlags";
 
 function Router() {
   return (
@@ -40,13 +40,14 @@ function Router() {
 
 function AppContent() {
   const audioPlayerRef = useRef<AudioPlayerHandle>(null);
+  const isMusicEnabled = useMusicEnabled();
   const isMusicAutoplayEnabled = useMusicAutoplayEnabled();
 
   const handleOverlayDismiss = useCallback(() => {
-    if (isMusicAutoplayEnabled) {
+    if (isMusicEnabled && isMusicAutoplayEnabled) {
       audioPlayerRef.current?.startAutoplay();
     }
-  }, [isMusicAutoplayEnabled]);
+  }, [isMusicEnabled, isMusicAutoplayEnabled]);
 
   return (
     <>
