@@ -4,6 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { WelcomeScreen } from "@shared/schema";
 
+let hasShownThisLoad = false;
+export const _resetOverlayLoadState = () => { hasShownThisLoad = false; };
+
 // Petal configuration for floating animation
 const PETALS = [
   { top: "8%", left: "12%", size: 14, rotate: -25, delay: 0, duration: 18, color: "rgba(219,169,169,0.10)" },
@@ -67,10 +70,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
       return;
     }
 
-    // Check if overlay has already been opened in this session
-    const hasOpenedOverlay = sessionStorage.getItem("welcome_overlay_opened");
-
-    if (hasOpenedOverlay) {
+    if (hasShownThisLoad) {
       return;
     }
 
@@ -108,10 +108,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
       document.body.style.overflow = "";
     }
 
-    // Mark as opened in session storage (with browser check)
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem("welcome_overlay_opened", "true");
-    }
+    hasShownThisLoad = true;
 
     onDismiss?.();
   };

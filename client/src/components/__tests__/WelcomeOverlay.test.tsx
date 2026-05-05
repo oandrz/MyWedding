@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
-import WelcomeOverlay from "../WelcomeOverlay";
+import WelcomeOverlay, { _resetOverlayLoadState } from "../WelcomeOverlay";
 
 vi.mock("framer-motion", () => ({
   motion: {
@@ -35,42 +35,63 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/", vi.fn()],
 }));
 
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        queryFn: async ({ queryKey }) => {
+          const key = queryKey[0] as string;
+          if (key.includes("welcome-screen")) {
+            return {
+              welcomeScreen: {
+                enabled: true,
+                headingText: "You Are Invited",
+                deliveryLabel: "Dear",
+                fallbackName: "Guest",
+              },
+            };
+          }
+          return null;
+        },
+      },
+    },
+  });
+}
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  return createElement(QueryClientProvider, { client: makeQueryClient() }, children);
+}
+
+beforeEach(() => {
+  _resetOverlayLoadState();
+});
+
 describe("WelcomeOverlay", () => {
   it("calls onDismiss when Open Invitation button is clicked", async () => {
     const onDismiss = vi.fn();
+    render(<WelcomeOverlay onDismiss={onDismiss} />, { wrapper });
 
-    // Mock the welcome screen API to return enabled screen
-    const qc = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          queryFn: async ({ queryKey }) => {
-            const key = queryKey[0] as string;
-            if (key.includes("welcome-screen")) {
-              return {
-                welcomeScreen: {
-                  enabled: true,
-                  headingText: "You Are Invited",
-                  deliveryLabel: "Dear",
-                  fallbackName: "Guest",
-                },
-              };
-            }
-            return null;
-          },
-        },
-      },
-    });
-
-    const wrapperWithQc = ({ children }: { children: React.ReactNode }) =>
-      createElement(QueryClientProvider, { client: qc }, children);
-
-    render(<WelcomeOverlay onDismiss={onDismiss} />, { wrapper: wrapperWithQc });
-
-    // Wait for overlay to appear and click the button
     const button = await screen.findByText("Open Invitation");
     fireEvent.click(button);
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show overlay again after dismiss within the same session", async () => {
+    // First render: overlay should show
+    const { unmount } = render(<WelcomeOverlay />, { wrapper });
+    await screen.findByText("Open Invitation");
+
+    // Dismiss — sets hasShownThisLoad = true
+    fireEvent.click(screen.getByText("Open Invitation"));
+    unmount();
+
+    // Second render without resetting module state (simulates SPA navigation back to home)
+    render(<WelcomeOverlay />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("welcome-overlay")).not.toBeInTheDocument();
+    });
   });
 });
