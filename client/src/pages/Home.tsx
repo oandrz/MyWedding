@@ -3,15 +3,17 @@ import HeroSection from "@/components/HeroSection";
 import BibleVerseSection from "@/components/BibleVerseSection";
 import CoupleSection from "@/components/CoupleSection";
 import DetailsSection from "@/components/DetailsSection";
+import DressCodeSection from "@/components/DressCodeSection";
 import GallerySection from "@/components/GallerySection";
 import RsvpSection from "@/components/RsvpSection";
 import MessagesSection from "@/components/MessagesSection";
 import EGiftSection from "@/components/EGiftSection";
 import Footer from "@/components/Footer";
-import { useGalleryEnabled, useRsvpEnabled, useEGiftEnabled, useMessagesEnabled } from "@/hooks/useFeatureFlags";
+import { useDressCodeEnabled, useGalleryEnabled, useRsvpEnabled, useEGiftEnabled, useMessagesEnabled } from "@/hooks/useFeatureFlags";
 import { useImagePreloader } from "@/hooks/useImagePreloader";
 
 export default function Home() {
+  const isDressCodeEnabled = useDressCodeEnabled();
   const isGalleryEnabled = useGalleryEnabled();
   const isRsvpEnabled = useRsvpEnabled();
   const isEGiftEnabled = useEGiftEnabled();
@@ -30,6 +32,8 @@ export default function Home() {
       <DetailsSection />
       {/* Floral Divider */}
       <div className="floral-divider w-full"></div>
+      {isDressCodeEnabled && <DressCodeSection />}
+      {isDressCodeEnabled && <div className="floral-divider w-full"></div>}
       {isGalleryEnabled && <GallerySection />}
       {/* Floral Divider */}
       {isEGiftEnabled && <div className="floral-divider w-full"></div>}
