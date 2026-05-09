@@ -108,3 +108,8 @@ export function useMusicAutoplayEnabled() {
   const { isFeatureEnabled } = useFeatureFlags();
   return isFeatureEnabled('music_autoplay');
 }
+
+export function useDressCodeEnabled() {
+  const { isFeatureEnabled } = useFeatureFlags();
+  return isFeatureEnabled('dress_code');
+}
