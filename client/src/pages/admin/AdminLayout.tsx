@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Switch, Route, Redirect, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3, TicketCheck } from "lucide-react";
+import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3, TicketCheck, Palette } from "lucide-react";
 import { AdminContext } from "./AdminContext";
 import RsvpPage from "./RsvpPage";
 import MessagesPage from "./MessagesPage";
@@ -11,6 +11,7 @@ import WelcomePage from "./WelcomePage";
 import FlagsPage from "./FlagsPage";
 import StatsPage from "./StatsPage";
 import InvitesPage from "./InvitesPage";
+import DressCodePage from "./DressCodePage";
 
 const NAV_ITEMS = [
   { path: "/rsvps", label: "RSVP", icon: Users },
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { path: "/config", label: "Configuration", icon: Settings },
   { path: "/welcome", label: "Welcome", icon: Mail },
   { path: "/flags", label: "Flags", icon: Flag },
+  { path: "/dress-code", label: "Dress Code", icon: Palette },
   { path: "/stats", label: "Statistics", icon: BarChart3 },
 ];
 
@@ -150,6 +152,7 @@ export function AdminLayout() {
               <Route path="/config" component={ConfigPage} />
               <Route path="/welcome" component={WelcomePage} />
               <Route path="/flags" component={FlagsPage} />
+              <Route path="/dress-code" component={DressCodePage} />
               <Route path="/stats" component={StatsPage} />
             </Switch>
           </main>
