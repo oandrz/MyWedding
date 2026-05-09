@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ interface DressCodeColor {
 export default function DressCodePage() {
   const { toast } = useToast();
   const { handleAutoLogout } = useAdminContext();
+  const hasInitializedRef = useRef(false);
 
   const [colors, setColors] = useState<DressCodeColor[]>([]);
   const [newHex, setNewHex] = useState("#FFFFFF");
@@ -26,7 +27,8 @@ export default function DressCodePage() {
   });
 
   useEffect(() => {
-    if (settingsData?.settings) {
+    if (settingsData?.settings && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       const raw = settingsData.settings.find(s => s.settingKey === "dress_code_colors")?.settingValue ?? "[]";
       try {
         const parsed = JSON.parse(raw);

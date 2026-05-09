@@ -12,7 +12,7 @@ const DressCodeSection = () => {
     queryKey: ["/api/app-settings"],
   });
 
-  const raw = data?.settings.find(s => s.settingKey === "dress_code_colors")?.settingValue ?? "[]";
+  const raw = data?.settings?.find(s => s.settingKey === "dress_code_colors")?.settingValue ?? "[]";
   let colors: DressCodeColor[] = [];
   try { colors = JSON.parse(raw); } catch { colors = []; }
 
