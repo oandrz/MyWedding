@@ -28,7 +28,12 @@ export default function DressCodePage() {
   useEffect(() => {
     if (settingsData?.settings) {
       const raw = settingsData.settings.find(s => s.settingKey === "dress_code_colors")?.settingValue ?? "[]";
-      try { setColors(JSON.parse(raw)); } catch { setColors([]); }
+      try {
+        const parsed = JSON.parse(raw);
+        setColors(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setColors([]);
+      }
     }
   }, [settingsData]);
 

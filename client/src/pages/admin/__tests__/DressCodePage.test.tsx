@@ -80,4 +80,11 @@ describe("DressCodePage", () => {
     expect(screen.queryByText("White")).not.toBeInTheDocument();
     expect(screen.getByText(/no colors yet/i)).toBeInTheDocument();
   });
+
+  it("pressing Enter in label input adds the color", () => {
+    renderDressCodePage();
+    fireEvent.change(screen.getByTestId("input-new-label"), { target: { value: "Ivory" } });
+    fireEvent.keyDown(screen.getByTestId("input-new-label"), { key: "Enter" });
+    expect(screen.getByText("Ivory")).toBeInTheDocument();
+  });
 });
