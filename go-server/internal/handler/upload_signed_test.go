@@ -291,6 +291,24 @@ func TestCompleteConfigImageUpload_UpsertExisting(t *testing.T) {
 	}
 }
 
+func TestCompleteConfigImageUpload_StoragePathMismatch(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	// storagePath is in banner directory but imageType is gallery
+	body := jsonBody(map[string]interface{}{
+		"storagePath": "admin/banner/some-file.jpg",
+		"imageKey":    "gallery_123",
+		"imageType":   "gallery",
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/upload/complete", body, cookie, csrfToken)
+	rec := newRecorder()
+	env.handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for mismatched storagePath, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGetSignedUploadURL_InvalidImageKey(t *testing.T) {
 	env := newTestEnvWithStorage(&mockStorage{})
 	cookie, csrfToken := adminLogin(t, env)

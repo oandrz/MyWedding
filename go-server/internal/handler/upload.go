@@ -336,6 +336,12 @@ func (h *UploadHandler) CompleteConfigImageUpload(w http.ResponseWriter, r *http
 		return
 	}
 
+	expectedPrefix := service.AdminImageDirectory(req.ImageType) + "/"
+	if !strings.HasPrefix(req.StoragePath, expectedPrefix) {
+		writeError(w, r, http.StatusBadRequest, "storagePath does not match the declared imageType")
+		return
+	}
+
 	imageURL := "/storage/" + req.StoragePath
 
 	var thumbnailURL *string
