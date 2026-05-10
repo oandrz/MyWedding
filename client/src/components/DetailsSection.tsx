@@ -1,10 +1,25 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Car, ParkingSquare } from "lucide-react";
-import { WEDDING_SCHEDULE, VENUES, WEDDING_DATE } from "@/lib/constants";
+import { VENUES, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
 
+interface ScheduleEvent {
+  id: number;
+  title: string;
+  time: string;
+  description: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
 const DetailsSection = () => {
+  const { data: scheduleData } = useQuery<{ scheduleEvents: ScheduleEvent[] }>({
+    queryKey: ["/api/schedule"],
+  });
+  const scheduleEvents = scheduleData?.scheduleEvents ?? [];
+
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
   const venuesRef = useRef(null);
@@ -75,29 +90,33 @@ const DetailsSection = () => {
             </div>
             
             {/* Schedule */}
-            <div>
-              <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-4">
-                Schedule
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <div className="text-center md:border-r md:border-primary/20 md:pr-8">
-                  <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
-                    Holy Matrimony
-                  </div>
-                  <div className="text-lg md:text-xl font-cormorant text-foreground">
-                    2:00 PM - 3:00 PM
-                  </div>
+            {scheduleEvents.length > 0 && (
+              <div>
+                <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-4">
+                  Schedule
                 </div>
-                <div className="text-center">
-                  <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
-                    Wedding Reception
+                <div className={`grid grid-cols-1 gap-6 md:gap-8 ${scheduleEvents.length >= 2 ? "md:grid-cols-2" : ""}`}>
+                  <div className={`text-center ${scheduleEvents.length >= 2 ? "md:border-r md:border-primary/20 md:pr-8" : ""}`}>
+                    <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
+                      {scheduleEvents[0].title}
+                    </div>
+                    <div className="text-lg md:text-xl font-cormorant text-foreground">
+                      {scheduleEvents[0].time}
+                    </div>
                   </div>
-                  <div className="text-lg md:text-xl font-cormorant text-foreground">
-                    5:30 PM - 8:00 PM
-                  </div>
+                  {scheduleEvents.length >= 2 && (
+                    <div className="text-center">
+                      <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
+                        {scheduleEvents[scheduleEvents.length - 1].title}
+                      </div>
+                      <div className="text-lg md:text-xl font-cormorant text-foreground">
+                        {scheduleEvents[scheduleEvents.length - 1].time}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
             
             {/* Location - IMPOSSIBLE TO MISS */}
             <div className="pt-6 border-t border-primary/20">
@@ -212,9 +231,9 @@ const DetailsSection = () => {
             
             {/* Timeline Items */}
             <div className="space-y-12">
-              {WEDDING_SCHEDULE.map((item, index) => (
-                <motion.div 
-                  key={index}
+              {scheduleEvents.map((item, index) => (
+                <motion.div
+                  key={item.id}
                   className="relative flex items-center justify-between"
                   variants={fadeIn}
                   initial="hidden"
@@ -226,14 +245,14 @@ const DetailsSection = () => {
                     <h4 className="font-cormorant text-xl text-primary">{item.title}</h4>
                     <p className="font-montserrat text-sm text-foreground">{item.time}</p>
                   </div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full bg-primary z-10"
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: index * 0.2 + 0.1, duration: 0.5 }}
                   ></motion.div>
-                  
+
                   <div className="w-5/12 pl-8">
                     <p className="font-montserrat text-sm text-muted-foreground">
                       {item.description}

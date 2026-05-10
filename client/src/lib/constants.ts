@@ -18,25 +18,6 @@ export const FORMATTED_WEDDING_DATE = formatWeddingDate();
 export const BRIDE_NAME = "Christine Natasya Serena";
 export const GROOM_NAME = "Andreas";
 
-// Wedding Details
-export const WEDDING_SCHEDULE = [
-  {
-    title: "Holy Matrimony",
-    time: "2:00 PM - 3:00 PM",
-    description: "Exchange of vows and rings in a beautiful ceremony at Casakhasa"
-  },
-  {
-    title: "Teapai",
-    time: "4:30 PM - 5:00 PM",
-    description: "Traditional tea ceremony with family members"
-  },
-  {
-    title: "Dinner Reception",
-    time: "5:30 PM - 8:00 PM",
-    description: "Dinner, toasts, and speeches celebrating the newlyweds at Casakhasa"
-  }
-];
-
 // Venue Information
 export const VENUES = [
   {
