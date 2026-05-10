@@ -118,12 +118,18 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
       const imageKey = editingImage?.imageKey || (imageType === "banner" ? "banner" : `gallery_${timestamp}`);
 
       // Step 1 — get a signed upload URL from the Go backend (tiny JSON request, passes WAF)
+      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.type.split('/')[1] ?? 'jpg');
       const urlRes = await apiRequest('POST', '/api/admin/upload/signed-url', {
         imageKey,
         imageType,
-        filename: file.name,
+        filename: `upload.${ext}`,
       });
-      const { signedUrl, storagePath } = await urlRes.json() as { signedUrl: string; storagePath: string };
+      const body = await urlRes.json();
+      const signedUrl: string = body.signedUrl;
+      const storagePath: string = body.storagePath;
+      if (!signedUrl || !storagePath) {
+        throw new Error('Invalid signed URL response from server');
+      }
 
       // Step 2 — PUT the binary directly to Supabase (bypasses CloudFront entirely)
       const uploadRes = await fetch(signedUrl, {
