@@ -47,6 +47,29 @@ function createTestQueryClient() {
 function renderRsvpSection() {
   const qc = createTestQueryClient();
   qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
+  qc.setQueryData(["/api/feature-flags"], {
+    featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
+  });
+  return render(
+    <QueryClientProvider client={qc}>
+      <RsvpSection />
+    </QueryClientProvider>
+  );
+}
+
+function renderWithDeadline(pastDeadline: boolean) {
+  const qc = createTestQueryClient();
+  const offsetMs = pastDeadline ? -86400000 : 86400000; // -1 day or +1 day
+  const deadline = new Date(Date.now() + offsetMs).toISOString().split('T')[0];
+
+  qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
+  qc.setQueryData(["/api/feature-flags"], {
+    featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
+  });
+  qc.setQueryData(["/api/app-settings"], {
+    settings: [{ id: 1, settingKey: "rsvp_deadline", settingValue: deadline, settingType: "date", description: null, updatedAt: "" }],
+  });
+
   return render(
     <QueryClientProvider client={qc}>
       <RsvpSection />
@@ -146,6 +169,68 @@ describe("RsvpSection", () => {
       expect(capturedBody).toBeDefined();
       expect(capturedBody.attendanceType).toBe("both");
       expect(capturedBody).not.toHaveProperty("attending");
+    });
+
+    global.fetch = originalFetch;
+  });
+
+  it("shows closed message when rsvp_deadline is in the past", async () => {
+    renderWithDeadline(true);
+    await waitFor(() => {
+      expect(screen.getByText(/rsvp is now closed/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("button-submit-rsvp")).not.toBeInTheDocument();
+  });
+
+  it("shows form when rsvp_deadline is in the future", async () => {
+    renderWithDeadline(false);
+    await waitFor(() => {
+      expect(screen.getByTestId("button-submit-rsvp")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/rsvp is now closed/i)).not.toBeInTheDocument();
+  });
+
+  it("shows closed toast when submit returns 403", async () => {
+    const qc = createTestQueryClient();
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
+    qc.setQueryData(["/api/feature-flags"], {
+      featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
+    });
+    qc.setQueryData(["/api/app-settings"], {
+      settings: [{ id: 1, settingKey: "rsvp_deadline", settingValue: tomorrow, settingType: "date", description: null, updatedAt: "" }],
+    });
+
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn((url, options) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/rsvp") && options?.method === "POST") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ error: { message: "RSVP submissions are closed", code: "FORBIDDEN" } }),
+            { status: 403, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } })
+      );
+    }) as any;
+
+    render(
+      <QueryClientProvider client={qc}>
+        <RsvpSection />
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "john@test.com" } });
+    fireEvent.click(screen.getByTestId("button-submit-rsvp"));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "RSVP Closed" })
+      );
     });
 
     global.fetch = originalFetch;
