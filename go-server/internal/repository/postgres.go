@@ -1069,9 +1069,11 @@ func (r *PostgresRepository) GetScheduleEvents(ctx context.Context) ([]models.Sc
 	result := make([]models.ScheduleEvent, 0)
 	for rows.Next() {
 		var e models.ScheduleEvent
-		if err := rows.Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &e.CreatedAt); err != nil {
+		var createdAt time.Time
+		if err := rows.Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &createdAt); err != nil {
 			return nil, err
 		}
+		e.CreatedAt = createdAt.Format(time.RFC3339)
 		result = append(result, e)
 	}
 	return result, rows.Err()
@@ -1079,33 +1081,37 @@ func (r *PostgresRepository) GetScheduleEvents(ctx context.Context) ([]models.Sc
 
 func (r *PostgresRepository) CreateScheduleEvent(ctx context.Context, data models.InsertScheduleEvent) (*models.ScheduleEvent, error) {
 	var e models.ScheduleEvent
+	var createdAt time.Time
 	err := r.pool.QueryRow(ctx,
 		`INSERT INTO schedule_events (title, time, description, sort_order)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING id, title, time, description, sort_order, created_at`,
 		data.Title, data.Time, data.Description, data.SortOrder,
-	).Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &e.CreatedAt)
+	).Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &createdAt)
 	if err != nil {
 		return nil, err
 	}
+	e.CreatedAt = createdAt.Format(time.RFC3339)
 	return &e, nil
 }
 
 func (r *PostgresRepository) UpdateScheduleEvent(ctx context.Context, id int, data models.UpdateScheduleEvent) (*models.ScheduleEvent, error) {
 	var e models.ScheduleEvent
+	var createdAt time.Time
 	err := r.pool.QueryRow(ctx,
 		`UPDATE schedule_events
 		 SET title = $1, time = $2, description = $3
 		 WHERE id = $4
 		 RETURNING id, title, time, description, sort_order, created_at`,
 		data.Title, data.Time, data.Description, id,
-	).Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &e.CreatedAt)
+	).Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &createdAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	e.CreatedAt = createdAt.Format(time.RFC3339)
 	return &e, nil
 }
 

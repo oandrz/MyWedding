@@ -870,7 +870,10 @@ func (m *MemoryRepository) GetScheduleEvents(_ context.Context) ([]models.Schedu
 		result = append(result, e)
 	}
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].SortOrder < result[j].SortOrder
+		if result[i].SortOrder != result[j].SortOrder {
+			return result[i].SortOrder < result[j].SortOrder
+		}
+		return result[i].ID < result[j].ID
 	})
 	return result, nil
 }
@@ -885,7 +888,7 @@ func (m *MemoryRepository) CreateScheduleEvent(_ context.Context, data models.In
 		Time:        data.Time,
 		Description: data.Description,
 		SortOrder:   data.SortOrder,
-		CreatedAt:   time.Now().UTC(),
+		CreatedAt:   now(),
 	}
 	m.scheduleEvents[e.ID] = e
 	return &e, nil
