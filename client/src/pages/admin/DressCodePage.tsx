@@ -21,6 +21,9 @@ export default function DressCodePage() {
   const [colors, setColors] = useState<DressCodeColor[]>([]);
   const [newHex, setNewHex] = useState("#FFFFFF");
   const [newLabel, setNewLabel] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editHex, setEditHex] = useState("#FFFFFF");
+  const [editLabel, setEditLabel] = useState("");
 
   const { data: settingsData } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
@@ -68,6 +71,26 @@ export default function DressCodePage() {
 
   const handleRemove = (index: number) => {
     setColors(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleEditStart = (index: number) => {
+    setEditingIndex(index);
+    setEditHex(colors[index].hex);
+    setEditLabel(colors[index].label);
+  };
+
+  const handleEditSave = () => {
+    if (editingIndex === null || !editLabel.trim()) return;
+    setColors(prev =>
+      prev.map((c, i) => i === editingIndex ? { hex: editHex, label: editLabel.trim() } : c)
+    );
+    setEditingIndex(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingIndex(null);
+    setEditHex("#FFFFFF");
+    setEditLabel("");
   };
 
   return (
@@ -125,33 +148,81 @@ export default function DressCodePage() {
           </div>
         ) : (
           <div className="space-y-2 mb-6">
-            {colors.map((color, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between px-4 py-3 border rounded-lg bg-white"
-                data-testid={`color-row-${index}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-full border-2 border-primary/30 shadow-sm flex-shrink-0"
-                    style={{ backgroundColor: color.hex }}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{color.label}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{color.hex}</p>
+            {colors.map((color, index) =>
+              index === editingIndex ? (
+                <div
+                  key={index}
+                  className="flex flex-col gap-2 px-4 py-3 border-2 border-rose-400 rounded-lg bg-rose-50/50"
+                  data-testid={`color-row-${index}`}
+                >
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 bg-white border rounded-md px-3 py-2">
+                      <input
+                        type="color"
+                        value={editHex}
+                        onChange={e => setEditHex(e.target.value)}
+                        className="w-7 h-7 rounded-full cursor-pointer border-0 bg-transparent"
+                      />
+                      <span className="text-sm text-muted-foreground font-mono">{editHex}</span>
+                    </div>
+                    <Input
+                      value={editLabel}
+                      onChange={e => setEditLabel(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") handleEditSave();
+                        if (e.key === "Escape") handleEditCancel();
+                      }}
+                      className="flex-1 min-w-[160px]"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleEditSave} disabled={!editLabel.trim()}>
+                      Save
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleEditCancel}>
+                      Cancel
+                    </Button>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRemove(index)}
-                  className="text-rose-500 border-rose-200 hover:bg-rose-50"
-                  data-testid={`button-remove-${index}`}
+              ) : (
+                <div
+                  key={index}
+                  className="flex items-center justify-between px-4 py-3 border rounded-lg bg-white"
+                  data-testid={`color-row-${index}`}
                 >
-                  Remove
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-full border-2 border-primary/30 shadow-sm flex-shrink-0"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{color.label}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{color.hex}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditStart(index)}
+                      data-testid={`button-edit-${index}`}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemove(index)}
+                      className="text-rose-500 border-rose-200 hover:bg-rose-50"
+                      data-testid={`button-remove-${index}`}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         )}
 
