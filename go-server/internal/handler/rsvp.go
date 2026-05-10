@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
@@ -27,6 +28,17 @@ type rsvpRequest struct {
 
 // Create handles POST /api/rsvp.
 func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
+	if setting, err := h.Repo.GetAppSetting(r.Context(), "rsvp_deadline"); err == nil && setting != nil {
+		if deadline, err := time.Parse("2006-01-02", setting.SettingValue); err == nil {
+			now := time.Now().UTC()
+			today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+			if !today.Before(deadline) {
+				writeError(w, r, http.StatusForbidden, "RSVP submissions are closed")
+				return
+			}
+		}
+	}
+
 	var body rsvpRequest
 	if err := parseJSON(r, &body); err != nil {
 		writeError(w, r, http.StatusBadRequest, "Invalid request body")

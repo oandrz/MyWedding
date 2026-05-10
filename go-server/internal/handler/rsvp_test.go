@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 )
@@ -285,5 +286,40 @@ func TestRsvp_Create_FlagOff_StillUsesEmail(t *testing.T) {
 	rsvp := result["rsvp"].(map[string]interface{})
 	if rsvp["name"] != "Alice" {
 		t.Fatalf("expected name=Alice, got %v", rsvp["name"])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RSVP Deadline Enforcement
+// ---------------------------------------------------------------------------
+
+func TestRsvp_Create_DeadlineEnforcement(t *testing.T) {
+	tests := []struct {
+		name         string
+		settingValue string // empty = no seed
+		wantStatus   int
+	}{
+		{"past deadline", time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02"), http.StatusForbidden},
+		{"future deadline", time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02"), http.StatusCreated},
+		{"no deadline", "", http.StatusCreated},
+		{"malformed deadline", "not-a-date", http.StatusCreated},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newTestEnv()
+			if tc.settingValue != "" {
+				if _, err := env.repo.UpsertAppSettings(context.Background(), []models.InsertAppSetting{
+					{SettingKey: "rsvp_deadline", SettingValue: tc.settingValue, SettingType: "date"},
+				}); err != nil {
+					t.Fatalf("failed to seed rsvp_deadline: %v", err)
+				}
+			}
+			body := jsonBody(map[string]interface{}{
+				"name": "Alice", "email": "alice@test.com", "attendanceType": "both",
+			})
+			req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+			req.Header.Set("Content-Type", "application/json")
+			contractResponse(t, env, req, tc.wantStatus)
+		})
 	}
 }

@@ -47,6 +47,22 @@ const RsvpSection = () => {
   const { getFeatureFlag, isLoading: isFlagsLoading } = useFeatureFlags();
   const rsvpEnabled = getFeatureFlag("rsvp")?.enabled === true;
 
+  const { data: appSettingsData } = useQuery<{ settings: any[] }>({
+    queryKey: ['/api/app-settings'],
+    staleTime: 60 * 1000,
+  });
+
+  const isDeadlinePassed = (() => {
+    const deadlineSetting = appSettingsData?.settings?.find(
+      (s: any) => s.settingKey === 'rsvp_deadline'
+    );
+    if (!deadlineSetting) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(deadlineSetting.settingValue + 'T00:00:00');
+    return deadline <= today;
+  })();
+
   // Flow determined by URL param: ?code= → code flow, otherwise → email flow
   const useCodeFlow = !!inviteCode;
 
@@ -185,11 +201,21 @@ const RsvpSection = () => {
       });
     },
     onError: (error) => {
+      const status = (error as any)?.cause?.status;
+      if (status === 403) {
+        toast({
+          title: "RSVP Closed",
+          description: "RSVP submissions are now closed.",
+          variant: "destructive",
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/app-settings'] });
+        return;
+      }
       console.error("RSVP submission error:", error);
       toast({
         title: "Error",
         description: `Failed to submit RSVP: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   });
@@ -201,6 +227,22 @@ const RsvpSection = () => {
   // Feature flag controls visibility of the entire RSVP section
   if (!isFlagsLoading && !rsvpEnabled) {
     return null;
+  }
+
+  if (rsvpEnabled && isDeadlinePassed) {
+    return (
+      <section id="rsvp" className="py-20 bg-gradient-to-b from-white via-rose-50/30 to-white paper-texture">
+        <div className="container mx-auto px-4">
+          <div className="max-w-xl mx-auto glass-card p-8 md:p-10 rounded-2xl text-center">
+            <i className="fas fa-calendar-times text-4xl text-muted-foreground mb-4 block"></i>
+            <h3 className="text-3xl font-cormorant text-foreground mb-3">RSVP is Now Closed</h3>
+            <p className="text-muted-foreground font-montserrat">
+              We are no longer accepting RSVPs. Thank you to everyone who has already responded!
+            </p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
