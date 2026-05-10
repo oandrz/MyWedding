@@ -1052,3 +1052,85 @@ func (r *PostgresRepository) UnmarkInviteWaSent(ctx context.Context, id int) (*m
 	inv.WaSentAt = scanWaSentAt(waSentAt)
 	return &inv, nil
 }
+
+// ---------------------------------------------------------------------------
+// Schedule Events
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) GetScheduleEvents(ctx context.Context) ([]models.ScheduleEvent, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, title, time, description, sort_order, created_at
+		 FROM schedule_events ORDER BY sort_order ASC, id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.ScheduleEvent, 0)
+	for rows.Next() {
+		var e models.ScheduleEvent
+		if err := rows.Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, e)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) CreateScheduleEvent(ctx context.Context, data models.InsertScheduleEvent) (*models.ScheduleEvent, error) {
+	var e models.ScheduleEvent
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO schedule_events (title, time, description, sort_order)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, title, time, description, sort_order, created_at`,
+		data.Title, data.Time, data.Description, data.SortOrder,
+	).Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &e.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+func (r *PostgresRepository) UpdateScheduleEvent(ctx context.Context, id int, data models.UpdateScheduleEvent) (*models.ScheduleEvent, error) {
+	var e models.ScheduleEvent
+	err := r.pool.QueryRow(ctx,
+		`UPDATE schedule_events
+		 SET title = $1, time = $2, description = $3
+		 WHERE id = $4
+		 RETURNING id, title, time, description, sort_order, created_at`,
+		data.Title, data.Time, data.Description, id,
+	).Scan(&e.ID, &e.Title, &e.Time, &e.Description, &e.SortOrder, &e.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+func (r *PostgresRepository) DeleteScheduleEvent(ctx context.Context, id int) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM schedule_events WHERE id = $1`, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *PostgresRepository) ReorderScheduleEvents(ctx context.Context, items []models.ScheduleOrderItem) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, item := range items {
+		_, err := tx.Exec(ctx,
+			`UPDATE schedule_events SET sort_order = $1 WHERE id = $2`,
+			item.SortOrder, item.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}

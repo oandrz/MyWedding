@@ -30,8 +30,10 @@ type MemoryRepository struct {
 	welcomeScreen *models.WelcomeScreen
 	messages      map[int]models.Message
 	messageIDSeq  int
-	invites       map[int]models.Invite
-	inviteIDSeq   int
+	invites        map[int]models.Invite
+	inviteIDSeq    int
+	scheduleEvents map[int]models.ScheduleEvent
+	scheduleIDSeq  int
 }
 
 // NewMemoryRepository creates a new in-memory repository with seeded defaults.
@@ -52,9 +54,10 @@ func NewMemoryRepository() *MemoryRepository {
 				UpdatedAt:   now(),
 			},
 		},
-		appSettings: make(map[int]models.AppSetting),
-		messages:    make(map[int]models.Message),
-		invites:     make(map[int]models.Invite),
+		appSettings:    make(map[int]models.AppSetting),
+		messages:       make(map[int]models.Message),
+		invites:        make(map[int]models.Invite),
+		scheduleEvents: make(map[int]models.ScheduleEvent),
 	}
 }
 
@@ -853,4 +856,75 @@ func (m *MemoryRepository) UnmarkInviteWaSent(_ context.Context, id int) (*model
 	inv.WaSentAt = nil
 	m.invites[id] = inv
 	return &inv, nil
+}
+
+// ---------------------------------------------------------------------------
+// Schedule Events
+// ---------------------------------------------------------------------------
+
+func (m *MemoryRepository) GetScheduleEvents(_ context.Context) ([]models.ScheduleEvent, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]models.ScheduleEvent, 0, len(m.scheduleEvents))
+	for _, e := range m.scheduleEvents {
+		result = append(result, e)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SortOrder < result[j].SortOrder
+	})
+	return result, nil
+}
+
+func (m *MemoryRepository) CreateScheduleEvent(_ context.Context, data models.InsertScheduleEvent) (*models.ScheduleEvent, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.scheduleIDSeq++
+	e := models.ScheduleEvent{
+		ID:          m.scheduleIDSeq,
+		Title:       data.Title,
+		Time:        data.Time,
+		Description: data.Description,
+		SortOrder:   data.SortOrder,
+		CreatedAt:   time.Now().UTC(),
+	}
+	m.scheduleEvents[e.ID] = e
+	return &e, nil
+}
+
+func (m *MemoryRepository) UpdateScheduleEvent(_ context.Context, id int, data models.UpdateScheduleEvent) (*models.ScheduleEvent, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e, ok := m.scheduleEvents[id]
+	if !ok {
+		return nil, nil
+	}
+	e.Title = data.Title
+	e.Time = data.Time
+	e.Description = data.Description
+	m.scheduleEvents[id] = e
+	return &e, nil
+}
+
+func (m *MemoryRepository) DeleteScheduleEvent(_ context.Context, id int) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.scheduleEvents[id]; !ok {
+		return false, nil
+	}
+	delete(m.scheduleEvents, id)
+	return true, nil
+}
+
+func (m *MemoryRepository) ReorderScheduleEvents(_ context.Context, items []models.ScheduleOrderItem) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, item := range items {
+		e, ok := m.scheduleEvents[item.ID]
+		if !ok {
+			continue
+		}
+		e.SortOrder = item.SortOrder
+		m.scheduleEvents[item.ID] = e
+	}
+	return nil
 }

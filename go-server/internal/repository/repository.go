@@ -74,4 +74,11 @@ type Repository interface {
 	UpdateInvitePhone(ctx context.Context, id int, phone *string) (*models.Invite, error)
 	MarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error)
 	UnmarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error)
+
+	// Schedule Events
+	GetScheduleEvents(ctx context.Context) ([]models.ScheduleEvent, error)
+	CreateScheduleEvent(ctx context.Context, data models.InsertScheduleEvent) (*models.ScheduleEvent, error)
+	UpdateScheduleEvent(ctx context.Context, id int, data models.UpdateScheduleEvent) (*models.ScheduleEvent, error)
+	DeleteScheduleEvent(ctx context.Context, id int) (bool, error)
+	ReorderScheduleEvents(ctx context.Context, items []models.ScheduleOrderItem) error
 }
