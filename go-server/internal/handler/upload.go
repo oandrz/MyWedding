@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -43,6 +44,15 @@ var validConfigImageTypes = map[string]bool{
 	"bride-profile": true,
 	"groom-profile": true,
 	"verse-image":   true,
+}
+
+// adminImageDir maps imageType to its Supabase storage directory path.
+var adminImageDir = map[string]string{
+	"banner":        "admin/banner",
+	"gallery":       "admin/gallery",
+	"bride-profile": "admin/profiles/bride",
+	"groom-profile": "admin/profiles/groom",
+	"verse-image":   "admin/verse",
 }
 
 // UploadHandler handles file upload endpoints.
@@ -243,6 +253,55 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"message": "Config image uploaded successfully",
 		"image":   img,
+	})
+}
+
+type signedURLRequest struct {
+	ImageKey  string `json:"imageKey"`
+	ImageType string `json:"imageType"`
+	Filename  string `json:"filename"`
+}
+
+type signedURLResponse struct {
+	SignedURL   string `json:"signedUrl"`
+	StoragePath string `json:"storagePath"`
+}
+
+// GetSignedUploadURL handles POST /api/admin/upload/signed-url.
+// Returns a time-limited Supabase signed URL so the browser can PUT the
+// image binary directly to Supabase, bypassing the CloudFront WAF.
+func (h *UploadHandler) GetSignedUploadURL(w http.ResponseWriter, r *http.Request) {
+	var req signedURLRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	if req.ImageKey == "" || req.ImageType == "" || req.Filename == "" {
+		writeError(w, r, http.StatusBadRequest, "imageKey, imageType, and filename are required")
+		return
+	}
+	if !validConfigImageTypes[req.ImageType] {
+		writeError(w, r, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
+		return
+	}
+
+	ext := fileExtension(req.Filename)
+	if ext == "" {
+		ext = "jpg"
+	}
+	uniqueName := fmt.Sprintf("%s-%d.%s", req.ImageKey, time.Now().UnixMilli(), ext)
+	storagePath := adminImageDir[req.ImageType] + "/" + uniqueName
+
+	signedURL, err := h.Storage.CreateSignedUploadURL(r.Context(), storagePath)
+	if err != nil {
+		slog.Error("Failed to create signed upload URL", "error", err)
+		writeError(w, r, http.StatusInternalServerError, "Failed to create upload URL")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, signedURLResponse{
+		SignedURL:   signedURL,
+		StoragePath: storagePath,
 	})
 }
 

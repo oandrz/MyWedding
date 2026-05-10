@@ -156,6 +156,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			if upload != nil {
 				r.Post("/config-images-upload", upload.ConfigImageUpload)
 				r.Post("/settings/music-upload", upload.MusicUpload)
+				r.Post("/upload/signed-url", upload.GetSignedUploadURL)
 			}
 
 			r.Patch("/feature-flags/{featureKey}", featureFlag.Update)
