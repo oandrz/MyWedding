@@ -22,18 +22,18 @@ export const GROOM_NAME = "Andreas";
 export const WEDDING_SCHEDULE = [
   {
     title: "Holy Matrimony",
-    time: "2:00 PM - 3:30 PM",
-    description: "Exchange of vows and rings in a beautiful ceremony at St. Mary's Cathedral"
+    time: "2:00 PM - 3:00 PM",
+    description: "Exchange of vows and rings in a beautiful ceremony at Casakhasa"
   },
   {
     title: "Teapai",
-    time: "4:30 PM - 5:30 PM",
+    time: "4:30 PM - 5:00 PM",
     description: "Traditional tea ceremony with family members"
   },
   {
     title: "Dinner Reception",
-    time: "6:15 PM - 8:00 PM",
-    description: "Elegant dinner, toasts, and speeches celebrating the newlyweds"
+    time: "5:30 PM - 8:00 PM",
+    description: "Dinner, toasts, and speeches celebrating the newlyweds at Casakhasa"
   }
 ];
 

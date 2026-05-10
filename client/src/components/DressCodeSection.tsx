@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { fadeIn, staggerContainer, staggerFast } from "@/lib/animations";
+import batikPng from "@/assets/batik.jpg";
 
 interface DressCodeColor {
-  hex: string;
+  hex?: string;
+  image?: string;
   label: string;
 }
+
+const BATIK_ENTRY: DressCodeColor = { image: batikPng, label: "Batik" };
 
 const DressCodeSection = () => {
   const { data } = useQuery<{ settings: any[] }>({
@@ -16,7 +20,9 @@ const DressCodeSection = () => {
   let colors: DressCodeColor[] = [];
   try { colors = JSON.parse(raw); } catch { colors = []; }
 
-  if (!data || colors.length === 0) return null;
+  const displayColors = [...colors, BATIK_ENTRY];
+
+  if (!data) return null;
 
   return (
     <section
@@ -35,13 +41,13 @@ const DressCodeSection = () => {
             className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-3"
             variants={fadeIn}
           >
-            Attire
+            Dress Code
           </motion.p>
           <motion.h2
             className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
-            Dress Code
+            Color To Avoid
           </motion.h2>
           <motion.div
             className="w-24 h-1 bg-primary mx-auto rounded-full mb-6"
@@ -51,7 +57,7 @@ const DressCodeSection = () => {
             className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
             variants={fadeIn}
           >
-            We kindly ask that guests avoid wearing the following colors to our celebration
+            We kindly ask that guest <strong>avoid</strong> wearing the following colors <strong>(Bold and Strong Color)</strong> to our celebration. For Example:
           </motion.p>
         </motion.div>
 
@@ -62,7 +68,7 @@ const DressCodeSection = () => {
           viewport={{ once: true, amount: 0.1 }}
           variants={staggerFast}
         >
-          {colors.map((color, index) => (
+          {displayColors.map((color, index) => (
             <motion.div
               key={index}
               className="flex flex-col items-center gap-3"
@@ -70,7 +76,11 @@ const DressCodeSection = () => {
             >
               <div
                 className="w-20 h-20 rounded-full border-2 border-primary shadow-md"
-                style={{ backgroundColor: color.hex }}
+                style={
+                  color.image
+                    ? { backgroundImage: `url(${color.image})`, backgroundSize: "cover", backgroundPosition: "center" }
+                    : { backgroundColor: color.hex }
+                }
                 data-testid={`color-swatch-${index}`}
               />
               <span className="text-xs uppercase font-montserrat tracking-widest text-foreground">
