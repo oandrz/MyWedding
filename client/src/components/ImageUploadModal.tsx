@@ -113,32 +113,37 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
   // File upload mutation for config images - now uses App Storage directly
   const fileMutation = useMutation({
     mutationFn: async (data: FileUploadForm) => {
-      const formData = new FormData();
-      formData.append("file", data.file);
-
-      // Generate a unique image key for this upload
+      const file = data.file as File;
       const timestamp = Date.now();
       const imageKey = editingImage?.imageKey || (imageType === "banner" ? "banner" : `gallery_${timestamp}`);
 
-      formData.append("imageKey", imageKey);
-      formData.append("imageType", imageType);
-      formData.append("title", data.title || "");
-      formData.append("description", data.description || "");
+      // Step 1 — get a signed upload URL from the Go backend (tiny JSON request, passes WAF)
+      const urlRes = await apiRequest('POST', '/api/admin/upload/signed-url', {
+        imageKey,
+        imageType,
+        filename: file.name,
+      });
+      const { signedUrl, storagePath } = await urlRes.json() as { signedUrl: string; storagePath: string };
 
-      // Use the new config images upload endpoint with admin key authentication
-      const adminKey = localStorage.getItem('adminKey');
-      const uploadUrl = adminKey
-        ? `/api/admin/config-images-upload?adminKey=${adminKey}`
-        : `/api/admin/config-images-upload`;
-
-      const uploadResponse = await apiRequest('POST', uploadUrl, formData);
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.message || "Failed to upload config image");
+      // Step 2 — PUT the binary directly to Supabase (bypasses CloudFront entirely)
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+      if (!uploadRes.ok) {
+        throw new Error(`Direct upload to storage failed with status ${uploadRes.status}`);
       }
 
-      return uploadResponse.json();
+      // Step 3 — notify Go to generate thumbnail and save the DB record
+      const completeRes = await apiRequest('POST', '/api/admin/upload/complete', {
+        storagePath,
+        imageKey,
+        imageType,
+        title: data.title || '',
+        description: data.description || '',
+      });
+      return completeRes.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
