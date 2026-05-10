@@ -93,7 +93,7 @@ func (s *SupabaseStorage) UploadAdminImage(ctx context.Context, data io.Reader, 
 
 func (s *SupabaseStorage) CreateSignedUploadURL(ctx context.Context, objectPath string) (string, error) {
 	objPath := s.objectPath(objectPath)
-	endpoint := fmt.Sprintf("%s/storage/v1/object/sign/upload/%s/%s", s.baseURL, s.bucketID, objPath)
+	endpoint := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.baseURL, s.bucketID, objPath)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader("{}"))
 	if err != nil {
@@ -114,17 +114,16 @@ func (s *SupabaseStorage) CreateSignedUploadURL(ctx context.Context, objectPath 
 	}
 
 	var result struct {
-		Token string `json:"token"`
+		URL string `json:"url"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("failed to decode signed URL response: %w", err)
 	}
-	if result.Token == "" {
-		return "", fmt.Errorf("supabase returned empty token for signed upload URL")
+	if result.URL == "" {
+		return "", fmt.Errorf("supabase returned empty url for signed upload URL")
 	}
 
-	signedURL := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s?token=%s",
-		s.baseURL, s.bucketID, objPath, result.Token)
+	signedURL := s.baseURL + "/storage/v1" + result.URL
 	return signedURL, nil
 }
 
