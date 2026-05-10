@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,7 @@ export default function RsvpDeadlinePage() {
   const { handleAutoLogout } = useAdminContext();
   const [deadlineInput, setDeadlineInput] = useState<string>(getDefaultDeadline());
   const [savedDeadline, setSavedDeadline] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   const { data: appSettingsData, isLoading } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
@@ -55,7 +56,10 @@ export default function RsvpDeadlinePage() {
       );
       if (setting) {
         setSavedDeadline(setting.settingValue);
-        setDeadlineInput(setting.settingValue);
+        if (!hasInitializedRef.current) {
+          hasInitializedRef.current = true;
+          setDeadlineInput(setting.settingValue);
+        }
       }
     }
   }, [appSettingsData]);
