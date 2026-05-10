@@ -17,6 +17,7 @@ type ObjectStorage interface {
 	Download(ctx context.Context, objectPath string, w http.ResponseWriter) error
 	DownloadBuffer(ctx context.Context, objectPath string) ([]byte, error)
 	Delete(ctx context.Context, objectPath string) error
+	CreateSignedUploadURL(ctx context.Context, objectPath string) (string, error)
 	ParsePublicURL(publicURL string) string
 }
 
@@ -79,6 +80,10 @@ func (s *LocalStorage) DownloadBuffer(_ context.Context, objectPath string) ([]b
 
 func (s *LocalStorage) Delete(_ context.Context, objectPath string) error {
 	return os.Remove(filepath.Join(s.baseDir, objectPath))
+}
+
+func (s *LocalStorage) CreateSignedUploadURL(_ context.Context, _ string) (string, error) {
+	return "", fmt.Errorf("signed upload URLs require Supabase storage; set SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_BUCKET_ID")
 }
 
 func (s *LocalStorage) ParsePublicURL(publicURL string) string {

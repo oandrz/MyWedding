@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -88,6 +89,43 @@ func (s *SupabaseStorage) Upload(ctx context.Context, data io.Reader, size int64
 func (s *SupabaseStorage) UploadAdminImage(ctx context.Context, data io.Reader, size int64, filename, contentType, imageType string) (string, error) {
 	dir := adminImageDirectory(imageType)
 	return s.Upload(ctx, data, size, filename, contentType, dir)
+}
+
+func (s *SupabaseStorage) CreateSignedUploadURL(ctx context.Context, objectPath string) (string, error) {
+	objPath := s.objectPath(objectPath)
+	endpoint := fmt.Sprintf("%s/storage/v1/object/sign/upload/%s/%s", s.baseURL, s.bucketID, objPath)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader("{}"))
+	if err != nil {
+		return "", fmt.Errorf("failed to create signed URL request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("signed URL request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("supabase sign upload returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode signed URL response: %w", err)
+	}
+	if result.Token == "" {
+		return "", fmt.Errorf("supabase returned empty token for signed upload URL")
+	}
+
+	signedURL := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s?token=%s",
+		s.baseURL, s.bucketID, objPath, result.Token)
+	return signedURL, nil
 }
 
 func (s *SupabaseStorage) Download(ctx context.Context, objectPath string, w http.ResponseWriter) error {
