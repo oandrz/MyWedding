@@ -5,6 +5,11 @@ APP_DIR="${APP_DIR:-$HOME/weddingAws}"
 BRANCH="${BRANCH:-main}"
 COMPOSE="docker compose --env-file .env.production -f docker-compose.prod.yml"
 
+# Load CLOUDFRONT_DISTRIBUTION_ID from .env.production if not already set in the shell
+if [ -z "${CLOUDFRONT_DISTRIBUTION_ID:-}" ] && [ -f "$APP_DIR/go-server/.env.production" ]; then
+  CLOUDFRONT_DISTRIBUTION_ID=$(grep -E '^CLOUDFRONT_DISTRIBUTION_ID=' "$APP_DIR/go-server/.env.production" | cut -d'=' -f2-)
+fi
+
 echo "==> Pulling latest code..."
 cd "$APP_DIR"
 git pull origin "$BRANCH"
