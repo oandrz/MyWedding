@@ -50,7 +50,7 @@ func (s *LocalStorage) Upload(_ context.Context, data io.Reader, size int64, fil
 }
 
 func (s *LocalStorage) UploadAdminImage(_ context.Context, data io.Reader, size int64, filename, contentType, imageType string) (string, error) {
-	dir := adminImageDirectory(imageType)
+	dir := AdminImageDirectory(imageType)
 	return s.Upload(context.Background(), data, size, filename, contentType, dir)
 }
 
@@ -93,8 +93,8 @@ func (s *LocalStorage) ParsePublicURL(publicURL string) string {
 	return ""
 }
 
-// adminImageDirectory maps image type to storage directory.
-func adminImageDirectory(imageType string) string {
+// AdminImageDirectory maps image type to storage directory.
+func AdminImageDirectory(imageType string) string {
 	switch imageType {
 	case "banner":
 		return "admin/banner"

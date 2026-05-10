@@ -87,7 +87,7 @@ func (s *SupabaseStorage) Upload(ctx context.Context, data io.Reader, size int64
 }
 
 func (s *SupabaseStorage) UploadAdminImage(ctx context.Context, data io.Reader, size int64, filename, contentType, imageType string) (string, error) {
-	dir := adminImageDirectory(imageType)
+	dir := AdminImageDirectory(imageType)
 	return s.Upload(ctx, data, size, filename, contentType, dir)
 }
 

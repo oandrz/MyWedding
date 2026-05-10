@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -46,14 +47,8 @@ var validConfigImageTypes = map[string]bool{
 	"verse-image":   true,
 }
 
-// adminImageDir maps imageType to its Supabase storage directory path.
-var adminImageDir = map[string]string{
-	"banner":        "admin/banner",
-	"gallery":       "admin/gallery",
-	"bride-profile": "admin/profiles/bride",
-	"groom-profile": "admin/profiles/groom",
-	"verse-image":   "admin/verse",
-}
+// validImageKeyRE restricts imageKey to safe characters only (no path traversal).
+var validImageKeyRE = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // UploadHandler handles file upload endpoints.
 type UploadHandler struct {
@@ -280,6 +275,10 @@ func (h *UploadHandler) GetSignedUploadURL(w http.ResponseWriter, r *http.Reques
 		writeError(w, r, http.StatusBadRequest, "imageKey, imageType, and filename are required")
 		return
 	}
+	if !validImageKeyRE.MatchString(req.ImageKey) {
+		writeError(w, r, http.StatusBadRequest, "imageKey must contain only letters, digits, hyphens, and underscores")
+		return
+	}
 	if !validConfigImageTypes[req.ImageType] {
 		writeError(w, r, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
 		return
@@ -290,7 +289,7 @@ func (h *UploadHandler) GetSignedUploadURL(w http.ResponseWriter, r *http.Reques
 		ext = "jpg"
 	}
 	uniqueName := fmt.Sprintf("%s-%d.%s", req.ImageKey, time.Now().UnixMilli(), ext)
-	storagePath := adminImageDir[req.ImageType] + "/" + uniqueName
+	storagePath := service.AdminImageDirectory(req.ImageType) + "/" + uniqueName
 
 	signedURL, err := h.Storage.CreateSignedUploadURL(r.Context(), storagePath)
 	if err != nil {
