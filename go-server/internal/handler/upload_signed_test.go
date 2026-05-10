@@ -164,3 +164,21 @@ func TestGetSignedUploadURL_RequiresAuth(t *testing.T) {
 }
 
 func newRecorder() *httptest.ResponseRecorder { return httptest.NewRecorder() }
+
+func TestGetSignedUploadURL_InvalidImageKey(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	badKeys := []string{"../etc/passwd", "foo/bar", "foo.jpg", "key with space"}
+	for _, k := range badKeys {
+		body := jsonBody(map[string]interface{}{
+			"imageKey": k, "imageType": "gallery", "filename": "photo.jpg",
+		})
+		req := adminRequest(http.MethodPost, "/api/admin/upload/signed-url", body, cookie, csrfToken)
+		rec := newRecorder()
+		env.handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("imageKey %q: expected 400, got %d: %s", k, rec.Code, rec.Body.String())
+		}
+	}
+}

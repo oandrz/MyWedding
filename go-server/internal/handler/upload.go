@@ -179,6 +179,11 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if !validImageKeyRE.MatchString(imageKey) {
+		writeError(w, r, http.StatusBadRequest, "imageKey must contain only letters, digits, hyphens, and underscores")
+		return
+	}
+
 	if !validConfigImageTypes[imageType] {
 		writeError(w, r, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
 		return
