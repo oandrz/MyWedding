@@ -12,7 +12,7 @@ git pull origin "$BRANCH"
 echo "==> Building and deploying..."
 cd go-server
 $COMPOSE build
-$COMPOSE up -d
+$COMPOSE up -d --force-recreate
 
 # Run migration on first deploy (safe to re-run — uses IF NOT EXISTS)
 if [ "${MIGRATE:-}" = "1" ]; then
@@ -34,4 +34,17 @@ else
   echo "==> WARNING: Health check failed. Check logs:"
   echo "    $COMPOSE logs app"
   exit 1
+fi
+
+# Invalidate CloudFront cache so users get the new version immediately
+if [ -n "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]; then
+  echo "==> Invalidating CloudFront cache..."
+  aws cloudfront create-invalidation \
+    --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+    --paths "/*" \
+    --query "Invalidation.Id" \
+    --output text
+  echo "==> CloudFront invalidation submitted."
+else
+  echo "==> Skipping CloudFront invalidation (CLOUDFRONT_DISTRIBUTION_ID not set)."
 fi
