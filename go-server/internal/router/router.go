@@ -50,6 +50,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	appSetting := &handler.AppSettingHandler{Repo: repo}
 	welcomeScreen := &handler.WelcomeScreenHandler{Repo: repo, Sanitizer: sanitizer}
 	invite := &handler.InviteHandler{Repo: repo, Sanitizer: sanitizer}
+	schedule := &handler.ScheduleHandler{Repo: repo}
 
 	// Health check
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +98,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	r.Get("/api/settings/{settingKey}", appSetting.Get)
 
 	r.Get("/api/welcome-screen", welcomeScreen.Get)
+	r.Get("/api/schedule", schedule.List)
 
 	r.Get("/api/invites/{code}", invite.GetByCode)
 
@@ -163,6 +165,11 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Patch("/app-settings/{settingKey}", appSetting.Update)
 
 			r.Patch("/welcome-screen", welcomeScreen.Update)
+
+			r.Post("/schedule", schedule.Create)
+			r.Put("/schedule/{id}", schedule.Update)
+			r.Delete("/schedule/{id}", schedule.Delete)
+			r.Patch("/schedule/reorder", schedule.Reorder)
 
 			r.Delete("/rsvp/{id}", rsvp.Delete)
 			r.Delete("/messages/{id}", message.Delete)

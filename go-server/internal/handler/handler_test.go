@@ -1596,6 +1596,10 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 		{http.MethodPost, "/api/admin/feature-flags"},
 		{http.MethodPatch, "/api/admin/app-settings/key"},
 		{http.MethodPatch, "/api/admin/welcome-screen"},
+		{http.MethodPost, "/api/admin/schedule"},
+		{http.MethodPut, "/api/admin/schedule/1"},
+		{http.MethodDelete, "/api/admin/schedule/1"},
+		{http.MethodPatch, "/api/admin/schedule/reorder"},
 	}
 
 	for _, route := range routes {
