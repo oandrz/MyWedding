@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -43,8 +44,9 @@ func newTestEnv() *testEnv {
 	sessions := middleware.NewSessionStore(30 * time.Minute)
 	csrf := middleware.NewCSRFStore()
 	cache := service.NewCache(5 * time.Minute)
+	storage := service.NewLocalStorage(os.TempDir())
 
-	r := router.New(cfg, repo, sessions, csrf, cache)
+	r := router.New(cfg, repo, sessions, csrf, cache, router.WithStorage(storage))
 
 	return &testEnv{
 		handler:  r,
@@ -72,7 +74,8 @@ func newTestEnvWithBcrypt() *testEnv {
 	sessions := middleware.NewSessionStore(30 * time.Minute)
 	csrf := middleware.NewCSRFStore()
 	cache := service.NewCache(5 * time.Minute)
-	r := router.New(cfg, repo, sessions, csrf, cache)
+	storage := service.NewLocalStorage(os.TempDir())
+	r := router.New(cfg, repo, sessions, csrf, cache, router.WithStorage(storage))
 
 	return &testEnv{
 		handler:  r,
@@ -1600,6 +1603,8 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 		{http.MethodPut, "/api/admin/schedule/1"},
 		{http.MethodDelete, "/api/admin/schedule/1"},
 		{http.MethodPatch, "/api/admin/schedule/reorder"},
+		{http.MethodPost, "/api/admin/upload/signed-url"},
+		{http.MethodPost, "/api/admin/upload/complete"},
 	}
 
 	for _, route := range routes {
