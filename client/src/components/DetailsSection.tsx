@@ -85,7 +85,7 @@ const DetailsSection = () => {
                     Holy Matrimony
                   </div>
                   <div className="text-lg md:text-xl font-cormorant text-foreground">
-                    2:00 PM - 3:30 PM
+                    2:00 PM - 3:00 PM
                   </div>
                 </div>
                 <div className="text-center">
@@ -93,7 +93,7 @@ const DetailsSection = () => {
                     Wedding Reception
                   </div>
                   <div className="text-lg md:text-xl font-cormorant text-foreground">
-                    6:15 PM - 8:00 PM
+                    5:30 PM - 8:00 PM
                   </div>
                 </div>
               </div>
