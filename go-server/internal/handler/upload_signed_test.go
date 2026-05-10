@@ -165,6 +165,132 @@ func TestGetSignedUploadURL_RequiresAuth(t *testing.T) {
 
 func newRecorder() *httptest.ResponseRecorder { return httptest.NewRecorder() }
 
+// ---------------------------------------------------------------------------
+// CompleteConfigImageUpload — POST /api/admin/upload/complete
+// ---------------------------------------------------------------------------
+
+func TestCompleteConfigImageUpload_GalleryWithThumbnail(t *testing.T) {
+	jpegData := testJPEGBytes(t)
+	storage := &mockStorage{
+		downloadData: jpegData,
+		uploadURL:    "/storage/admin/gallery/thumbnails/gallery_123-thumb.jpg",
+	}
+	env := newTestEnvWithStorage(storage)
+	cookie, csrfToken := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"storagePath": "admin/gallery/gallery_123-1715000000000.jpg",
+		"imageKey":    "gallery_123",
+		"imageType":   "gallery",
+		"title":       "Wedding shot",
+		"description": "",
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/upload/complete", body, cookie, csrfToken)
+	rec := newRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	result := parseResponse(t, rec)
+	if result["image"] == nil {
+		t.Fatal("expected image in response")
+	}
+	img := result["image"].(map[string]interface{})
+	if img["imageUrl"] != "/storage/admin/gallery/gallery_123-1715000000000.jpg" {
+		t.Fatalf("unexpected imageUrl: %v", img["imageUrl"])
+	}
+	// thumbnailUrl should be set because DownloadBuffer + Upload both succeed
+	if img["thumbnailUrl"] == nil {
+		t.Fatal("expected thumbnailUrl for gallery image with valid JPEG")
+	}
+}
+
+func TestCompleteConfigImageUpload_NonGallery_NoThumbnail(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"storagePath": "admin/banner/banner-1715000000000.jpg",
+		"imageKey":    "banner",
+		"imageType":   "banner",
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/upload/complete", body, cookie, csrfToken)
+	rec := newRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	result := parseResponse(t, rec)
+	img := result["image"].(map[string]interface{})
+	if img["thumbnailUrl"] != nil {
+		t.Fatalf("expected nil thumbnailUrl for banner image, got %v", img["thumbnailUrl"])
+	}
+}
+
+func TestCompleteConfigImageUpload_MissingFields(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	cases := []map[string]interface{}{
+		{"imageKey": "gallery_123", "imageType": "gallery"},             // missing storagePath
+		{"storagePath": "admin/gallery/x.jpg", "imageType": "gallery"},  // missing imageKey
+		{"storagePath": "admin/gallery/x.jpg", "imageKey": "gallery_123"}, // missing imageType
+	}
+	for _, body := range cases {
+		req := adminRequest(http.MethodPost, "/api/admin/upload/complete", jsonBody(body), cookie, csrfToken)
+		rec := newRecorder()
+		env.handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for body %v, got %d: %s", body, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestCompleteConfigImageUpload_RequiresAuth(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/upload/complete", nil)
+	rec := newRecorder()
+	env.handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+}
+
+func TestCompleteConfigImageUpload_UpsertExisting(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	upload := func(title string) {
+		body := jsonBody(map[string]interface{}{
+			"storagePath": "admin/banner/banner-1715000000000.jpg",
+			"imageKey":    "banner",
+			"imageType":   "banner",
+			"title":       title,
+		})
+		req := adminRequest(http.MethodPost, "/api/admin/upload/complete", body, cookie, csrfToken)
+		rec := newRecorder()
+		env.handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+		}
+	}
+
+	upload("first")
+	upload("second") // same imageKey — should update, not duplicate
+
+	// Verify only one record exists via the list endpoint
+	req := httptest.NewRequest(http.MethodGet, "/api/config-images/banner", nil)
+	rec := newRecorder()
+	env.handler.ServeHTTP(rec, req)
+	result := parseResponse(t, rec)
+	images := result["images"].([]interface{})
+	if len(images) != 1 {
+		t.Fatalf("expected 1 image after upsert, got %d", len(images))
+	}
+}
+
 func TestGetSignedUploadURL_InvalidImageKey(t *testing.T) {
 	env := newTestEnvWithStorage(&mockStorage{})
 	cookie, csrfToken := adminLogin(t, env)

@@ -309,6 +309,94 @@ func (h *UploadHandler) GetSignedUploadURL(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+type completeUploadRequest struct {
+	StoragePath string `json:"storagePath"`
+	ImageKey    string `json:"imageKey"`
+	ImageType   string `json:"imageType"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// CompleteConfigImageUpload handles POST /api/admin/upload/complete.
+// Called after the browser has PUT the image binary directly to Supabase.
+// Downloads the uploaded image, generates a thumbnail for gallery images,
+// and upserts the ConfigImage database record.
+func (h *UploadHandler) CompleteConfigImageUpload(w http.ResponseWriter, r *http.Request) {
+	var req completeUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	if req.StoragePath == "" || req.ImageKey == "" || req.ImageType == "" {
+		writeError(w, r, http.StatusBadRequest, "storagePath, imageKey, and imageType are required")
+		return
+	}
+	if !validConfigImageTypes[req.ImageType] {
+		writeError(w, r, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
+		return
+	}
+
+	imageURL := "/storage/" + req.StoragePath
+
+	var thumbnailURL *string
+	if req.ImageType == "gallery" {
+		data, err := h.Storage.DownloadBuffer(r.Context(), req.StoragePath)
+		if err != nil {
+			slog.Warn("Failed to download uploaded image for thumbnailing", "error", err)
+		} else {
+			opt, err := service.OptimizeImage(data, 600, 80)
+			if err == nil {
+				base := req.StoragePath[strings.LastIndex(req.StoragePath, "/")+1:]
+				thumbName := service.GenerateThumbnailFilename(base)
+				thumbURL, err := h.Storage.Upload(r.Context(), bytes.NewReader(opt.ThumbnailBuffer), int64(len(opt.ThumbnailBuffer)), thumbName, opt.ThumbnailContentType, "admin/gallery/thumbnails")
+				if err == nil {
+					thumbnailURL = &thumbURL
+					slog.Debug("Generated thumbnail", "url", thumbURL)
+				} else {
+					slog.Warn("Thumbnail upload failed, proceeding without thumbnail", "error", err)
+				}
+			} else {
+				slog.Warn("Thumbnail generation failed, proceeding without thumbnail", "error", err)
+			}
+		}
+	}
+
+	isActive := true
+	insertData := models.InsertConfigImage{
+		ImageKey:     req.ImageKey,
+		ImageURL:     imageURL,
+		ThumbnailURL: thumbnailURL,
+		ImageType:    req.ImageType,
+		IsActive:     &isActive,
+	}
+	if req.Title != "" {
+		insertData.Title = &req.Title
+	}
+	if req.Description != "" {
+		insertData.Description = &req.Description
+	}
+
+	existing, _ := h.Repo.GetConfigImage(r.Context(), req.ImageKey)
+	var img *models.ConfigImage
+	var err error
+	if existing != nil {
+		img, err = h.Repo.UpdateConfigImage(r.Context(), req.ImageKey, insertData)
+	} else {
+		img, err = h.Repo.CreateConfigImage(r.Context(), insertData)
+	}
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "Failed to save config image")
+		return
+	}
+
+	h.Cache.InvalidateAll()
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"message": "Config image uploaded successfully",
+		"image":   img,
+	})
+}
+
 // MusicUpload handles POST /api/admin/settings/music-upload.
 func (h *UploadHandler) MusicUpload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxAudioSize)
