@@ -38,6 +38,7 @@ const UploadSheet = ({ open, onClose }: UploadSheetProps) => {
   };
 
   const handleFiles = (files: FileList) => {
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setSelectedFiles(Array.from(files).slice(0, 10));
   };
 
@@ -49,7 +50,11 @@ const UploadSheet = ({ open, onClose }: UploadSheetProps) => {
     if (guestName.trim()) formData.append("guestName", guestName.trim());
 
     try {
-      const res = await fetch("/api/upload-to-drive", { method: "POST", body: formData });
+      const res = await fetch("/api/upload-to-drive", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Upload failed");
       const result = await res.json();
       toast({

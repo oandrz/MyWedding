@@ -25,6 +25,7 @@ export function parseGuestName(filename: string): string {
 const Gallery = () => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxBroken, setLightboxBroken] = useState(false);
   const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
 
   const { data, isLoading, isError, refetch } = useQuery<{ files: DriveFile[] }>({
@@ -34,7 +35,10 @@ const Gallery = () => {
 
   const files = data?.files ?? [];
 
-  const openLightbox = useCallback((index: number) => setLightboxIndex(index), []);
+  const openLightbox = useCallback((index: number) => {
+    setLightboxBroken(false);
+    setLightboxIndex(index);
+  }, []);
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
   const prevPhoto = useCallback(() =>
     setLightboxIndex((i) => (i !== null ? (i - 1 + files.length) % files.length : null)), [files.length]);
@@ -173,13 +177,29 @@ const Gallery = () => {
           >
             ‹
           </button>
-          <img
-            src={`https://drive.google.com/uc?export=view&id=${files[lightboxIndex].id}`}
-            alt={`Photo by ${parseGuestName(files[lightboxIndex].name)}`}
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="lightbox-image"
-          />
+          {lightboxBroken ? (
+            <div className="flex flex-col items-center gap-3 text-white">
+              <p className="text-sm opacity-70">Couldn't load photo</p>
+              <a
+                href={files[lightboxIndex].webViewLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-rose-300 underline text-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View in Drive →
+              </a>
+            </div>
+          ) : (
+            <img
+              src={thumbnailUrl(files[lightboxIndex].thumbnailLink).replace("=s600", "=s1600")}
+              alt={`Photo by ${parseGuestName(files[lightboxIndex].name)}`}
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+              onError={() => setLightboxBroken(true)}
+              data-testid="lightbox-image"
+            />
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
             aria-label="Next photo"
