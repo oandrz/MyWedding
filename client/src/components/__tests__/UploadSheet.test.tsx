@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import UploadSheet from "../UploadSheet";
 
 describe("UploadSheet", () => {
@@ -45,5 +45,48 @@ describe("UploadSheet", () => {
     );
     fireEvent.change(input, { target: { files } });
     expect(screen.getByText(/10 file\(s\) ready/)).toBeInTheDocument();
+  });
+
+  it("calls onClose and shows toast on successful upload", async () => {
+    const onClose = vi.fn();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ successCount: 1 }),
+    }) as any;
+
+    render(<UploadSheet open={true} onClose={onClose} />);
+
+    // Select a file
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(["x"], "photo.jpg", { type: "image/jpeg" })] },
+    });
+
+    // Submit
+    fireEvent.click(screen.getByRole("button", { name: /Share 1 Photo/i }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/upload-to-drive",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("shows destructive toast and stays open on failed upload", async () => {
+    const onClose = vi.fn();
+    global.fetch = vi.fn().mockResolvedValue({ ok: false }) as any;
+
+    render(<UploadSheet open={true} onClose={onClose} />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(["x"], "photo.jpg", { type: "image/jpeg" })] },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Share 1 Photo/i }));
+
+    await waitFor(() => expect(onClose).not.toHaveBeenCalled());
+    // Sheet stays open — upload-sheet still in DOM
+    expect(screen.getByTestId("upload-sheet")).toBeInTheDocument();
   });
 });

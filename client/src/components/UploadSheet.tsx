@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,14 @@ const UploadSheet = ({ open, onClose }: UploadSheetProps) => {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedFiles([]);
+      setGuestName("");
+      setDragActive(false);
+    }
+  }, [open]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -114,8 +122,8 @@ const UploadSheet = ({ open, onClose }: UploadSheetProps) => {
               <p className="font-medium text-gray-900">
                 {selectedFiles.length} file(s) ready
               </p>
-              {selectedFiles.slice(0, 3).map((f, i) => (
-                <p key={i} className="text-sm text-gray-500">
+              {selectedFiles.slice(0, 3).map((f) => (
+                <p key={f.name + f.size} className="text-sm text-gray-500">
                   {f.name}
                 </p>
               ))}
