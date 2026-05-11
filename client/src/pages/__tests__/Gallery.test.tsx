@@ -72,4 +72,32 @@ describe("Gallery", () => {
     renderGallery([]);
     expect(screen.getByText(/No memories yet/)).toBeInTheDocument();
   });
+
+  it("opens lightbox when a photo is clicked", () => {
+    renderGallery();
+    const imgs = screen.getAllByRole("img");
+    fireEvent.click(imgs[0]);
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox-image")).toBeInTheDocument();
+  });
+
+  it("closes lightbox when backdrop is clicked", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.click(screen.getByTestId("lightbox"));
+    expect(screen.queryByTestId("lightbox")).toBeNull();
+  });
+
+  it("closes lightbox on Escape key", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("lightbox")).toBeNull();
+  });
+
+  it("shows upload sheet when FAB is clicked", () => {
+    renderGallery();
+    fireEvent.click(screen.getByTestId("fab-upload"));
+    expect(screen.getByTestId("upload-sheet")).toBeInTheDocument();
+  });
 });
