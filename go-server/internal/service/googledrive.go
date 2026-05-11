@@ -32,7 +32,7 @@ func NewGoogleDriveService(clientID, clientSecret, redirectURI, refreshToken str
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  redirectURI,
-		Scopes:       []string{drive.DriveFileScope},
+		Scopes:       []string{drive.DriveScope},
 		Endpoint:     google.Endpoint,
 	}
 
