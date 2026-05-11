@@ -1,448 +1,209 @@
-import { useState, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import NavBar from "@/components/NavBar";
-import { Camera, Upload, Heart, Cloud, CheckCircle, Users } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import UploadSheet from "@/components/UploadSheet";
+import { Camera } from "lucide-react";
 
-interface Media {
-  id: number;
+interface DriveFile {
+  id: string;
   name: string;
-  email: string;
-  mediaUrl: string;
-  mediaType: "image" | "video";
-  caption: string | null;
-  approved: boolean;
-  createdAt: string;
+  mimeType: string;
+  thumbnailLink: string;
+  webViewLink: string;
+  createdTime: string;
+}
+
+export function thumbnailUrl(link: string): string {
+  return link.replace(/=s\d+$/, "=s600");
+}
+
+export function parseGuestName(filename: string): string {
+  const idx = filename.indexOf("_");
+  return idx > 0 ? filename.slice(0, idx) : "Wedding Guest";
 }
 
 const Gallery = () => {
-  const [activeTab, setActiveTab] = useState("view");
-  const [dragActive, setDragActive] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [guestName, setGuestName] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
 
-  // Query for fetching approved media
-  const { data, isLoading, error } = useQuery<{ media: Media[] }>({
-    queryKey: ["/api/media"],
-    enabled: activeTab === "view",
+  const { data, isLoading, isError, refetch } = useQuery<{ files: DriveFile[] }>({
+    queryKey: ["/api/drive-folder-contents"],
+    refetchInterval: 30_000,
   });
 
-  // Google Drive upload functionality
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+  const files = data?.files ?? [];
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
+  const openLightbox = useCallback((index: number) => setLightboxIndex(index), []);
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const prevPhoto = useCallback(() =>
+    setLightboxIndex((i) => (i !== null ? (i - 1 + files.length) % files.length : null)), [files.length]);
+  const nextPhoto = useCallback(() =>
+    setLightboxIndex((i) => (i !== null ? (i + 1) % files.length : null)), [files.length]);
 
-  const handleFiles = (files: FileList) => {
-    const fileArray = Array.from(files).slice(0, 10); // Limit to 10 files
-    setSelectedFiles(fileArray);
-  };
+  const handleImageError = useCallback((id: string) => {
+    setBrokenIds((prev) => new Set(prev).add(id));
+  }, []);
 
-  const handleGoogleDriveUpload = async () => {
-    if (selectedFiles.length === 0) {
-      toast({
-        title: "No files selected",
-        description: "Please choose some photos to share",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setUploading(true);
-    const formData = new FormData();
-    
-    selectedFiles.forEach((file) => {
-      formData.append('files', file);
-    });
-    
-    if (guestName.trim()) {
-      formData.append('guestName', guestName.trim());
-    }
-
-    try {
-      const response = await fetch('/api/upload-to-drive', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
-      
-      toast({
-        title: "Photos shared! ❤️",
-        description: `Successfully shared ${result.successCount} photos to the wedding memories`,
-      });
-      
-      setSelectedFiles([]);
-      setGuestName("");
-      setActiveTab("view");
-      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
-      
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: "Couldn't share your photos right now. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // Render media item
-  const renderMedia = (item: Media) => {
-    if (item.mediaType === "image") {
-      return (
-        <div className="relative aspect-video overflow-hidden rounded-md mb-2">
-          <img
-            src={item.mediaUrl}
-            alt={item.caption || `Image shared by ${item.name}`}
-            className="object-cover w-full h-full"
-          />
-        </div>
-      );
-    } else if (item.mediaType === "video") {
-      // Handle both YouTube embeds and uploaded videos
-      if (item.mediaUrl.includes('youtube.com') || item.mediaUrl.includes('youtu.be')) {
-        return (
-          <div className="relative aspect-video overflow-hidden rounded-md mb-2">
-            <iframe
-              src={item.mediaUrl}
-              title={item.caption || `Video shared by ${item.name}`}
-              allowFullScreen
-              className="w-full h-full"
-            ></iframe>
-          </div>
-        );
-      } else {
-        // For local or direct video URLs
-        return (
-          <div className="relative aspect-video overflow-hidden rounded-md mb-2">
-            <video 
-              src={item.mediaUrl} 
-              controls 
-              className="w-full h-full"
-              title={item.caption || `Video shared by ${item.name}`}
-            />
-          </div>
-        );
-      }
-    }
-    return null;
-  };
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (lightboxIndex === null) return;
+    if (e.key === "ArrowLeft") prevPhoto();
+    if (e.key === "ArrowRight") nextPhoto();
+    if (e.key === "Escape") closeLightbox();
+  }, [lightboxIndex, prevPhoto, nextPhoto, closeLightbox]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" onKeyDown={handleKeyDown} tabIndex={-1}>
       <NavBar />
-      <div className="container py-24 max-w-5xl mx-auto px-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-3">
-            <Camera className="h-8 w-8 text-rose-500" />
-            Wedding Memories
-          </h1>
-          <p className="text-gray-600">
-            Share and view precious moments from our special day
-          </p>
-        </motion.div>
 
-        <Tabs defaultValue="view" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="view" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              View Gallery
-            </TabsTrigger>
-            <TabsTrigger value="share" className="flex items-center gap-2">
-              <Heart className="h-4 w-4" />
-              Share Photos
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="view" className="mt-6">
-            <AnimatePresence>
-              {isLoading ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-12"
-                >
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
-                  <p className="mt-4 text-gray-600">Loading precious memories...</p>
-                </motion.div>
-              ) : error ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-12 text-red-500"
-                >
-                  Failed to load memories. Please try again later.
-                </motion.div>
-              ) : (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  {/* Google Drive Embedded Folder */}
-                  <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-6 rounded-lg border border-rose-200">
-                    <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-rose-500" />
-                      Live Wedding Photos
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      See all the amazing photos guests are sharing in real-time!
-                    </p>
-                    
-                    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                      <iframe
-                        src="https://drive.google.com/embeddedfolderview?id=1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC#grid"
-                        width="100%"
-                        height="400"
-                        frameBorder="0"
-                        className="w-full"
-                        title="Wedding Photos - Live Gallery"
-                      ></iframe>
-                    </div>
-                    
-                    <div className="mt-4 flex justify-center">
-                      <a
-                        href="https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC?usp=sharing"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-rose-600 hover:text-rose-700 transition-colors"
-                      >
-                        <Camera className="h-4 w-4" />
-                        Open Full Gallery in New Window
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Individual Media Cards (if any local uploads exist) */}
-                  {data && data.media && data.media.length > 0 && (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                        <Users className="h-5 w-5 text-gray-600" />
-                        Individual Memories
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {data.media.map((item: Media, index) => (
-                          <motion.div
-                            key={item.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                          >
-                            <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow">
-                              <CardContent className="p-4">
-                                {renderMedia(item)}
-                                <h3 className="font-semibold text-lg">{item.name}</h3>
-                                {item.caption && <p className="text-gray-600 mt-1">{item.caption}</p>}
-                                <p className="text-xs text-gray-400 mt-2">
-                                  Shared on {new Date(item.createdAt).toLocaleDateString()}
-                                </p>
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </TabsContent>
-          
-          <TabsContent value="share" className="mt-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-rose-500" />
-                      Share Your Photos
-                    </h2>
-                    <p className="text-gray-600">
-                      Drag and drop your photos here or click to select. They'll be shared instantly with everyone!
-                    </p>
-                  </div>
-
-                  {/* Google Drive Upload Interface */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Input
-                        placeholder="Your name (optional)"
-                        value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
-                        className="max-w-sm"
-                      />
-                    </div>
-
-                    {/* Drag and Drop Area */}
-                    <div
-                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
-                        dragActive 
-                          ? "border-rose-400 bg-rose-50 scale-[1.02]" 
-                          : "border-gray-300 hover:border-rose-300 hover:bg-gray-50"
-                      }`}
-                      onDragEnter={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDragOver={handleDrag}
-                      onDrop={handleDrop}
-                    >
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*,video/*"
-                        onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                        className="hidden"
-                      />
-                      
-                      <AnimatePresence mode="wait">
-                        {selectedFiles.length > 0 ? (
-                          <motion.div
-                            key="files-selected"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                          >
-                            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                            <p className="text-lg font-medium text-gray-900">
-                              {selectedFiles.length} photo{selectedFiles.length !== 1 ? 's' : ''} ready to share
-                            </p>
-                            <div className="mt-2 space-y-1">
-                              {selectedFiles.slice(0, 3).map((file, index) => (
-                                <p key={index} className="text-sm text-gray-600">
-                                  {file.name}
-                                </p>
-                              ))}
-                              {selectedFiles.length > 3 && (
-                                <p className="text-sm text-gray-600">
-                                  ...and {selectedFiles.length - 3} more
-                                </p>
-                              )}
-                            </div>
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="empty-state"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                          >
-                            <Cloud className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-lg font-medium text-gray-900 mb-2">
-                              Drop your photos here
-                            </p>
-                            <p className="text-sm text-gray-600 mb-4">
-                              or click to browse from your device
-                            </p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => fileInputRef.current?.click()}
-                              className="gap-2"
-                            >
-                              <Upload className="h-4 w-4" />
-                              Choose Photos
-                            </Button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Upload Button */}
-                    <AnimatePresence>
-                      {selectedFiles.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          className="flex justify-center"
-                        >
-                          <Button
-                            onClick={handleGoogleDriveUpload}
-                            disabled={uploading}
-                            size="lg"
-                            className="gap-2 bg-rose-500 hover:bg-rose-600"
-                          >
-                            {uploading ? (
-                              <>
-                                <motion.div
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                >
-                                  <Upload className="h-4 w-4" />
-                                </motion.div>
-                                Sharing Photos...
-                              </>
-                            ) : (
-                              <>
-                                <Heart className="h-4 w-4" />
-                                Share {selectedFiles.length} Photo{selectedFiles.length !== 1 ? 's' : ''}
-                              </>
-                            )}
-                          </Button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Simple note with direct link to view */}
-                  <div className="mt-6 p-4 bg-rose-50 rounded-lg border border-rose-200">
-                    <p className="text-sm text-rose-800 text-center mb-2">
-                      Photos uploaded here appear instantly in your Google Drive wedding folder!
-                    </p>
-                    <div className="flex justify-center">
-                      <button 
-                        onClick={() => setActiveTab("view")}
-                        className="text-sm text-rose-600 hover:text-rose-700 underline"
-                      >
-                        View your uploaded photos →
-                      </button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
-        </Tabs>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-rose-100 px-4 py-3 flex items-center justify-between">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Camera className="h-5 w-5 text-rose-500" />
+          Wedding Memories
+        </h1>
+        <span className="flex items-center gap-1.5 text-xs text-rose-400">
+          <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+          live
+        </span>
       </div>
+
+      {/* Main content */}
+      <main className="px-2 py-4 pb-24">
+        {isLoading && <GallerySkeleton />}
+
+        {isError && (
+          <div className="flex flex-col items-center justify-center py-24 gap-3 text-gray-500">
+            <p>Couldn't load photos right now.</p>
+            <button
+              onClick={() => refetch()}
+              className="text-rose-500 underline text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !isError && files.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-500">
+            <Camera className="h-12 w-12 text-gray-300" />
+            <p className="text-lg">No memories yet — be the first to share!</p>
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="bg-rose-500 text-white px-6 py-2 rounded-full text-sm hover:bg-rose-600 transition-colors"
+            >
+              Share a Photo
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !isError && files.length > 0 && (
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+            {files.map((file, index) => (
+              <div key={file.id} className="break-inside-avoid mb-2 relative group">
+                {brokenIds.has(file.id) ? (
+                  <div className="w-full aspect-video bg-gray-100 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 text-sm">
+                    <Camera className="h-6 w-6" />
+                    <a
+                      href={file.webViewLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-rose-400 underline"
+                    >
+                      View in Drive →
+                    </a>
+                  </div>
+                ) : (
+                  <>
+                    <img
+                      src={thumbnailUrl(file.thumbnailLink)}
+                      alt={`Photo by ${parseGuestName(file.name)}`}
+                      className="w-full rounded-lg cursor-pointer hover:brightness-95 transition-all opacity-0"
+                      onClick={() => openLightbox(index)}
+                      onError={() => handleImageError(file.id)}
+                      onLoad={(e) => (e.currentTarget.style.opacity = "1")}
+                      style={{ transition: "opacity 0.4s" }}
+                      loading="lazy"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent rounded-b-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-white text-sm font-medium">
+                        {parseGuestName(file.name)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Floating upload button */}
+      <button
+        onClick={() => setUploadOpen(true)}
+        aria-label="Share photos"
+        className="fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-3xl shadow-lg flex items-center justify-center transition-colors"
+        data-testid="fab-upload"
+      >
+        +
+      </button>
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && files[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+          onClick={closeLightbox}
+          data-testid="lightbox"
+        >
+          <button
+            onClick={closeLightbox}
+            aria-label="Close lightbox"
+            className="absolute top-4 right-4 text-white text-3xl leading-none hover:text-gray-300"
+          >
+            ✕
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
+            aria-label="Previous photo"
+            className="absolute left-4 text-white text-4xl hover:text-gray-300"
+          >
+            ‹
+          </button>
+          <img
+            src={`https://drive.google.com/uc?export=view&id=${files[lightboxIndex].id}`}
+            alt={`Photo by ${parseGuestName(files[lightboxIndex].name)}`}
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="lightbox-image"
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
+            aria-label="Next photo"
+            className="absolute right-4 text-white text-4xl hover:text-gray-300"
+          >
+            ›
+          </button>
+          <p className="absolute bottom-4 text-white text-sm opacity-70">
+            {parseGuestName(files[lightboxIndex].name)} · {lightboxIndex + 1} / {files.length}
+          </p>
+        </div>
+      )}
+
+      <UploadSheet open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 };
+
+const GallerySkeleton = () => (
+  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2" data-testid="gallery-skeleton">
+    {Array.from({ length: 9 }).map((_, i) => (
+      <div
+        key={i}
+        className="break-inside-avoid mb-2 rounded-lg bg-gray-100 animate-pulse"
+        style={{ height: `${180 + (i % 3) * 60}px` }}
+      />
+    ))}
+  </div>
+);
 
 export default Gallery;
