@@ -100,4 +100,25 @@ describe("Gallery", () => {
     fireEvent.click(screen.getByTestId("fab-upload"));
     expect(screen.getByTestId("upload-sheet")).toBeInTheDocument();
   });
+
+  it("navigates to the next photo on ArrowRight", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+  });
+
+  it("navigates to the previous photo on ArrowLeft (wraps around)", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+  });
+
+  it("clicking the lightbox image does not close the lightbox", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.click(screen.getByTestId("lightbox-image"));
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument();
+  });
 });
