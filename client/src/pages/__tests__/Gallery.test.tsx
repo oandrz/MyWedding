@@ -4,13 +4,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Gallery from "../Gallery";
 
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
-
 vi.mock("@/components/NavBar", () => ({
   default: () => <nav data-testid="navbar" />,
 }));
