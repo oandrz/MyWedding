@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import NavBar from "@/components/NavBar";
 import UploadSheet from "@/components/UploadSheet";
@@ -45,15 +45,19 @@ const Gallery = () => {
     setBrokenIds((prev) => new Set(prev).add(id));
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  useEffect(() => {
     if (lightboxIndex === null) return;
-    if (e.key === "ArrowLeft") prevPhoto();
-    if (e.key === "ArrowRight") nextPhoto();
-    if (e.key === "Escape") closeLightbox();
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") prevPhoto();
+      else if (e.key === "ArrowRight") nextPhoto();
+      else if (e.key === "Escape") closeLightbox();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [lightboxIndex, prevPhoto, nextPhoto, closeLightbox]);
 
   return (
-    <div className="min-h-screen bg-white" onKeyDown={handleKeyDown} tabIndex={-1}>
+    <div className="min-h-screen bg-white">
       <NavBar />
 
       {/* Sticky header */}
