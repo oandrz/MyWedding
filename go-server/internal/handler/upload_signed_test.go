@@ -309,6 +309,26 @@ func TestCompleteConfigImageUpload_StoragePathMismatch(t *testing.T) {
 	}
 }
 
+func TestCompleteConfigImageUpload_InvalidImageKey(t *testing.T) {
+	env := newTestEnvWithStorage(&mockStorage{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	badKeys := []string{"../etc/passwd", "foo/bar", "foo.jpg", "key with space"}
+	for _, k := range badKeys {
+		body := jsonBody(map[string]interface{}{
+			"storagePath": "admin/banner/banner-1715000000000.jpg",
+			"imageKey":    k,
+			"imageType":   "banner",
+		})
+		req := adminRequest(http.MethodPost, "/api/admin/upload/complete", body, cookie, csrfToken)
+		rec := newRecorder()
+		env.handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("imageKey %q: expected 400, got %d: %s", k, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 func TestGetSignedUploadURL_InvalidImageKey(t *testing.T) {
 	env := newTestEnvWithStorage(&mockStorage{})
 	cookie, csrfToken := adminLogin(t, env)

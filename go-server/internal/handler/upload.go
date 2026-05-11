@@ -331,6 +331,10 @@ func (h *UploadHandler) CompleteConfigImageUpload(w http.ResponseWriter, r *http
 		writeError(w, r, http.StatusBadRequest, "storagePath, imageKey, and imageType are required")
 		return
 	}
+	if !validImageKeyRE.MatchString(req.ImageKey) {
+		writeError(w, r, http.StatusBadRequest, "imageKey must contain only letters, digits, hyphens, and underscores")
+		return
+	}
 	if !validConfigImageTypes[req.ImageType] {
 		writeError(w, r, http.StatusBadRequest, "Invalid image type. Must be one of: banner, gallery, bride-profile, groom-profile, verse-image")
 		return
