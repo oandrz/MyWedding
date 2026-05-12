@@ -115,6 +115,7 @@ const UploadSheet = ({ open, onClose }: UploadSheetProps) => {
           onDrop={handleDrop}
         >
           <input
+            id="file-upload"
             ref={fileInputRef}
             type="file"
             multiple
@@ -143,11 +144,10 @@ const UploadSheet = ({ open, onClose }: UploadSheetProps) => {
               <p className="text-gray-600 mb-3">
                 Drop photos here or click to browse
               </p>
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Choose Photos
+              <Button variant="outline" asChild>
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  Choose Photos
+                </label>
               </Button>
             </div>
           )}

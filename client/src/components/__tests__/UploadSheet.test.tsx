@@ -89,4 +89,14 @@ describe("UploadSheet", () => {
     // Sheet stays open — upload-sheet still in DOM
     expect(screen.getByTestId("upload-sheet")).toBeInTheDocument();
   });
+
+  it("Choose Photos is a label linked to the file input (no programmatic click)", () => {
+    render(<UploadSheet open={true} onClose={vi.fn()} />);
+    const label = document.querySelector('label[for="file-upload"]') as HTMLLabelElement;
+    expect(label).toBeInTheDocument();
+    expect(label.textContent).toContain("Choose Photos");
+    const input = document.getElementById("file-upload") as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.type).toBe("file");
+  });
 });
