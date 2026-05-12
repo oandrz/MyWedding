@@ -14,7 +14,7 @@ interface DriveFile {
 }
 
 export function thumbnailUrl(link: string): string {
-  return link.replace(/=s\d+$/, "=s600");
+  return link.replace(/=s\d+$/, "=s800");
 }
 
 export function parseGuestName(filename: string): string {
@@ -192,7 +192,7 @@ const Gallery = () => {
             </div>
           ) : (
             <img
-              src={thumbnailUrl(files[lightboxIndex].thumbnailLink).replace("=s600", "=s1600")}
+              src={thumbnailUrl(files[lightboxIndex].thumbnailLink).replace("=s800", "=s1600")}
               alt={`Photo by ${parseGuestName(files[lightboxIndex].name)}`}
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
               onClick={(e) => e.stopPropagation()}

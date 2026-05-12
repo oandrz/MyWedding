@@ -55,11 +55,12 @@ describe("Gallery", () => {
     expect(screen.getAllByRole("img").length).toBe(2);
   });
 
-  it("uses s600 thumbnail URL (not s220)", () => {
+  it("uses s800 thumbnail URL (not s220)", () => {
     renderGallery();
     const imgs = screen.getAllByRole("img") as HTMLImageElement[];
-    expect(imgs[0].src).toContain("=s600");
+    expect(imgs[0].src).toContain("=s800");
     expect(imgs[0].src).not.toContain("=s220");
+    expect(imgs[0].src).not.toContain("=s600");
   });
 
   it("shows guest name parsed from filename on hover overlay", () => {
