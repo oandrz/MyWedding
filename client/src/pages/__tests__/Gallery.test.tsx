@@ -122,4 +122,20 @@ describe("Gallery", () => {
     fireEvent.click(screen.getByTestId("lightbox-image"));
     expect(screen.getByTestId("lightbox")).toBeInTheDocument();
   });
+
+  it("uses 2-column grid layout", () => {
+    renderGallery();
+    const grid = screen.getByTestId("photo-grid");
+    expect(grid.className).toContain("columns-2");
+    expect(grid.className).not.toContain("columns-1");
+  });
+
+  it("guest name overlay has opacity-100 (always visible on mobile)", () => {
+    renderGallery();
+    const overlays = document.querySelectorAll("[data-testid='guest-name-overlay']");
+    expect(overlays.length).toBeGreaterThan(0);
+    overlays.forEach((el) => {
+      expect(el.className).toContain("opacity-100");
+    });
+  });
 });

@@ -106,7 +106,7 @@ const Gallery = () => {
         )}
 
         {!isLoading && !isError && files.length > 0 && (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+          <div className="columns-2 lg:columns-3 gap-2" data-testid="photo-grid">
             {files.map((file, index) => (
               <div key={file.id} className="break-inside-avoid mb-2 relative group">
                 {brokenIds.has(file.id) ? (
@@ -133,7 +133,10 @@ const Gallery = () => {
                       style={{ transition: "opacity 0.4s" }}
                       loading="lazy"
                     />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent rounded-b-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div
+                      data-testid="guest-name-overlay"
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent rounded-b-lg px-3 py-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    >
                       <p className="text-white text-sm font-medium">
                         {parseGuestName(file.name)}
                       </p>
@@ -219,7 +222,7 @@ const Gallery = () => {
 };
 
 const GallerySkeleton = () => (
-  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2" data-testid="gallery-skeleton">
+  <div className="columns-2 lg:columns-3 gap-2" data-testid="gallery-skeleton">
     {Array.from({ length: 9 }).map((_, i) => (
       <div
         key={i}
