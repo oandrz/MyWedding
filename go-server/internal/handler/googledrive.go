@@ -38,14 +38,30 @@ func (h *GoogleDriveHandler) AuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Persist refresh token to DB so future server restarts load it automatically.
+	// Google only returns a refresh token on first auth or when prompt=consent is used.
+	if tokens.RefreshToken != "" {
+		desc := "Google OAuth2 refresh token — auto-saved after authorization"
+		if _, saveErr := h.Repo.UpsertAppSettings(r.Context(), []models.InsertAppSetting{
+			{
+				SettingKey:   "google_refresh_token",
+				SettingValue: tokens.RefreshToken,
+				SettingType:  "string",
+				Description:  &desc,
+			},
+		}); saveErr != nil {
+			slog.Warn("Failed to persist Google refresh token to database", "error", saveErr)
+		} else {
+			slog.Info("Google refresh token saved to database")
+		}
+	}
+
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, `<html><body>
 		<h2>Google Drive Authorization Successful!</h2>
-		<p>Please add this refresh token to your environment variables:</p>
-		<code>GOOGLE_REFRESH_TOKEN=%s</code>
-		<p>Then restart your application.</p>
+		<p>The refresh token has been saved automatically — no manual steps needed.</p>
 		<p>You can close this window.</p>
-	</body></html>`, tokens.RefreshToken)
+	</body></html>`)
 }
 
 // UploadToDrive handles POST /api/upload-to-drive.

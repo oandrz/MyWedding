@@ -98,8 +98,18 @@ func main() {
 	// Google Drive integration
 	if cfg.GoogleClientID != "" && cfg.GoogleSecret != "" {
 		redirectURI := os.Getenv("GOOGLE_REDIRECT_URI")
+
+		// Env var takes precedence; fall back to token persisted in DB after OAuth
+		refreshToken := cfg.GoogleRefresh
+		if refreshToken == "" {
+			if setting, err := repo.GetAppSetting(ctx, "google_refresh_token"); err == nil && setting != nil {
+				refreshToken = setting.SettingValue
+				slog.Info("Loaded Google refresh token from database")
+			}
+		}
+
 		gdrive := service.NewGoogleDriveService(
-			cfg.GoogleClientID, cfg.GoogleSecret, redirectURI, cfg.GoogleRefresh,
+			cfg.GoogleClientID, cfg.GoogleSecret, redirectURI, refreshToken,
 		)
 		routerOpts = append(routerOpts, router.WithGoogleDrive(gdrive))
 		slog.Info("Google Drive integration enabled")
