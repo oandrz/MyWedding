@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import NavBar from "@/components/NavBar";
 import UploadSheet from "@/components/UploadSheet";
@@ -44,6 +44,9 @@ const Gallery = () => {
     setLightboxIndex((i) => (i !== null ? (i - 1 + files.length) % files.length : null)), [files.length]);
   const nextPhoto = useCallback(() =>
     setLightboxIndex((i) => (i !== null ? (i + 1) % files.length : null)), [files.length]);
+
+  const touchStartX = useRef<number>(0);
+  const didSwipe = useRef(false);
 
   const handleImageError = useCallback((id: string) => {
     setBrokenIds((prev) => new Set(prev).add(id));
@@ -163,7 +166,19 @@ const Gallery = () => {
       {lightboxIndex !== null && files[lightboxIndex] && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
-          onClick={closeLightbox}
+          onClick={() => {
+            if (didSwipe.current) { didSwipe.current = false; return; }
+            closeLightbox();
+          }}
+          onTouchStart={(e) => {
+            touchStartX.current = e.touches[0].clientX;
+            didSwipe.current = false;
+          }}
+          onTouchEnd={(e) => {
+            const delta = e.changedTouches[0].clientX - touchStartX.current;
+            if (delta > 50) { didSwipe.current = true; prevPhoto(); }
+            else if (delta < -50) { didSwipe.current = true; nextPhoto(); }
+          }}
           data-testid="lightbox"
         >
           <button

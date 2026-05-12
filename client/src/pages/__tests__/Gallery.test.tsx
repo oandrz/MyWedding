@@ -138,4 +138,43 @@ describe("Gallery", () => {
       expect(el.className).toContain("opacity-100");
     });
   });
+
+  it("swipes left to navigate to the next photo", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]); // open at index 0 → "1 / 2"
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
+
+    const lightbox = screen.getByTestId("lightbox");
+    fireEvent.touchStart(lightbox, { touches: [{ clientX: 200, clientY: 0 }] });
+    fireEvent.touchEnd(lightbox, { changedTouches: [{ clientX: 130, clientY: 0 }] }); // delta -70
+
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument(); // still open
+  });
+
+  it("swipes right to navigate to the previous photo", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[1]); // open at index 1 → "2 / 2"
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+
+    const lightbox = screen.getByTestId("lightbox");
+    fireEvent.touchStart(lightbox, { touches: [{ clientX: 200, clientY: 0 }] });
+    fireEvent.touchEnd(lightbox, { changedTouches: [{ clientX: 260, clientY: 0 }] }); // delta +60
+
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument(); // still open
+  });
+
+  it("small tap (< 50px) on lightbox backdrop closes it, does not navigate", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
+
+    const lightbox = screen.getByTestId("lightbox");
+    fireEvent.touchStart(lightbox, { touches: [{ clientX: 200, clientY: 0 }] });
+    fireEvent.touchEnd(lightbox, { changedTouches: [{ clientX: 215, clientY: 0 }] }); // delta +15
+    fireEvent.click(lightbox); // click fires after tap
+
+    expect(screen.queryByTestId("lightbox")).toBeNull(); // closed
+  });
 });
