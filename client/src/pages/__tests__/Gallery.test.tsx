@@ -100,6 +100,13 @@ describe("Gallery", () => {
     expect(fab).toHaveAttribute("target", "_blank");
   });
 
+  it("FAB is positioned above the music player (bottom-28)", () => {
+    renderGallery();
+    const fab = screen.getByTestId("fab-upload");
+    expect(fab.className).toContain("bottom-28");
+    expect(fab.className).not.toContain("bottom-6");
+  });
+
   it("navigates to the next photo on ArrowRight", () => {
     renderGallery();
     fireEvent.click(screen.getAllByRole("img")[0]);
