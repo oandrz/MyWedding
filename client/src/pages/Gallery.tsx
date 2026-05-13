@@ -129,7 +129,7 @@ const Gallery = () => {
                 ) : (
                   <>
                     <img
-                      src={`https://drive.google.com/thumbnail?id=${file.id}&sz=w800`}
+                      src={`/api/drive-thumbnail?id=${file.id}&sz=w800`}
                       alt={`Photo by ${parseGuestName(file.name)}`}
                       className="w-full rounded-lg cursor-pointer hover:brightness-95 transition-all opacity-0"
                       onClick={() => openLightbox(index)}
@@ -214,7 +214,7 @@ const Gallery = () => {
             </div>
           ) : (
             <img
-              src={`https://drive.google.com/thumbnail?id=${files[lightboxIndex].id}&sz=w1600`}
+              src={`/api/drive-thumbnail?id=${files[lightboxIndex].id}&sz=w1600`}
               alt={`Photo by ${parseGuestName(files[lightboxIndex].name)}`}
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
               onClick={(e) => e.stopPropagation()}
