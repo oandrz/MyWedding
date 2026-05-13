@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import NavBar from "@/components/NavBar";
-import UploadSheet from "@/components/UploadSheet";
 import { Camera } from "lucide-react";
+
+const DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC";
 
 interface DriveFile {
   id: string;
@@ -23,7 +24,6 @@ export function parseGuestName(filename: string): string {
 }
 
 const Gallery = () => {
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [lightboxBroken, setLightboxBroken] = useState(false);
   const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
@@ -99,12 +99,14 @@ const Gallery = () => {
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-500">
             <Camera className="h-12 w-12 text-gray-300" />
             <p className="text-lg">No memories yet — be the first to share!</p>
-            <button
-              onClick={() => setUploadOpen(true)}
+            <a
+              href={DRIVE_FOLDER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="bg-rose-500 text-white px-6 py-2 rounded-full text-sm hover:bg-rose-600 transition-colors"
             >
               Share a Photo
-            </button>
+            </a>
           </div>
         )}
 
@@ -127,7 +129,7 @@ const Gallery = () => {
                 ) : (
                   <>
                     <img
-                      src={thumbnailUrl(file.thumbnailLink)}
+                      src={`https://drive.google.com/thumbnail?id=${file.id}&sz=w800`}
                       alt={`Photo by ${parseGuestName(file.name)}`}
                       className="w-full rounded-lg cursor-pointer hover:brightness-95 transition-all opacity-0"
                       onClick={() => openLightbox(index)}
@@ -153,14 +155,16 @@ const Gallery = () => {
       </main>
 
       {/* Floating upload button */}
-      <button
-        onClick={() => setUploadOpen(true)}
-        aria-label="Share photos"
+      <a
+        href={DRIVE_FOLDER_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Share photos on Google Drive"
         className="fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-3xl shadow-lg flex items-center justify-center transition-colors"
         data-testid="fab-upload"
       >
         +
-      </button>
+      </a>
 
       {/* Lightbox */}
       {lightboxIndex !== null && files[lightboxIndex] && (
@@ -210,7 +214,7 @@ const Gallery = () => {
             </div>
           ) : (
             <img
-              src={thumbnailUrl(files[lightboxIndex].thumbnailLink).replace("=s800", "=s1600")}
+              src={`https://drive.google.com/thumbnail?id=${files[lightboxIndex].id}&sz=w1600`}
               alt={`Photo by ${parseGuestName(files[lightboxIndex].name)}`}
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
               onClick={(e) => e.stopPropagation()}
@@ -231,7 +235,6 @@ const Gallery = () => {
         </div>
       )}
 
-      <UploadSheet open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 };

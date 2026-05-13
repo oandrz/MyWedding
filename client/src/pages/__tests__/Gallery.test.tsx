@@ -8,10 +8,6 @@ vi.mock("@/components/NavBar", () => ({
   default: () => <nav data-testid="navbar" />,
 }));
 
-vi.mock("@/components/UploadSheet", () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="upload-sheet" /> : null,
-}));
 
 const MOCK_FILES = [
   {
@@ -55,12 +51,12 @@ describe("Gallery", () => {
     expect(screen.getAllByRole("img").length).toBe(2);
   });
 
-  it("uses s800 thumbnail URL (not s220)", () => {
+  it("uses public Drive thumbnail URL with sz=w800", () => {
     renderGallery();
     const imgs = screen.getAllByRole("img") as HTMLImageElement[];
-    expect(imgs[0].src).toContain("=s800");
-    expect(imgs[0].src).not.toContain("=s220");
-    expect(imgs[0].src).not.toContain("=s600");
+    expect(imgs[0].src).toContain("drive.google.com/thumbnail");
+    expect(imgs[0].src).toContain("id=file1");
+    expect(imgs[0].src).toContain("sz=w800");
   });
 
   it("shows guest name parsed from filename on hover overlay", () => {
@@ -96,10 +92,12 @@ describe("Gallery", () => {
     expect(screen.queryByTestId("lightbox")).toBeNull();
   });
 
-  it("shows upload sheet when FAB is clicked", () => {
+  it("FAB links to Google Drive folder", () => {
     renderGallery();
-    fireEvent.click(screen.getByTestId("fab-upload"));
-    expect(screen.getByTestId("upload-sheet")).toBeInTheDocument();
+    const fab = screen.getByTestId("fab-upload");
+    expect(fab.tagName).toBe("A");
+    expect(fab).toHaveAttribute("href", expect.stringContaining("drive.google.com"));
+    expect(fab).toHaveAttribute("target", "_blank");
   });
 
   it("navigates to the next photo on ArrowRight", () => {
