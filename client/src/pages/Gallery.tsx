@@ -65,7 +65,7 @@ const Gallery = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <NavBar />
+      <NavBar minimal />
 
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-rose-100 px-4 py-3 flex items-center justify-between">
