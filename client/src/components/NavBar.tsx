@@ -14,6 +14,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [location] = useLocation();
   const [activeSection, setActiveSection] = useState<string>('');
+  // Safe to read once: main.tsx writes 'inviteCode' to sessionStorage before createRoot
   const [inviteCode] = useState<string>(() =>
     typeof window !== 'undefined' ? sessionStorage.getItem('inviteCode') ?? '' : ''
   );
@@ -106,7 +107,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
 
         {/* Desktop menu */}
         {!minimal && (
-        <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
+          <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
           <Link
             href={homeHref}
             className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
@@ -238,7 +239,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
           {isFeatureEnabled('memories') && (
             <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
           )}
-        </div>
+          </div>
         )}
       </div>
 
