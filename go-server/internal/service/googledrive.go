@@ -125,7 +125,7 @@ func (s *GoogleDriveService) GetFolderContents(ctx context.Context) ([]*drive.Fi
 		return nil, err
 	}
 
-	q := fmt.Sprintf("'%s' in parents", s.folderID)
+	q := fmt.Sprintf("'%s' in parents and trashed = false", s.folderID)
 	res, err := srv.Files.List().
 		Q(q).
 		Fields("files(id,name,mimeType,webViewLink,thumbnailLink,createdTime)").
@@ -135,11 +135,19 @@ func (s *GoogleDriveService) GetFolderContents(ctx context.Context) ([]*drive.Fi
 		return nil, fmt.Errorf("drive list failed: %w", err)
 	}
 
+	current := make(map[string]struct{}, len(res.Files))
 	for _, f := range res.Files {
+		current[f.Id] = struct{}{}
 		if f.ThumbnailLink != "" {
 			s.thumbLinks.Store(f.Id, f.ThumbnailLink)
 		}
 	}
+	s.thumbLinks.Range(func(key, _ any) bool {
+		if _, ok := current[key.(string)]; !ok {
+			s.thumbLinks.Delete(key)
+		}
+		return true
+	})
 
 	return res.Files, nil
 }
