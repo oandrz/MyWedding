@@ -1,0 +1,185 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Gallery from "../Gallery";
+
+vi.mock("@/components/NavBar", () => ({
+  default: () => <nav data-testid="navbar" />,
+}));
+
+
+const MOCK_FILES = [
+  {
+    id: "file1",
+    name: "Alice_wedding.jpg",
+    mimeType: "image/jpeg",
+    thumbnailLink: "https://lh3.googleusercontent.com/abc=s220",
+    webViewLink: "https://drive.google.com/file/d/file1",
+    createdTime: "2026-05-11T10:00:00Z",
+  },
+  {
+    id: "file2",
+    name: "Bob_ceremony.jpg",
+    mimeType: "image/jpeg",
+    thumbnailLink: "https://lh3.googleusercontent.com/def=s220",
+    webViewLink: "https://drive.google.com/file/d/file2",
+    createdTime: "2026-05-11T10:01:00Z",
+  },
+];
+
+function renderGallery(files = MOCK_FILES) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  qc.setQueryData(["/api/drive-folder-contents"], { files });
+  return render(
+    <QueryClientProvider client={qc}>
+      <Gallery />
+    </QueryClientProvider>
+  );
+}
+
+describe("Gallery", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("renders the page title", () => {
+    renderGallery();
+    expect(screen.getByText("Wedding Memories")).toBeInTheDocument();
+  });
+
+  it("renders a photo tile for each file", () => {
+    renderGallery();
+    expect(screen.getAllByRole("img").length).toBe(2);
+  });
+
+  it("uses public Drive thumbnail URL with sz=w800", () => {
+    renderGallery();
+    const imgs = screen.getAllByRole("img") as HTMLImageElement[];
+    expect(imgs[0].src).toContain("drive.google.com/thumbnail");
+    expect(imgs[0].src).toContain("id=file1");
+    expect(imgs[0].src).toContain("sz=w800");
+  });
+
+  it("shows guest name parsed from filename on hover overlay", () => {
+    renderGallery();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("shows empty state when no files", () => {
+    renderGallery([]);
+    expect(screen.getByText(/No memories yet/)).toBeInTheDocument();
+  });
+
+  it("opens lightbox when a photo is clicked", () => {
+    renderGallery();
+    const imgs = screen.getAllByRole("img");
+    fireEvent.click(imgs[0]);
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox-image")).toBeInTheDocument();
+  });
+
+  it("closes lightbox when backdrop is clicked", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.click(screen.getByTestId("lightbox"));
+    expect(screen.queryByTestId("lightbox")).toBeNull();
+  });
+
+  it("closes lightbox on Escape key", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("lightbox")).toBeNull();
+  });
+
+  it("FAB links to Google Drive folder", () => {
+    renderGallery();
+    const fab = screen.getByTestId("fab-upload");
+    expect(fab.tagName).toBe("A");
+    expect(fab).toHaveAttribute("href", expect.stringContaining("drive.google.com"));
+    expect(fab).toHaveAttribute("target", "_blank");
+  });
+
+  it("FAB is positioned above the music player (bottom-28)", () => {
+    renderGallery();
+    const fab = screen.getByTestId("fab-upload");
+    expect(fab.className).toContain("bottom-28");
+    expect(fab.className).not.toContain("bottom-6");
+  });
+
+  it("navigates to the next photo on ArrowRight", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+  });
+
+  it("navigates to the previous photo on ArrowLeft (wraps around)", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+  });
+
+  it("clicking the lightbox image does not close the lightbox", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    fireEvent.click(screen.getByTestId("lightbox-image"));
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument();
+  });
+
+  it("uses 2-column grid layout", () => {
+    renderGallery();
+    const grid = screen.getByTestId("photo-grid");
+    expect(grid.className).toContain("columns-2");
+    expect(grid.className).not.toContain("columns-1");
+  });
+
+  it("guest name overlay has opacity-100 (always visible on mobile)", () => {
+    renderGallery();
+    const overlays = document.querySelectorAll("[data-testid='guest-name-overlay']");
+    expect(overlays.length).toBeGreaterThan(0);
+    overlays.forEach((el) => {
+      expect(el.className).toContain("opacity-100");
+    });
+  });
+
+  it("swipes left to navigate to the next photo", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]); // open at index 0 → "1 / 2"
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
+
+    const lightbox = screen.getByTestId("lightbox");
+    fireEvent.touchStart(lightbox, { touches: [{ clientX: 200, clientY: 0 }] });
+    fireEvent.touchEnd(lightbox, { changedTouches: [{ clientX: 130, clientY: 0 }] }); // delta -70
+
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument(); // still open
+  });
+
+  it("swipes right to navigate to the previous photo", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[1]); // open at index 1 → "2 / 2"
+    expect(screen.getByText(/2 \/ 2/)).toBeInTheDocument();
+
+    const lightbox = screen.getByTestId("lightbox");
+    fireEvent.touchStart(lightbox, { touches: [{ clientX: 200, clientY: 0 }] });
+    fireEvent.touchEnd(lightbox, { changedTouches: [{ clientX: 260, clientY: 0 }] }); // delta +60
+
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox")).toBeInTheDocument(); // still open
+  });
+
+  it("small tap (< 50px) on lightbox backdrop closes it, does not navigate", () => {
+    renderGallery();
+    fireEvent.click(screen.getAllByRole("img")[0]);
+    expect(screen.getByText(/1 \/ 2/)).toBeInTheDocument();
+
+    const lightbox = screen.getByTestId("lightbox");
+    fireEvent.touchStart(lightbox, { touches: [{ clientX: 200, clientY: 0 }] });
+    fireEvent.touchEnd(lightbox, { changedTouches: [{ clientX: 215, clientY: 0 }] }); // delta +15
+    fireEvent.click(lightbox); // click fires after tap
+
+    expect(screen.queryByTestId("lightbox")).toBeNull(); // closed
+  });
+});
