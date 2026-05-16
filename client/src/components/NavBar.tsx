@@ -4,12 +4,20 @@ import { Link, useLocation } from "wouter";
 import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
-const NavBar = () => {
+interface NavBarProps {
+  minimal?: boolean;
+}
+
+const NavBar = ({ minimal = false }: NavBarProps) => {
   const { isFeatureEnabled } = useFeatureFlags();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [location] = useLocation();
   const [activeSection, setActiveSection] = useState<string>('');
+  const [inviteCode] = useState<string>(() =>
+    typeof window !== 'undefined' ? sessionStorage.getItem('inviteCode') ?? '' : ''
+  );
+  const homeHref = inviteCode ? `/?code=${encodeURIComponent(inviteCode)}` : '/';
 
   // Toggle mobile menu
   const toggleMenu = () => {
@@ -81,23 +89,26 @@ const NavBar = () => {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 bg-background bg-opacity-95 transition-all duration-300 ${isScrolled ? 'shadow-md' : ''}`}>
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <Link href="/" className="text-3xl font-cormorant italic text-primary tracking-widest">
+        <Link href={homeHref} className="text-3xl font-cormorant italic text-primary tracking-widest">
           A&C
         </Link>
 
         {/* Mobile menu button */}
-        <button
-          className="md:hidden text-foreground focus:outline-none"
-          onClick={toggleMenu}
-          aria-label="Toggle menu"
-        >
-          <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'}`}></i>
-        </button>
+        {!minimal && (
+          <button
+            className="md:hidden text-foreground focus:outline-none"
+            onClick={toggleMenu}
+            aria-label="Toggle menu"
+          >
+            <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'}`}></i>
+          </button>
+        )}
 
         {/* Desktop menu */}
+        {!minimal && (
         <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
           <Link
-            href="/"
+            href={homeHref}
             className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
           >
             Home
@@ -228,9 +239,11 @@ const NavBar = () => {
             <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
           )}
         </div>
+        )}
       </div>
 
       {/* Mobile menu */}
+      {!minimal && (
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -242,7 +255,7 @@ const NavBar = () => {
           >
             <div className="flex flex-col space-y-3 font-montserrat text-sm pb-3">
               <Link
-                href="/"
+                href={homeHref}
                 className={`py-2 border-b border-gray-200 hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
                 onClick={() => {
                   closeMenu();
@@ -324,6 +337,7 @@ const NavBar = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      )}
     </nav>
   );
 };
