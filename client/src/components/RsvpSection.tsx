@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import confetti from "canvas-confetti";
+import { useLanguage, interpolate } from "@/contexts/LanguageContext";
 
 // Schema for email-based RSVP (flag off)
 const emailRsvpSchema = z.object({
@@ -43,6 +44,7 @@ const RsvpSection = () => {
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.5 });
   const isFormInView = useInView(formRef, { once: true, amount: 0.3 });
 
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { getFeatureFlag, isLoading: isFlagsLoading } = useFeatureFlags();
   const rsvpEnabled = getFeatureFlag("rsvp")?.enabled === true;
@@ -255,21 +257,21 @@ const RsvpSection = () => {
           initial="hidden"
           animate={isTitleInView ? "visible" : "hidden"}
         >
-          <motion.h2 
+          <motion.h2
             className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
-            RSVP
+            {t("rsvp")}
           </motion.h2>
           <motion.div 
             className="w-24 h-1 mx-auto mb-6 rounded-full bg-[#dba9a9]"
             variants={fadeIn}
           ></motion.div>
-          <motion.p 
+          <motion.p
             className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
             variants={fadeIn}
           >
-            Please let us know if you'll be joining us to celebrate our special day
+            {t("rsvpSubtitle")}
           </motion.p>
         </motion.div>
         
@@ -314,19 +316,14 @@ const RsvpSection = () => {
               >
                 <i className="fas fa-heart text-primary text-4xl"></i>
               </motion.div>
-              <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You{guestName ? `, ${guestName}` : ""}!</h3>
+              <h3 className="text-3xl font-cormorant text-foreground mb-3">
+                {interpolate(t("rsvpThankYou"), { name: guestName || "" })}
+              </h3>
               <p className="text-foreground font-montserrat">
                 {(() => {
                   const existingRsvp = inviteHasRsvp ? inviteData.invite.rsvp : rsvpCheck?.rsvp;
-                  if (existingRsvp?.attendanceType && existingRsvp.attendanceType !== "decline") {
-                    const eventLabel = existingRsvp.attendanceType === "both"
-                      ? "Holy Matrimony and Reception"
-                      : existingRsvp.attendanceType === "holy_matrimony"
-                      ? "Holy Matrimony"
-                      : "Reception";
-                    return `We've received your RSVP for the ${eventLabel} and look forward to celebrating with you.`;
-                  }
-                  return "We've already received your RSVP.";
+                  const isAttending = existingRsvp?.attendanceType && existingRsvp.attendanceType !== "decline";
+                  return isAttending ? t("rsvpConfirmAttending") : t("rsvpConfirmDecline");
                 })()}
               </p>
               <motion.button
@@ -346,7 +343,7 @@ const RsvpSection = () => {
                 }}
                 className="mt-6 px-6 py-2 border border-primary/40 text-primary font-montserrat text-sm rounded-full hover:bg-primary/5 transition-all duration-200"
               >
-                Update RSVP
+                {t("updateRsvp")}
               </motion.button>
             </motion.div>
           ) : !isSubmitted ? (
@@ -402,13 +399,13 @@ const RsvpSection = () => {
               
               {/* Attendance Type */}
               <div>
-                <label className="block text-foreground font-montserrat text-sm mb-4">Will you be joining us?</label>
+                <label className="block text-foreground font-montserrat text-sm mb-4">{t("willYouAttend")}</label>
                 <div className="flex flex-wrap gap-2">
                   {([
-                    { value: "both", label: "Both" },
-                    { value: "holy_matrimony", label: "Holy Matrimony" },
-                    { value: "reception", label: "Reception" },
-                    { value: "decline", label: "Regretfully Decline" },
+                    { value: "both", labelKey: "attendBoth" },
+                    { value: "holy_matrimony", labelKey: "attendHolyMatrimony" },
+                    { value: "reception", labelKey: "attendReception" },
+                    { value: "decline", labelKey: "attendDecline" },
                   ] as const).map((option) => (
                     <button
                       key={option.value}
@@ -422,7 +419,7 @@ const RsvpSection = () => {
                           : "border border-gray-300 text-foreground hover:border-primary/50"
                       }`}
                     >
-                      {option.label}
+                      {t(option.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -431,7 +428,7 @@ const RsvpSection = () => {
               {/* Number of Guests - Only show if attending */}
               {showGuestOptions && (
                 <div>
-                  <label htmlFor="guestCount" className="block text-foreground font-montserrat text-sm mb-2">Number of Guests (Including Yourself)</label>
+                  <label htmlFor="guestCount" className="block text-foreground font-montserrat text-sm mb-2">{t("numberOfGuests")}</label>
                   <select 
                     id="guestCount" 
                     className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
@@ -459,7 +456,7 @@ const RsvpSection = () => {
                   disabled={isPending}
                   data-testid="button-submit-rsvp"
                 >
-                  {isPending ? "Sending..." : isEditing ? "Update RSVP" : "Send RSVP"}
+                  {isPending ? "Sending..." : isEditing ? t("updateRsvp") : t("submitRsvp")}
                 </motion.button>
               </div>
             </motion.form>
@@ -478,9 +475,11 @@ const RsvpSection = () => {
               >
                 <i className="fas fa-heart text-primary text-4xl"></i>
               </motion.div>
-              <h3 className="text-3xl font-cormorant text-foreground mb-3">Thank You!</h3>
+              <h3 className="text-3xl font-cormorant text-foreground mb-3">
+                {interpolate(t("rsvpThankYou"), { name: guestName || "" })}
+              </h3>
               <p className="text-foreground font-montserrat">
-                We've received your RSVP and look forward to celebrating with you.
+                {watch("attendanceType") !== "decline" ? t("rsvpConfirmAttending") : t("rsvpConfirmDecline")}
               </p>
             </motion.div>
           )}
