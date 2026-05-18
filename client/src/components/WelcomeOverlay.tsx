@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { WelcomeScreen } from "@shared/schema";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 let hasShownThisLoad = false;
 export const _resetOverlayLoadState = () => { hasShownThisLoad = false; };
@@ -25,6 +26,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [guestName, setGuestName] = useState<string>("");
   const [location] = useLocation();
+  const { lang, setLang, t } = useLanguage();
 
   const isAdminPage = location.includes('/admin');
 
@@ -225,7 +227,9 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               transition={{ delay: 0.4, duration: 0.8 }}
               className="font-cormorant text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-foreground mb-4 sm:mb-8"
             >
-              {welcomeScreen.headingText}
+              {lang === "id" && welcomeScreen.headingTextId
+                ? welcomeScreen.headingTextId
+                : welcomeScreen.headingText}
             </motion.h1>
 
             {/* Enhanced Decorative Divider */}
@@ -256,7 +260,9 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               transition={{ delay: 0.8, duration: 0.6 }}
               className="font-montserrat text-[10px] sm:text-xs md:text-sm uppercase tracking-[0.3em] text-muted-foreground mb-3 sm:mb-4"
             >
-              {welcomeScreen.deliveryLabel}
+              {lang === "id" && welcomeScreen.deliveryLabelId
+                ? welcomeScreen.deliveryLabelId
+                : welcomeScreen.deliveryLabel}
             </motion.p>
 
             {/* Guest Name */}
@@ -268,6 +274,29 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
             >
               {guestName}
             </motion.h2>
+
+            {/* Language Picker */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.1, duration: 0.4 }}
+              className="flex items-center justify-center gap-3 mb-6"
+            >
+              {(["en", "id"] as const).map((l) => (
+                <button
+                  key={l}
+                  data-testid={`lang-pill-${l}`}
+                  onClick={() => setLang(l)}
+                  className={`px-5 py-1.5 rounded-full font-montserrat text-xs uppercase tracking-wider border transition-all duration-200 ${
+                    lang === l
+                      ? "bg-primary text-white border-primary"
+                      : "bg-transparent text-primary border-primary/50 hover:border-primary"
+                  }`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </motion.div>
 
             {/* Enhanced Button with shimmer */}
             <motion.button
@@ -284,7 +313,7 @@ const WelcomeOverlay = ({ onDismiss }: WelcomeOverlayProps) => {
               }}
               data-testid="button-open-invitation"
             >
-              <span className="relative z-10">Open Invitation</span>
+              <span className="relative z-10">{t("openInvitation")}</span>
               {/* Shimmer sweep */}
               <div
                 className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite_1.5s]"
