@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle, Heart, Send } from 'lucide-react';
 import { fadeIn, staggerContainer } from '@/lib/animations';
+import { useLanguage, interpolate } from "@/contexts/LanguageContext";
 
 const messageSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -38,6 +39,7 @@ const getInitials = (name: string) => {
 };
 
 const MessagesSection = () => {
+  const { t } = useLanguage();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const sectionRef = useRef(null);
@@ -130,11 +132,11 @@ const MessagesSection = () => {
             <Heart className="w-5 h-5 text-primary" />
           </motion.div>
           
-          <motion.h2 
+          <motion.h2
             variants={fadeIn}
             className="text-4xl md:text-5xl font-cormorant text-foreground mb-4"
           >
-            Share Your Wishes
+            {t("wishesTitle")}
           </motion.h2>
           
           <motion.div 
@@ -142,11 +144,11 @@ const MessagesSection = () => {
             className="w-24 h-0.5 bg-primary mx-auto mb-4"
           />
           
-          <motion.p 
+          <motion.p
             variants={fadeIn}
             className="text-muted-foreground font-montserrat max-w-xl mx-auto"
           >
-            Leave your congratulations and well-wishes for the couple
+            {t("wishesSubtitle")}
           </motion.p>
         </motion.div>
 
@@ -217,7 +219,7 @@ const MessagesSection = () => {
                     className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-montserrat text-sm transition-colors"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    {showAll ? "Show less" : `See all ${data.messages.length} wishes`}
+                    {showAll ? "Show less" : interpolate(t("seeAllWishes"), { count: data.messages.length })}
                   </button>
                 </div>
               )}
@@ -225,7 +227,7 @@ const MessagesSection = () => {
           ) : (
             <div className="text-center p-8 bg-muted/20 rounded-lg mb-8">
               <MessageCircle className="h-12 w-12 text-primary/50 mx-auto mb-3" />
-              <p className="text-muted-foreground">Be the first to leave a message!</p>
+              <p className="text-muted-foreground">{t("noMessages")}</p>
             </div>
           )}
 
@@ -252,13 +254,13 @@ const MessagesSection = () => {
                       <Heart className="w-16 h-16 text-primary mx-auto mb-4" />
                     </motion.div>
                     <h4 className="text-2xl font-cormorant text-foreground mb-2">Thank You!</h4>
-                    <p className="text-muted-foreground">Your wishes have been sent to the couple.</p>
+                    <p className="text-muted-foreground">{t("thankYouMessage")}</p>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
                       <label className="block text-sm font-montserrat text-foreground mb-1.5">
-                        Your Name
+                        {t("yourName")}
                       </label>
                       <input
                         type="text"
@@ -273,7 +275,7 @@ const MessagesSection = () => {
                     
                     <div>
                       <label className="block text-sm font-montserrat text-foreground mb-1.5">
-                        Your Message
+                        {t("yourMessage")}
                       </label>
                       <Textarea
                         {...register("content")}
@@ -300,7 +302,7 @@ const MessagesSection = () => {
                         ) : (
                           <>
                             <Send className="w-4 h-4" />
-                            Send Wishes
+                            {t("sendWish")}
                           </>
                         )}
                       </button>

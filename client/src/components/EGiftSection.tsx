@@ -4,6 +4,7 @@ import { Copy, Check, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { fadeIn, staggerContainer } from "@/lib/animations";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BankAccount {
   accountHolder: string;
@@ -26,7 +27,9 @@ const BankAccountCard = ({
   index,
   copiedAccount,
   onCopy
-}: BankAccountCardProps) => (
+}: BankAccountCardProps) => {
+  const { t } = useLanguage();
+  return (
   <motion.div
     className="glass-card rounded-2xl p-8 text-center"
     initial={{ opacity: 0, y: 30 }}
@@ -54,19 +57,21 @@ const BankAccountCard = ({
       {copiedAccount === account.accountNumber ? (
         <>
           <Check className="h-4 w-4 mr-2 inline" />
-          Copied!
+          {t("copied")}
         </>
       ) : (
         <>
           <Copy className="h-4 w-4 mr-2 inline" />
-          Copy Account Number
+          {t("copyAccountNumber")}
         </>
       )}
     </motion.button>
   </motion.div>
-);
+  );
+};
 
 const EGiftSection = () => {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
 
@@ -155,7 +160,7 @@ const EGiftSection = () => {
             className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
-            Wedding Gift
+            {t("eGiftTitle")}
           </motion.h2>
 
           <motion.div
@@ -167,7 +172,7 @@ const EGiftSection = () => {
             className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
             variants={fadeIn}
           >
-            Your kind blessing can be sent to the information below
+            {t("eGiftSubtitle")}
           </motion.p>
         </motion.div>
 
@@ -175,14 +180,14 @@ const EGiftSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           <BankAccountCard
             account={groomAccount}
-            label="a.n"
+            label={t("groom")}
             index={0}
             copiedAccount={copiedAccount}
             onCopy={handleCopyAccount}
           />
           <BankAccountCard
             account={brideAccount}
-            label="a.n"
+            label={t("bride")}
             index={1}
             copiedAccount={copiedAccount}
             onCopy={handleCopyAccount}
