@@ -4,12 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Car, ParkingSquare } from "lucide-react";
 import { VENUES, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ScheduleEvent {
   id: number;
   title: string;
+  titleId: string;
   time: string;
   description: string;
+  descriptionId: string;
   sortOrder: number;
   createdAt: string;
 }
@@ -19,6 +22,8 @@ const DetailsSection = () => {
     queryKey: ["/api/schedule"],
   });
   const scheduleEvents = scheduleData?.scheduleEvents ?? [];
+
+  const { t, dateLocale, lang } = useLanguage();
 
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
@@ -35,7 +40,7 @@ const DetailsSection = () => {
   const isScheduleInView = useInView(scheduleRef, { once: true, amount: 0.3 });
   
   // Format wedding date
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
+  const formattedDate = new Intl.DateTimeFormat(dateLocale, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -56,7 +61,7 @@ const DetailsSection = () => {
             className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
-            The Details
+            {t("theDetails")}
           </motion.h2>
           <motion.div 
             className="w-24 h-1 bg-primary mx-auto rounded-full mb-6"
@@ -66,7 +71,7 @@ const DetailsSection = () => {
             className="text-muted-foreground font-montserrat text-lg max-w-2xl mx-auto"
             variants={fadeIn}
           >
-            Join us as we celebrate our special day
+            {t("detailsSubtitle")}
           </motion.p>
         </motion.div>
         
@@ -82,7 +87,7 @@ const DetailsSection = () => {
             {/* Date */}
             <div>
               <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-2">
-                Date
+                {t("date")}
               </div>
               <div className="text-3xl md:text-4xl font-cormorant font-bold text-primary">
                 {formattedDate}
@@ -93,12 +98,12 @@ const DetailsSection = () => {
             {scheduleEvents.length > 0 && (
               <div>
                 <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-4">
-                  Schedule
+                  {t("schedule")}
                 </div>
                 <div className={`grid grid-cols-1 gap-6 md:gap-8 ${scheduleEvents.length >= 2 ? "md:grid-cols-2" : ""}`}>
                   <div className={`text-center ${scheduleEvents.length >= 2 ? "md:border-r md:border-primary/20 md:pr-8" : ""}`}>
                     <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
-                      {scheduleEvents[0].title}
+                      {lang === "id" && scheduleEvents[0].titleId ? scheduleEvents[0].titleId : scheduleEvents[0].title}
                     </div>
                     <div className="text-lg md:text-xl font-cormorant text-foreground">
                       {scheduleEvents[0].time}
@@ -107,7 +112,7 @@ const DetailsSection = () => {
                   {scheduleEvents.length >= 2 && (
                     <div className="text-center">
                       <div className="text-xl md:text-2xl font-cormorant font-semibold text-primary mb-1">
-                        {scheduleEvents[scheduleEvents.length - 1].title}
+                        {lang === "id" && scheduleEvents[scheduleEvents.length - 1].titleId ? scheduleEvents[scheduleEvents.length - 1].titleId : scheduleEvents[scheduleEvents.length - 1].title}
                       </div>
                       <div className="text-lg md:text-xl font-cormorant text-foreground">
                         {scheduleEvents[scheduleEvents.length - 1].time}
@@ -121,7 +126,7 @@ const DetailsSection = () => {
             {/* Location - IMPOSSIBLE TO MISS */}
             <div className="pt-6 border-t border-primary/20">
               <div className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-3">
-                Location
+                {t("location")}
               </div>
               <div className="text-3xl md:text-4xl font-cormorant font-bold text-primary mb-3">
                 {VENUES[0].location}
@@ -138,7 +143,7 @@ const DetailsSection = () => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <i className="fas fa-map-marker-alt mr-2"></i> View on Google Maps
+                <i className="fas fa-map-marker-alt mr-2"></i> {t("viewOnMaps")}
               </motion.a>
             </div>
           </div>
@@ -180,7 +185,7 @@ const DetailsSection = () => {
             className="text-3xl md:text-4xl font-cormorant font-bold text-center text-foreground mb-8"
             variants={fadeIn}
           >
-            Getting There
+            {t("gettingThere")}
           </motion.h3>
 
           <div className="space-y-6">
@@ -190,10 +195,10 @@ const DetailsSection = () => {
               </div>
               <div>
                 <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">
-                  Ride-Hailing Recommended
+                  {t("rideHailingTitle")}
                 </h4>
                 <p className="font-montserrat text-sm text-muted-foreground leading-relaxed">
-                  Due to limited parking space at the venue, we kindly recommend using online ride-hailing services such as Grab or Gojek for a more convenient arrival experience.
+                  {t("rideHailingBody")}
                 </p>
               </div>
             </motion.div>
@@ -203,8 +208,8 @@ const DetailsSection = () => {
                 <ParkingSquare className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">Free Valet Parking Service Available</h4>
-                <p className="font-montserrat text-sm text-muted-foreground leading-relaxed">For guests who prefer to bring their own car, please be advised that due to the limited parking space, your vehicle will be managed by Casakhasa's valet parking service (Free).</p>
+                <h4 className="font-cormorant text-xl font-semibold text-foreground mb-1">{t("valetTitle")}</h4>
+                <p className="font-montserrat text-sm text-muted-foreground leading-relaxed">{t("valetBody")}</p>
               </div>
             </motion.div>
           </div>
@@ -222,7 +227,7 @@ const DetailsSection = () => {
             className="text-4xl md:text-5xl font-cormorant font-bold text-center text-foreground mb-10"
             variants={fadeIn}
           >
-            Wedding Day Schedule
+            {t("weddingDaySchedule")}
           </motion.h3>
           
           <div className="relative">
@@ -242,7 +247,7 @@ const DetailsSection = () => {
                   transition={{ delay: index * 0.2 }}
                 >
                   <div className="w-5/12 pr-8 text-right">
-                    <h4 className="font-cormorant text-xl text-primary">{item.title}</h4>
+                    <h4 className="font-cormorant text-xl text-primary">{lang === "id" && item.titleId ? item.titleId : item.title}</h4>
                     <p className="font-montserrat text-sm text-foreground">{item.time}</p>
                   </div>
 
@@ -255,7 +260,7 @@ const DetailsSection = () => {
 
                   <div className="w-5/12 pl-8">
                     <p className="font-montserrat text-sm text-muted-foreground">
-                      {item.description}
+                      {lang === "id" && item.descriptionId ? item.descriptionId : item.description}
                     </p>
                   </div>
                 </motion.div>
