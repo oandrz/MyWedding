@@ -27,9 +27,9 @@ func (h *WelcomeScreenHandler) Get(w http.ResponseWriter, r *http.Request) {
 		ws = &models.WelcomeScreen{
 			ID:              0,
 			HeadingText:     "Welcome",
-			HeadingTextId:   "",
+			HeadingTextID:   "",
 			DeliveryLabel:   "Delivery",
-			DeliveryLabelId: "",
+			DeliveryLabelID: "",
 			FallbackName:    "Guest",
 			Enabled:         true,
 		}
@@ -53,17 +53,17 @@ func (h *WelcomeScreenHandler) Update(w http.ResponseWriter, r *http.Request) {
 			sanitized := h.Sanitizer.Sanitize(*body.HeadingText)
 			body.HeadingText = &sanitized
 		}
-		if body.HeadingTextId != nil {
-			sanitized := h.Sanitizer.Sanitize(*body.HeadingTextId)
-			body.HeadingTextId = &sanitized
+		if body.HeadingTextID != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.HeadingTextID)
+			body.HeadingTextID = &sanitized
 		}
 		if body.DeliveryLabel != nil {
 			sanitized := h.Sanitizer.Sanitize(*body.DeliveryLabel)
 			body.DeliveryLabel = &sanitized
 		}
-		if body.DeliveryLabelId != nil {
-			sanitized := h.Sanitizer.Sanitize(*body.DeliveryLabelId)
-			body.DeliveryLabelId = &sanitized
+		if body.DeliveryLabelID != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.DeliveryLabelID)
+			body.DeliveryLabelID = &sanitized
 		}
 		if body.FallbackName != nil {
 			sanitized := h.Sanitizer.Sanitize(*body.FallbackName)

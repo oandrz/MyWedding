@@ -632,7 +632,7 @@ func (r *PostgresRepository) GetWelcomeScreen(ctx context.Context) (*models.Welc
 		`SELECT id, heading_text, heading_text_id, delivery_label, delivery_label_id,
 		        fallback_name, enabled, updated_at
 		 FROM welcome_screen WHERE id = 1`,
-	).Scan(&ws.ID, &ws.HeadingText, &ws.HeadingTextId, &ws.DeliveryLabel, &ws.DeliveryLabelId,
+	).Scan(&ws.ID, &ws.HeadingText, &ws.HeadingTextID, &ws.DeliveryLabel, &ws.DeliveryLabelID,
 		&ws.FallbackName, &ws.Enabled, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -667,9 +667,9 @@ func (r *PostgresRepository) UpdateWelcomeScreen(ctx context.Context, data model
 		     updated_at        = NOW()
 		 RETURNING id, heading_text, heading_text_id, delivery_label, delivery_label_id,
 		           fallback_name, enabled, updated_at`,
-		data.HeadingText, data.HeadingTextId, data.DeliveryLabel, data.DeliveryLabelId,
+		data.HeadingText, data.HeadingTextID, data.DeliveryLabel, data.DeliveryLabelID,
 		data.FallbackName, data.Enabled,
-	).Scan(&ws.ID, &ws.HeadingText, &ws.HeadingTextId, &ws.DeliveryLabel, &ws.DeliveryLabelId,
+	).Scan(&ws.ID, &ws.HeadingText, &ws.HeadingTextID, &ws.DeliveryLabel, &ws.DeliveryLabelID,
 		&ws.FallbackName, &ws.Enabled, &updatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("upsert welcome_screen: %w", err)
@@ -1079,7 +1079,7 @@ func (r *PostgresRepository) GetScheduleEvents(ctx context.Context) ([]models.Sc
 	for rows.Next() {
 		var e models.ScheduleEvent
 		var createdAt time.Time
-		if err := rows.Scan(&e.ID, &e.Title, &e.TitleId, &e.Time, &e.Description, &e.DescriptionId,
+		if err := rows.Scan(&e.ID, &e.Title, &e.TitleID, &e.Time, &e.Description, &e.DescriptionID,
 			&e.SortOrder, &createdAt); err != nil {
 			return nil, err
 		}
@@ -1096,8 +1096,8 @@ func (r *PostgresRepository) CreateScheduleEvent(ctx context.Context, data model
 		`INSERT INTO schedule_events (title, title_id, time, description, description_id, sort_order)
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING id, title, title_id, time, description, description_id, sort_order, created_at`,
-		data.Title, data.TitleId, data.Time, data.Description, data.DescriptionId, data.SortOrder,
-	).Scan(&e.ID, &e.Title, &e.TitleId, &e.Time, &e.Description, &e.DescriptionId, &e.SortOrder, &createdAt)
+		data.Title, data.TitleID, data.Time, data.Description, data.DescriptionID, data.SortOrder,
+	).Scan(&e.ID, &e.Title, &e.TitleID, &e.Time, &e.Description, &e.DescriptionID, &e.SortOrder, &createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -1113,8 +1113,8 @@ func (r *PostgresRepository) UpdateScheduleEvent(ctx context.Context, id int, da
 		 SET title = $1, title_id = $2, time = $3, description = $4, description_id = $5
 		 WHERE id = $6
 		 RETURNING id, title, title_id, time, description, description_id, sort_order, created_at`,
-		data.Title, data.TitleId, data.Time, data.Description, data.DescriptionId, id,
-	).Scan(&e.ID, &e.Title, &e.TitleId, &e.Time, &e.Description, &e.DescriptionId, &e.SortOrder, &createdAt)
+		data.Title, data.TitleID, data.Time, data.Description, data.DescriptionID, id,
+	).Scan(&e.ID, &e.Title, &e.TitleID, &e.Time, &e.Description, &e.DescriptionID, &e.SortOrder, &createdAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
