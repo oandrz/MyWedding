@@ -17,10 +17,14 @@ import WelcomePage from "../WelcomePage";
 
 const mockWelcomeData = {
   welcomeScreen: {
+    id: 1,
     headingText: "The Wedding of A & C",
+    headingTextId: "",
     deliveryLabel: "Kindly Delivered to",
+    deliveryLabelId: "",
     fallbackName: "Our Dearest Guest",
     enabled: true,
+    updatedAt: "2024-01-01T00:00:00Z",
   },
 };
 
