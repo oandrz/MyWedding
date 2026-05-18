@@ -1,4 +1,5 @@
 import { motion, useInView } from "framer-motion";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useState, useEffect, useCallback, Component, type ReactNode } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, revealText } from "@/lib/animations";
@@ -95,6 +96,7 @@ const CarouselDots = ({ count, activeIndex }: { count: number; activeIndex: numb
 );
 
 const GallerySection = () => {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
@@ -217,7 +219,7 @@ const GallerySection = () => {
               className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
               variants={revealText}
             >
-              Our Gallery
+              {t("ourGallery")}
             </motion.h2>
             <motion.div
               className="w-24 h-1 metallic-rose mx-auto rounded-full mb-6"
@@ -227,7 +229,7 @@ const GallerySection = () => {
               className="text-muted-foreground font-montserrat text-lg max-w-2xl mx-auto"
               variants={fadeIn}
             >
-              A glimpse into our journey together and the moments that led us here
+              {t("gallerySubtitle")}
             </motion.p>
           </motion.div>
 

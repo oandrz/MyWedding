@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { fadeIn, staggerContainer, staggerFast } from "@/lib/animations";
 import batikPng from "@/assets/batik.jpg";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DressCodeColor {
   hex?: string;
@@ -12,6 +13,7 @@ interface DressCodeColor {
 const BATIK_ENTRY: DressCodeColor = { image: batikPng, label: "Batik" };
 
 const DressCodeSection = () => {
+  const { t } = useLanguage();
   const { data } = useQuery<{ settings: any[] }>({
     queryKey: ["/api/app-settings"],
   });
@@ -41,13 +43,13 @@ const DressCodeSection = () => {
             className="text-sm uppercase font-montserrat tracking-widest text-muted-foreground mb-3"
             variants={fadeIn}
           >
-            Dress Code
+            {t("dressCode")}
           </motion.p>
           <motion.h2
             className="text-5xl md:text-6xl font-cormorant font-bold text-foreground mb-4"
             variants={fadeIn}
           >
-            Color To Avoid
+            {t("colorToAvoid")}
           </motion.h2>
           <motion.div
             className="w-24 h-1 bg-primary mx-auto rounded-full mb-6"
@@ -57,7 +59,7 @@ const DressCodeSection = () => {
             className="text-muted-foreground font-montserrat max-w-2xl mx-auto"
             variants={fadeIn}
           >
-            We kindly ask that guest <strong>avoid</strong> wearing the following colors <strong>(Bold and Strong Color)</strong> to our celebration. For Example:
+            {t("dressCodeSubtitle")}
           </motion.p>
         </motion.div>
 
