@@ -1,0 +1,7 @@
+ALTER TABLE welcome_screen
+  ADD COLUMN IF NOT EXISTS heading_text_id  VARCHAR(500) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS delivery_label_id VARCHAR(200) NOT NULL DEFAULT '';
+
+ALTER TABLE schedule_events
+  ADD COLUMN IF NOT EXISTS title_id       VARCHAR(200) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS description_id TEXT         NOT NULL DEFAULT '';

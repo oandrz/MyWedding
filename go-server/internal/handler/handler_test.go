@@ -1574,6 +1574,24 @@ func TestValidateGeneratesTokenWhenMissing(t *testing.T) {
 	}
 }
 
+func TestWelcomeScreenHasLocalizationFields(t *testing.T) {
+	env := newTestEnv()
+	req := httptest.NewRequest(http.MethodGet, "/api/welcome-screen", nil)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	result := parseResponse(t, rec)
+	ws, ok := result["welcomeScreen"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected welcomeScreen object, got keys: %v", mapKeys(result))
+	}
+	assertKeyExists(t, ws, "headingTextId")
+	assertKeyExists(t, ws, "deliveryLabelId")
+}
+
 // ---------------------------------------------------------------------------
 // Protected routes 401 tests
 // ---------------------------------------------------------------------------

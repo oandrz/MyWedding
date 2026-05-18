@@ -581,20 +581,28 @@ func (m *MemoryRepository) UpdateWelcomeScreen(_ context.Context, data models.In
 
 	if m.welcomeScreen == nil {
 		m.welcomeScreen = &models.WelcomeScreen{
-			ID:            1,
-			HeadingText:   "Welcome",
-			DeliveryLabel: "Delivery",
-			FallbackName:  "Guest",
-			Enabled:       true,
-			UpdatedAt:     now(),
+			ID:              1,
+			HeadingText:     "Welcome",
+			HeadingTextId:   "",
+			DeliveryLabel:   "Delivery",
+			DeliveryLabelId: "",
+			FallbackName:    "Guest",
+			Enabled:         true,
+			UpdatedAt:       now(),
 		}
 	}
 
 	if data.HeadingText != nil {
 		m.welcomeScreen.HeadingText = *data.HeadingText
 	}
+	if data.HeadingTextId != nil {
+		m.welcomeScreen.HeadingTextId = *data.HeadingTextId
+	}
 	if data.DeliveryLabel != nil {
 		m.welcomeScreen.DeliveryLabel = *data.DeliveryLabel
+	}
+	if data.DeliveryLabelId != nil {
+		m.welcomeScreen.DeliveryLabelId = *data.DeliveryLabelId
 	}
 	if data.FallbackName != nil {
 		m.welcomeScreen.FallbackName = *data.FallbackName
@@ -883,12 +891,14 @@ func (m *MemoryRepository) CreateScheduleEvent(_ context.Context, data models.In
 	defer m.mu.Unlock()
 	m.scheduleIDSeq++
 	e := models.ScheduleEvent{
-		ID:          m.scheduleIDSeq,
-		Title:       data.Title,
-		Time:        data.Time,
-		Description: data.Description,
-		SortOrder:   data.SortOrder,
-		CreatedAt:   now(),
+		ID:            m.scheduleIDSeq,
+		Title:         data.Title,
+		TitleId:       data.TitleId,
+		Time:          data.Time,
+		Description:   data.Description,
+		DescriptionId: data.DescriptionId,
+		SortOrder:     data.SortOrder,
+		CreatedAt:     now(),
 	}
 	m.scheduleEvents[e.ID] = e
 	return &e, nil
@@ -902,8 +912,10 @@ func (m *MemoryRepository) UpdateScheduleEvent(_ context.Context, id int, data m
 		return nil, nil
 	}
 	e.Title = data.Title
+	e.TitleId = data.TitleId
 	e.Time = data.Time
 	e.Description = data.Description
+	e.DescriptionId = data.DescriptionId
 	m.scheduleEvents[id] = e
 	return &e, nil
 }
