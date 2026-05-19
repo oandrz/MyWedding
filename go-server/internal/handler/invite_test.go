@@ -499,3 +499,90 @@ func TestInvite_GetByCode_NoPII(t *testing.T) {
 		t.Fatalf("public endpoint should not expose waSentAt, got %v", invite["waSentAt"])
 	}
 }
+
+func TestInvite_Update_NameAndPhone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"name": "Alice Updated", "phone": "+6281234567890"})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if invite["name"] != "Alice Updated" {
+		t.Fatalf("expected name=Alice Updated, got %v", invite["name"])
+	}
+	if invite["phone"] != "+6281234567890" {
+		t.Fatalf("expected phone=+6281234567890, got %v", invite["phone"])
+	}
+}
+
+func TestInvite_Update_NameAndClearPhone(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice", "phone": "+6281234567890"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"name": "Alice Renamed", "phone": nil})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+
+	invite := result["invite"].(map[string]interface{})
+	if invite["name"] != "Alice Renamed" {
+		t.Fatalf("expected name=Alice Renamed, got %v", invite["name"])
+	}
+	if _, hasPhone := invite["phone"]; hasPhone {
+		t.Fatalf("expected phone to be omitted (nil), got %v", invite["phone"])
+	}
+}
+
+func TestInvite_Update_NameWithoutPhone_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	// name present, phone absent — must return 400
+	updateBody := jsonBody(map[string]interface{}{"name": "Alice Updated"})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusBadRequest)
+}
+
+func TestInvite_Update_EmptyName_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"name": "", "phone": nil})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusBadRequest)
+}
+
+func TestInvite_Update_WhitespaceName_Returns400(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	updateBody := jsonBody(map[string]interface{}{"name": "   ", "phone": nil})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	contractResponse(t, env, req2, http.StatusBadRequest)
+}
