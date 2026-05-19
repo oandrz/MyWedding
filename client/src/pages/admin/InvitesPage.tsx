@@ -440,7 +440,10 @@ export default function InvitesPage() {
     if (importState.step !== "preview") return;
     const selected = importState.entries
       .filter((e) => e.checked)
-      .map((e) => ({ name: e.name, ...(e.phone ? { phone: e.phone } : {}) }));
+      .map((e) => {
+        const phone = e.phone ? normalizePhone(e.phone) : "";
+        return { name: e.name, ...(phone ? { phone } : {}) };
+      });
     if (selected.length === 0) return;
     setImportState({ step: "importing" });
     bulkCreateMutation.mutate(selected);
