@@ -96,173 +96,176 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
           A&C
         </Link>
 
-        {/* Mobile menu button */}
-        {!minimal && (
-          <button
-            className="md:hidden text-foreground focus:outline-none"
-            onClick={toggleMenu}
-            aria-label="Toggle menu"
-          >
-            <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'}`}></i>
-          </button>
-        )}
-
-        {/* Language toggle — always visible */}
-        <div className="flex items-center gap-1 font-montserrat text-xs ml-2">
-          {(["en", "id"] as const).map((l, i) => (
-            <span key={l} className="flex items-center">
-              {i > 0 && <span className="text-muted-foreground/40 mx-1">|</span>}
-              <button
-                data-testid={`lang-toggle-${l}`}
-                onClick={() => setLang(l)}
-                className={`uppercase tracking-wider transition-opacity duration-200 ${
-                  lang === l
-                    ? "font-bold opacity-100 text-primary"
-                    : "opacity-40 hover:opacity-70 text-foreground"
-                }`}
-              >
-                {l.toUpperCase()}
-              </button>
-            </span>
-          ))}
-        </div>
-
-        {/* Desktop menu */}
-        {!minimal && (
-          <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
-          <Link
-            href={homeHref}
-            className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
-          >
-            Home
-            {location === '/' && !activeSection && (
-              <motion.span
-                className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
-                layoutId="navbar-underline"
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              />
-            )}
-          </Link>
-          {location === '/' && (
-            <>
-              <a
-                href="#couple"
-                className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const element = document.getElementById('couple');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                  setActiveSection('couple');
-                }}
-              >
-                Our Story
-                {activeSection === 'couple' && (
-                  <motion.span
-                    className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
-                    layoutId="navbar-underline"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-              </a>
-              <a
-                href="#details"
-                className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const element = document.getElementById('details');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                  setActiveSection('details');
-                }}
-              >
-                Wedding Details
-                {activeSection === 'details' && (
-                  <motion.span
-                    className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
-                    layoutId="navbar-underline"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-              </a>
-              {isFeatureEnabled('gallery') && (
-                <a
-                  href="#gallery"
-                  className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById('gallery');
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                    setActiveSection('gallery');
-                  }}
+        {/* Right side: language toggle + desktop nav + hamburger */}
+        <div className="flex items-center gap-3">
+          {/* Language toggle — always visible */}
+          <div className="flex items-center gap-1 font-montserrat text-xs">
+            {(["en", "id"] as const).map((l, i) => (
+              <span key={l} className="flex items-center">
+                {i > 0 && <span className="text-muted-foreground/40 mx-1">|</span>}
+                <button
+                  data-testid={`lang-toggle-${l}`}
+                  onClick={() => setLang(l)}
+                  className={`uppercase tracking-wider transition-opacity duration-200 ${
+                    lang === l
+                      ? "font-bold opacity-100 text-primary"
+                      : "opacity-40 hover:opacity-70 text-foreground"
+                  }`}
                 >
-                  Gallery
-                  {activeSection === 'gallery' && (
-                    <motion.span
-                      className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
-                      layoutId="navbar-underline"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </a>
-              )}
-              {isFeatureEnabled('rsvp') && (
-                <a
-                  href="#rsvp"
-                  className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById('rsvp');
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                    setActiveSection('rsvp');
-                  }}
-                >
-                  RSVP
-                  {activeSection === 'rsvp' && (
-                    <motion.span
-                      className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
-                      layoutId="navbar-underline"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </a>
-              )}
-            </>
-          )}
-          {isFeatureEnabled('messages') && (
-            <a
-              href="#messages"
-              className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'messages' ? 'text-primary' : ''}`}
-              onClick={(e) => {
-                e.preventDefault();
-                const element = document.getElementById('messages');
-                if (element) {
-                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-                setActiveSection('messages');
-              }}
+                  {l.toUpperCase()}
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Desktop menu */}
+          {!minimal && (
+            <div className="hidden md:flex space-x-8 text-foreground font-montserrat text-sm">
+            <Link
+              href={homeHref}
+              className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
             >
-              Wishes
-              {activeSection === 'messages' && (
+              Home
+              {location === '/' && !activeSection && (
                 <motion.span
                   className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
                   layoutId="navbar-underline"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
-            </a>
+            </Link>
+            {location === '/' && (
+              <>
+                <a
+                  href="#couple"
+                  className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'couple' ? 'text-primary' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('couple');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    setActiveSection('couple');
+                  }}
+                >
+                  Our Story
+                  {activeSection === 'couple' && (
+                    <motion.span
+                      className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                      layoutId="navbar-underline"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </a>
+                <a
+                  href="#details"
+                  className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'details' ? 'text-primary' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('details');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    setActiveSection('details');
+                  }}
+                >
+                  Wedding Details
+                  {activeSection === 'details' && (
+                    <motion.span
+                      className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                      layoutId="navbar-underline"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </a>
+                {isFeatureEnabled('gallery') && (
+                  <a
+                    href="#gallery"
+                    className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'gallery' ? 'text-primary' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const element = document.getElementById('gallery');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                      setActiveSection('gallery');
+                    }}
+                  >
+                    Gallery
+                    {activeSection === 'gallery' && (
+                      <motion.span
+                        className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                        layoutId="navbar-underline"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </a>
+                )}
+                {isFeatureEnabled('rsvp') && (
+                  <a
+                    href="#rsvp"
+                    className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'rsvp' ? 'text-primary' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const element = document.getElementById('rsvp');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                      setActiveSection('rsvp');
+                    }}
+                  >
+                    RSVP
+                    {activeSection === 'rsvp' && (
+                      <motion.span
+                        className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                        layoutId="navbar-underline"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </a>
+                )}
+              </>
+            )}
+            {isFeatureEnabled('messages') && (
+              <a
+                href="#messages"
+                className={`nav-link relative hover:text-primary transition duration-300 ${activeSection === 'messages' ? 'text-primary' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.getElementById('messages');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  setActiveSection('messages');
+                }}
+              >
+                Wishes
+                {activeSection === 'messages' && (
+                  <motion.span
+                    className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
+                    layoutId="navbar-underline"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </a>
+            )}
+            {isFeatureEnabled('memories') && (
+              <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
+            )}
+            </div>
           )}
-          {isFeatureEnabled('memories') && (
-            <Link href="/gallery" className={`nav-link hover:text-primary transition duration-300 ${location === '/gallery' ? 'text-primary' : ''}`}>Memories</Link>
+
+          {/* Mobile menu button */}
+          {!minimal && (
+            <button
+              className="md:hidden text-foreground focus:outline-none"
+              onClick={toggleMenu}
+              aria-label="Toggle menu"
+            >
+              <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'}`}></i>
+            </button>
           )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Mobile menu */}
