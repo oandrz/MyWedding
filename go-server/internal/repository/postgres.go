@@ -1022,6 +1022,26 @@ func (r *PostgresRepository) UpdateInvitePhone(ctx context.Context, id int, phon
 	return &inv, nil
 }
 
+func (r *PostgresRepository) UpdateInvite(ctx context.Context, id int, name string, phone *string) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var waSentAt *time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE invites SET name = $2, phone = $3 WHERE id = $1
+		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		id, name, phone,
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("invite not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
+	return &inv, nil
+}
+
 func (r *PostgresRepository) MarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error) {
 	var inv models.Invite
 	var createdAt time.Time
