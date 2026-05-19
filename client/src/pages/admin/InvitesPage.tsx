@@ -485,7 +485,7 @@ export default function InvitesPage() {
     if (!trimmed) return;
     createInviteMutation.mutate({
       name: trimmed,
-      ...(newInvitePhone.trim() ? { phone: newInvitePhone.trim() } : {}),
+      ...(newInvitePhone.trim() ? { phone: normalizePhone(newInvitePhone.trim()) } : {}),
     });
   };
 
