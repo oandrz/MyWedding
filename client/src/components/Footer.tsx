@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
 import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer } from "@/lib/animations";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Footer = () => {
+  const { t, dateLocale } = useLanguage();
   // Format the wedding date
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
+  const formattedDate = new Intl.DateTimeFormat(dateLocale, {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
@@ -44,7 +46,7 @@ const Footer = () => {
             className="font-montserrat text-xs text-[#F9F5F0] text-opacity-70"
             variants={fadeIn}
           >
-            Made with love for our special day
+            {t("madeWithLove")}
           </motion.p>
         </motion.div>
       </div>

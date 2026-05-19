@@ -27,8 +27,10 @@ import { CSS } from "@dnd-kit/utilities";
 interface ScheduleEvent {
   id: number;
   title: string;
+  titleId: string;
   time: string;
   description: string;
+  descriptionId: string;
   sortOrder: number;
   createdAt: string;
 }
@@ -67,6 +69,9 @@ function SortableRow({ event, onEdit, onDelete, isDeleting }: SortableRowProps) 
       </button>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm">{event.title}</p>
+        {event.titleId && (
+          <p className="text-xs text-muted-foreground/60 italic">{event.titleId}</p>
+        )}
         <p className="text-xs text-muted-foreground">{event.time}</p>
         <p className="text-xs text-foreground/70 mt-0.5 line-clamp-2">{event.description}</p>
       </div>
@@ -94,7 +99,7 @@ function SortableRow({ event, onEdit, onDelete, isDeleting }: SortableRowProps) 
   );
 }
 
-const emptyForm = { title: "", time: "", description: "" };
+const emptyForm = { title: "", titleId: "", time: "", description: "", descriptionId: "" };
 
 export default function SchedulePage() {
   const { toast } = useToast();
@@ -193,7 +198,13 @@ export default function SchedulePage() {
 
   const handleEditStart = (event: ScheduleEvent) => {
     setEditingEvent(event);
-    setEditForm({ title: event.title, time: event.time, description: event.description });
+    setEditForm({
+      title: event.title,
+      titleId: event.titleId,
+      time: event.time,
+      description: event.description,
+      descriptionId: event.descriptionId,
+    });
     setShowAddForm(false);
   };
 
@@ -283,6 +294,25 @@ export default function SchedulePage() {
                               rows={2}
                             />
                           </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Title (Bahasa Indonesia)</Label>
+                            <Input
+                              value={editForm.titleId}
+                              onChange={(e) => setEditForm({ ...editForm, titleId: e.target.value })}
+                              placeholder="Bahasa title"
+                              data-testid="input-edit-title-id"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Description (Bahasa Indonesia)</Label>
+                            <Textarea
+                              value={editForm.descriptionId}
+                              onChange={(e) => setEditForm({ ...editForm, descriptionId: e.target.value })}
+                              placeholder="Bahasa description"
+                              rows={2}
+                              data-testid="input-edit-description-id"
+                            />
+                          </div>
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -347,6 +377,27 @@ export default function SchedulePage() {
                     placeholder="Brief description of this event"
                     rows={2}
                     data-testid="input-add-description"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="add-titleId" className="text-xs">Title (Bahasa Indonesia)</Label>
+                  <Input
+                    id="add-titleId"
+                    value={addForm.titleId}
+                    onChange={(e) => setAddForm({ ...addForm, titleId: e.target.value })}
+                    placeholder="e.g., Pemberkatan Nikah"
+                    data-testid="input-add-title-id"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="add-descriptionId" className="text-xs">Description (Bahasa Indonesia)</Label>
+                  <Textarea
+                    id="add-descriptionId"
+                    value={addForm.descriptionId}
+                    onChange={(e) => setAddForm({ ...addForm, descriptionId: e.target.value })}
+                    placeholder="e.g., Pertukaran janji dan cincin"
+                    rows={2}
+                    data-testid="input-add-description-id"
                   />
                 </div>
                 <div className="flex gap-2">

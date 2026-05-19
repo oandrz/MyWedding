@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface NavBarProps {
   minimal?: boolean;
@@ -19,6 +20,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
     typeof window !== 'undefined' ? sessionStorage.getItem('inviteCode') ?? '' : ''
   );
   const homeHref = inviteCode ? `/?code=${encodeURIComponent(inviteCode)}` : '/';
+  const { lang, setLang } = useLanguage();
 
   // Toggle mobile menu
   const toggleMenu = () => {
@@ -104,6 +106,26 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
             <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'}`}></i>
           </button>
         )}
+
+        {/* Language toggle — always visible */}
+        <div className="flex items-center gap-1 font-montserrat text-xs ml-2">
+          {(["en", "id"] as const).map((l, i) => (
+            <span key={l} className="flex items-center">
+              {i > 0 && <span className="text-muted-foreground/40 mx-1">|</span>}
+              <button
+                data-testid={`lang-toggle-${l}`}
+                onClick={() => setLang(l)}
+                className={`uppercase tracking-wider transition-opacity duration-200 ${
+                  lang === l
+                    ? "font-bold opacity-100 text-primary"
+                    : "opacity-40 hover:opacity-70 text-foreground"
+                }`}
+              >
+                {l.toUpperCase()}
+              </button>
+            </span>
+          ))}
+        </div>
 
         {/* Desktop menu */}
         {!minimal && (

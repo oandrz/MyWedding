@@ -25,11 +25,13 @@ func (h *WelcomeScreenHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if ws == nil {
 		// Return a default welcome screen
 		ws = &models.WelcomeScreen{
-			ID:            0,
-			HeadingText:   "Welcome",
-			DeliveryLabel: "Delivery",
-			FallbackName:  "Guest",
-			Enabled:       true,
+			ID:              0,
+			HeadingText:     "Welcome",
+			HeadingTextID:   "",
+			DeliveryLabel:   "Delivery",
+			DeliveryLabelID: "",
+			FallbackName:    "Guest",
+			Enabled:         true,
 		}
 	}
 
@@ -51,9 +53,17 @@ func (h *WelcomeScreenHandler) Update(w http.ResponseWriter, r *http.Request) {
 			sanitized := h.Sanitizer.Sanitize(*body.HeadingText)
 			body.HeadingText = &sanitized
 		}
+		if body.HeadingTextID != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.HeadingTextID)
+			body.HeadingTextID = &sanitized
+		}
 		if body.DeliveryLabel != nil {
 			sanitized := h.Sanitizer.Sanitize(*body.DeliveryLabel)
 			body.DeliveryLabel = &sanitized
+		}
+		if body.DeliveryLabelID != nil {
+			sanitized := h.Sanitizer.Sanitize(*body.DeliveryLabelID)
+			body.DeliveryLabelID = &sanitized
 		}
 		if body.FallbackName != nil {
 			sanitized := h.Sanitizer.Sanitize(*body.FallbackName)

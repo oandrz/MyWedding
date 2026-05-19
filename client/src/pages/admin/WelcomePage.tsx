@@ -22,7 +22,9 @@ export default function WelcomePage() {
 
   const [welcomeForm, setWelcomeForm] = useState({
     headingText: "",
+    headingTextId: "",
     deliveryLabel: "",
+    deliveryLabelId: "",
     fallbackName: "",
   });
 
@@ -34,10 +36,13 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (welcomeScreenData?.welcomeScreen) {
+      const ws = welcomeScreenData.welcomeScreen;
       setWelcomeForm({
-        headingText: welcomeScreenData.welcomeScreen.headingText,
-        deliveryLabel: welcomeScreenData.welcomeScreen.deliveryLabel,
-        fallbackName: welcomeScreenData.welcomeScreen.fallbackName,
+        headingText: ws.headingText,
+        headingTextId: ws.headingTextId ?? "",
+        deliveryLabel: ws.deliveryLabel,
+        deliveryLabelId: ws.deliveryLabelId ?? "",
+        fallbackName: ws.fallbackName,
       });
     }
   }, [welcomeScreenData]);
@@ -116,6 +121,23 @@ export default function WelcomePage() {
               </p>
             </div>
 
+            {/* Heading Text (Bahasa) */}
+            <div className="space-y-2">
+              <Label htmlFor="headingTextId">Main Heading (Bahasa Indonesia)</Label>
+              <Input
+                id="headingTextId"
+                type="text"
+                value={welcomeForm.headingTextId}
+                onChange={(e) => setWelcomeForm({ ...welcomeForm, headingTextId: e.target.value })}
+                placeholder="e.g., Pernikahan Andreas & Christine"
+                className="w-full"
+                data-testid="input-heading-text-id"
+              />
+              <p className="text-xs text-muted-foreground">
+                Heading shown when guests select Bahasa Indonesia
+              </p>
+            </div>
+
             {/* Delivery Label */}
             <div className="space-y-2">
               <Label htmlFor="deliveryLabel">Delivery Label</Label>
@@ -135,6 +157,23 @@ export default function WelcomePage() {
               />
               <p className="text-xs text-muted-foreground">
                 The label shown above the guest's name (small uppercase text)
+              </p>
+            </div>
+
+            {/* Delivery Label (Bahasa) */}
+            <div className="space-y-2">
+              <Label htmlFor="deliveryLabelId">Delivery Label (Bahasa Indonesia)</Label>
+              <Input
+                id="deliveryLabelId"
+                type="text"
+                value={welcomeForm.deliveryLabelId}
+                onChange={(e) => setWelcomeForm({ ...welcomeForm, deliveryLabelId: e.target.value })}
+                placeholder="e.g., Kepada Yth."
+                className="w-full"
+                data-testid="input-delivery-label-id"
+              />
+              <p className="text-xs text-muted-foreground">
+                Label shown above guest name when guests select Bahasa Indonesia
               </p>
             </div>
 

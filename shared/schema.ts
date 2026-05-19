@@ -108,7 +108,9 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).pick({
 export const welcomeScreen = pgTable("welcome_screen", {
   id: serial("id").primaryKey(),
   headingText: text("heading_text").notNull().default("The Wedding of Andreas & Christine"),
+  headingTextId: text("heading_text_id").notNull().default(""),
   deliveryLabel: text("delivery_label").notNull().default("Kindly Delivered to"),
+  deliveryLabelId: text("delivery_label_id").notNull().default(""),
   fallbackName: text("fallback_name").notNull().default("Our Dearest Guest"),
   enabled: boolean("enabled").default(true),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull()
@@ -139,7 +141,9 @@ export const messages = pgTable("messages", {
 
 export const insertWelcomeScreenSchema = createInsertSchema(welcomeScreen).pick({
   headingText: true,
+  headingTextId: true,
   deliveryLabel: true,
+  deliveryLabelId: true,
   fallbackName: true,
   enabled: true
 });

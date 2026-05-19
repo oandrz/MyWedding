@@ -225,6 +225,37 @@ func TestScheduleDelete_NotFound(t *testing.T) {
 	}
 }
 
+func TestScheduleEventHasLocalizationFields(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrfToken := adminLogin(t, env)
+
+	body := jsonBody(map[string]interface{}{
+		"title":         "Holy Matrimony",
+		"time":          "2:00 PM - 3:00 PM",
+		"description":   "Exchange of vows",
+		"sortOrder":     0,
+		"titleId":       "Pemberkatan Nikah",
+		"descriptionId": "Pertukaran janji dan cincin",
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/schedule", body, cookie, csrfToken)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	result := parseResponse(t, rec)
+	event, ok := result["scheduleEvent"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected scheduleEvent, got keys: %v", mapKeys(result))
+	}
+	assertKeyExists(t, event, "titleId")
+	assertKeyExists(t, event, "descriptionId")
+	if event["titleId"] != "Pemberkatan Nikah" {
+		t.Fatalf("expected titleId 'Pemberkatan Nikah', got %v", event["titleId"])
+	}
+}
+
 func TestScheduleReorder(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrfToken := adminLogin(t, env)

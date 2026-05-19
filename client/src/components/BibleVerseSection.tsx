@@ -3,8 +3,10 @@ import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import type { ConfigImage } from "@shared/schema";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const BibleVerseSection = () => {
+  const { t } = useLanguage();
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
 
@@ -55,15 +57,15 @@ const BibleVerseSection = () => {
               "
             </motion.div>
             
-            <motion.p 
+            <motion.p
               className="text-xl md:text-2xl font-cormorant italic text-gray-700 leading-relaxed mb-8"
               variants={fadeIn}
-            >"We love, because He first loved us."</motion.p>
-            
-            <motion.p 
+            >{t("bibleVerse")}</motion.p>
+
+            <motion.p
               className="text-sm font-montserrat text-gray-500 tracking-widest uppercase"
               variants={fadeIn}
-            >1 John 4:19</motion.p>
+            >{t("bibleVerseRef")}</motion.p>
           </motion.div>
         </div>
       </div>

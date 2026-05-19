@@ -15,6 +15,7 @@ import AudioPlayer, { AudioPlayerHandle } from "@/components/AudioPlayer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import { useRef, useCallback } from "react";
 import { useMusicAutoplayEnabled, useMusicEnabled } from "@/hooks/useFeatureFlags";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 function Router() {
   return (
@@ -62,7 +63,9 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

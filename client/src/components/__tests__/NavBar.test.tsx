@@ -22,6 +22,15 @@ vi.mock("@/lib/constants", () => ({
   GROOM_NAME: "Test Groom",
 }));
 
+vi.mock("@/contexts/LanguageContext", () => ({
+  useLanguage: () => ({
+    lang: "en",
+    setLang: vi.fn(),
+    t: (key: string) => key,
+    dateLocale: "en-US",
+  }),
+}));
+
 describe("NavBar minimal prop", () => {
   it("shows logo when minimal=true", () => {
     render(<NavBar minimal />);
@@ -77,5 +86,19 @@ describe("NavBar home link", () => {
     render(<NavBar minimal />);
     const logo = screen.getByText("A&C").closest("a")!;
     expect(logo).toHaveAttribute("href", "/?code=klycp");
+  });
+});
+
+describe("NavBar language toggle", () => {
+  it("shows EN and ID toggle buttons", () => {
+    render(<NavBar />);
+    expect(screen.getByTestId("lang-toggle-en")).toBeInTheDocument();
+    expect(screen.getByTestId("lang-toggle-id")).toBeInTheDocument();
+  });
+
+  it("shows toggle in minimal mode", () => {
+    render(<NavBar minimal />);
+    expect(screen.getByTestId("lang-toggle-en")).toBeInTheDocument();
+    expect(screen.getByTestId("lang-toggle-id")).toBeInTheDocument();
   });
 });

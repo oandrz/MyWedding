@@ -4,6 +4,7 @@ import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type TimeLeft = {
   days: number;
@@ -60,7 +61,9 @@ const HeroSection = () => {
   const [heroState, setHeroState] = useState<HeroState>({ status: 'idle' });
   const activeUrlRef = useRef<string | null>(null);
   const parallaxOffset = useParallax(0.5); // Parallax speed factor
-  
+
+  const { t, dateLocale } = useLanguage();
+
   // Countdown state
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     days: 0,
@@ -68,9 +71,9 @@ const HeroSection = () => {
     minutes: 0,
     seconds: 0
   });
-  
+
   // Format the wedding date
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
+  const formattedDate = new Intl.DateTimeFormat(dateLocale, {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
@@ -234,7 +237,7 @@ const HeroSection = () => {
           initial="hidden"
           animate={["visible", "float"]}
         >
-          We're Getting Married
+          {t("gettingMarried")}
         </motion.h3>
         
         <motion.h1 
@@ -262,7 +265,7 @@ const HeroSection = () => {
             <p className="text-lg md:text-2xl font-cormorant text-white">
               {formattedDate}
             </p>
-            <div className="mt-1 text-xs md:text-sm text-white/80 font-montserrat uppercase tracking-wider">Save the Date</div>
+            <div className="mt-1 text-xs md:text-sm text-white/80 font-montserrat uppercase tracking-wider">{t("saveTheDate")}</div>
           </div>
           
           <motion.a 
@@ -272,7 +275,7 @@ const HeroSection = () => {
             whileTap={{ scale: 0.95 }}
           >
             <span className="flex items-center gap-2">
-              <span>RSVP Now</span>
+              <span>{t("rsvpNow")}</span>
               <span className="text-xs">♥</span>
             </span>
           </motion.a>
@@ -297,7 +300,7 @@ const HeroSection = () => {
                 {formatTime(timeLeft.days)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
-                Days
+                {t("days")}
               </div>
             </motion.div>
             
@@ -315,7 +318,7 @@ const HeroSection = () => {
                 {formatTime(timeLeft.hours)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
-                Hours
+                {t("hours")}
               </div>
             </motion.div>
             
@@ -333,7 +336,7 @@ const HeroSection = () => {
                 {formatTime(timeLeft.minutes)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
-                Minutes
+                {t("minutes")}
               </div>
             </motion.div>
             
@@ -351,7 +354,7 @@ const HeroSection = () => {
                 {formatTime(timeLeft.seconds)}
               </div>
               <div className="text-[10px] sm:text-xs uppercase font-montserrat text-white/80 tracking-wider">
-                Seconds
+                {t("seconds")}
               </div>
             </motion.div>
           </div>
