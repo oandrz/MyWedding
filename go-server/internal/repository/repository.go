@@ -72,6 +72,7 @@ type Repository interface {
 	UpdateInviteRsvpID(ctx context.Context, inviteID int, rsvpID *int) error
 	CreateInvitesBulk(ctx context.Context, data []models.InsertInvite) ([]models.Invite, error)
 	UpdateInvitePhone(ctx context.Context, id int, phone *string) (*models.Invite, error)
+	UpdateInvite(ctx context.Context, id int, name string, phone *string) (*models.Invite, error)
 	MarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error)
 	UnmarkInviteWaSent(ctx context.Context, id int) (*models.Invite, error)
 

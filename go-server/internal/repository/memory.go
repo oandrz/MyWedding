@@ -841,6 +841,19 @@ func (m *MemoryRepository) UpdateInvitePhone(_ context.Context, id int, phone *s
 	return &inv, nil
 }
 
+func (m *MemoryRepository) UpdateInvite(_ context.Context, id int, name string, phone *string) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[id]
+	if !ok {
+		return nil, fmt.Errorf("invite not found")
+	}
+	inv.Name = name
+	inv.Phone = phone
+	m.invites[id] = inv
+	return &inv, nil
+}
+
 func (m *MemoryRepository) MarkInviteWaSent(_ context.Context, id int) (*models.Invite, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
