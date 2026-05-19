@@ -16,7 +16,7 @@ import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check, Upload, FileSpreadsheet,
-  AlertTriangle, Users, Phone, MessageCircle, Send, ChevronDown, ChevronUp, SkipForward, Pause, Undo2,
+  AlertTriangle, Users, Phone, MessageCircle, Send, ChevronDown, ChevronUp, SkipForward, Pause, Undo2, Pencil,
 } from "lucide-react";
 import type { Invite } from "@shared/schema";
 
@@ -120,8 +120,9 @@ export default function InvitesPage() {
   const [newInvitePhone, setNewInvitePhone] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  // Inline phone editing state
-  const [editingPhoneId, setEditingPhoneId] = useState<number | null>(null);
+  // Inline edit state (name + phone)
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
   const [editPhoneValue, setEditPhoneValue] = useState("");
 
   // Template editor state
@@ -198,17 +199,17 @@ export default function InvitesPage() {
   });
 
   const updateInviteMutation = useMutation({
-    mutationFn: async ({ id, phone }: { id: number; phone: string | null }) => {
-      const response = await apiRequest("PATCH", `/api/admin/invites/${id}`, { phone });
+    mutationFn: async ({ id, name, phone }: { id: number; name: string; phone: string | null }) => {
+      const response = await apiRequest("PATCH", `/api/admin/invites/${id}`, { name, phone });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
-      setEditingPhoneId(null);
+      setEditingId(null);
     },
     onError: (error: Error) => {
       handleAutoLogout(error);
-      toast({ title: "Error", description: `Failed to update phone: ${error.message}`, variant: "destructive" });
+      toast({ title: "Error", description: `Failed to update invite: ${error.message}`, variant: "destructive" });
     },
   });
 
@@ -492,18 +493,23 @@ export default function InvitesPage() {
     });
   };
 
-  const handlePhoneEditSave = (inviteId: number) => {
-    const trimmed = editPhoneValue.trim();
-    if (!trimmed) {
-      updateInviteMutation.mutate({ id: inviteId, phone: null });
-    } else {
-      const normalized = normalizePhone(trimmed);
+  const handleEditSave = (inviteId: number) => {
+    const trimmedName = editNameValue.trim();
+    if (!trimmedName) {
+      toast({ title: "Invalid name", description: "Name cannot be empty", variant: "destructive" });
+      return;
+    }
+    const trimmedPhone = editPhoneValue.trim();
+    let phone: string | null = null;
+    if (trimmedPhone) {
+      const normalized = normalizePhone(trimmedPhone);
       if (!isValidE164(normalized)) {
         toast({ title: "Invalid phone", description: "Phone must be in international format (e.g. +6281234567890)", variant: "destructive" });
         return;
       }
-      updateInviteMutation.mutate({ id: inviteId, phone: normalized });
+      phone = normalized;
     }
+    updateInviteMutation.mutate({ id: inviteId, name: trimmedName, phone });
   };
 
   const insertTemplateVar = (varName: string) => {
@@ -1174,128 +1180,152 @@ export default function InvitesPage() {
         <CardContent>
           <div className="space-y-4">
             {!sendAllOpen && filteredInvites.map((invite) => (
-              <Card key={invite.id} className="shadow-sm border-l-4 border-l-amber-500">
+              <Card key={invite.id} className={`shadow-sm border-l-4 border-l-amber-500 ${editingId === invite.id ? "border-indigo-300" : ""}`}>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900">{invite.name}</h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <code className="text-sm bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-700">
-                          {invite.code}
-                        </code>
-                        <button
-                          onClick={() => copyInviteLink(invite)}
-                          className="text-gray-400 hover:text-gray-600 transition-colors"
-                          title="Copy invite link"
-                        >
-                          {copiedId === invite.id ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Phone inline edit */}
-                      <div className="flex items-center gap-2 mt-2">
-                        {editingPhoneId === invite.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editPhoneValue}
-                              onChange={(e) => setEditPhoneValue(e.target.value)}
-                              placeholder="+62..."
-                              className="w-40 h-7 text-xs"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handlePhoneEditSave(invite.id);
-                                if (e.key === "Escape") setEditingPhoneId(null);
-                              }}
-                              autoFocus
-                            />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0"
-                              onClick={() => handlePhoneEditSave(invite.id)}
-                              disabled={updateInviteMutation.isPending}
-                            >
-                              {updateInviteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0"
-                              onClick={() => setEditingPhoneId(null)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setEditingPhoneId(invite.id);
-                              setEditPhoneValue(invite.phone ?? "");
+                    {editingId === invite.id ? (
+                      /* ── Edit mode ── */
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          value={editNameValue}
+                          onChange={(e) => setEditNameValue(e.target.value)}
+                          className="h-8 text-sm font-semibold"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleEditSave(invite.id);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex items-center gap-3">
+                          <code className="text-sm bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-700">
+                            {invite.code}
+                          </code>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          <Input
+                            value={editPhoneValue}
+                            onChange={(e) => setEditPhoneValue(e.target.value)}
+                            placeholder="+62..."
+                            className="w-44 h-7 text-xs font-mono"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleEditSave(invite.id);
+                              if (e.key === "Escape") setEditingId(null);
                             }}
-                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-gray-700 transition-colors"
-                            title="Edit phone number"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleEditSave(invite.id)}
+                            disabled={updateInviteMutation.isPending}
                           >
-                            <Phone className="h-3 w-3" />
-                            {invite.phone ? (
-                              <span className="font-mono">{invite.phone}</span>
+                            {updateInviteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => setEditingId(null)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── View mode ── */
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg text-gray-900">{invite.name}</h3>
+                        <div className="flex items-center gap-3 mt-1">
+                          <code className="text-sm bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-700">
+                            {invite.code}
+                          </code>
+                          <button
+                            onClick={() => copyInviteLink(invite)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            title="Copy invite link"
+                          >
+                            {copiedId === invite.id ? (
+                              <Check className="h-4 w-4 text-green-500" />
                             ) : (
-                              <span className="italic">Add phone</span>
+                              <Copy className="h-4 w-4" />
                             )}
                           </button>
-                        )}
-
-                        {/* WhatsApp send button */}
-                        {invite.phone && editingPhoneId !== invite.id && (
-                          <button
-                            onClick={() => {
-                              const msg = renderTemplate(templateText, invite);
-                              window.open(buildWaLink(invite.phone!, msg), "_blank");
-                            }}
-                            className="text-green-600 hover:text-green-700 transition-colors"
-                            title="Send via WhatsApp"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                          </button>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          {invite.phone ? (
+                            <span className="text-xs font-mono text-muted-foreground">{invite.phone}</span>
+                          ) : (
+                            <span className="text-xs italic text-muted-foreground">No phone</span>
+                          )}
+                          {invite.phone && (
+                            <button
+                              onClick={() => {
+                                const msg = renderTemplate(templateText, invite);
+                                window.open(buildWaLink(invite.phone!, msg), "_blank");
+                              }}
+                              className="text-green-600 hover:text-green-700 transition-colors"
+                              title="Send via WhatsApp"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex items-center gap-3 flex-wrap">
-                      {/* WA sent status */}
-                      {invite.waSentAt ? (
-                        <button
-                          onClick={() => unmarkWaSentMutation.mutate(invite.id)}
-                          className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium hover:bg-green-200 transition-colors"
-                          title="Click to mark as unsent"
-                        >
-                          WA Sent
-                        </button>
-                      ) : invite.phone ? (
-                        <button
-                          onClick={() => markWaSentMutation.mutate(invite.id)}
-                          className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-medium hover:bg-gray-200 transition-colors"
-                          title="Click to mark as sent"
-                        >
-                          WA Unsent
-                        </button>
-                      ) : null}
+                      {/* Status badges — faded during edit mode */}
+                      <div className={`flex items-center gap-3 flex-wrap transition-opacity ${editingId === invite.id ? "opacity-40 pointer-events-none" : ""}`}>
+                        {invite.waSentAt ? (
+                          <button
+                            onClick={() => unmarkWaSentMutation.mutate(invite.id)}
+                            className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium hover:bg-green-200 transition-colors"
+                            title="Click to mark as unsent"
+                          >
+                            WA Sent
+                          </button>
+                        ) : invite.phone ? (
+                          <button
+                            onClick={() => markWaSentMutation.mutate(invite.id)}
+                            className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-medium hover:bg-gray-200 transition-colors"
+                            title="Click to mark as sent"
+                          >
+                            WA Unsent
+                          </button>
+                        ) : null}
 
-                      {/* RSVP status */}
-                      {invite.rsvp ? (
-                        <span className="text-sm px-3 py-1 rounded-full bg-green-100 text-green-800 font-medium">
-                          RSVP: {invite.rsvp.attendanceType === "decline" ? "Declined" :
-                            invite.rsvp.attendanceType === "both" ? "Both Events" :
-                            invite.rsvp.attendanceType === "holy_matrimony" ? "Holy Matrimony" : "Reception"}
-                        </span>
-                      ) : (
-                        <span className="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-500 font-medium">
-                          Pending
-                        </span>
+                        {invite.rsvp ? (
+                          <span className="text-sm px-3 py-1 rounded-full bg-green-100 text-green-800 font-medium">
+                            RSVP: {invite.rsvp.attendanceType === "decline" ? "Declined" :
+                              invite.rsvp.attendanceType === "both" ? "Both Events" :
+                              invite.rsvp.attendanceType === "holy_matrimony" ? "Holy Matrimony" : "Reception"}
+                          </span>
+                        ) : (
+                          <span className="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-500 font-medium">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      {editingId !== invite.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingId(invite.id);
+                            setEditNameValue(invite.name);
+                            setEditPhoneValue(invite.phone ?? "");
+                          }}
+                          className="text-gray-400 hover:text-blue-500"
+                          title="Edit guest"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                       )}
-
                       {itemToDelete === invite.id ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-500">Delete?</span>
