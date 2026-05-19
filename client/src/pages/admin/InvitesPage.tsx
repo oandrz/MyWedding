@@ -93,7 +93,7 @@ function isValidE164(phone: string): boolean {
 }
 
 function normalizePhone(raw: string): string {
-  const trimmed = raw.trim();
+  const trimmed = raw.trim().replace(/^["']+|["']+$/g, "");
   if (!trimmed.startsWith("+")) return trimmed;
   return "+" + trimmed.slice(1).replace(/[^\d]/g, "");
 }
