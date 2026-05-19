@@ -210,6 +210,8 @@ func (h *InviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Update handles PATCH /api/admin/invites/{id}.
 // Partial update — uses json.RawMessage to distinguish between "phone": null (clear) and absent phone.
+// When "name" is present, "phone" must also be present; both are updated via UpdateInvite.
+// When only "phone" is present, UpdateInvitePhone is used (backward compat).
 func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
@@ -224,31 +226,65 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	nameRaw, namePresent := raw["name"]
 	phoneRaw, phonePresent := raw["phone"]
-	if !phonePresent {
+
+	if !namePresent && !phonePresent {
 		writeError(w, r, http.StatusBadRequest, "No updatable fields provided")
 		return
 	}
 
+	// Parse phone (shared by both paths).
 	var phone *string
-	if string(phoneRaw) == "null" {
-		phone = nil
-	} else {
-		var phoneVal string
-		if err := json.Unmarshal(phoneRaw, &phoneVal); err != nil {
-			writeError(w, r, http.StatusBadRequest, "Invalid phone value")
-			return
-		}
-		if phoneVal != "" {
-			normalized, err := models.NormalizePhone(phoneVal)
-			if err != nil {
-				writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid phone: %s", err.Error()))
+	if phonePresent {
+		if string(phoneRaw) == "null" {
+			phone = nil
+		} else {
+			var phoneVal string
+			if err := json.Unmarshal(phoneRaw, &phoneVal); err != nil {
+				writeError(w, r, http.StatusBadRequest, "Invalid phone value")
 				return
 			}
-			phone = &normalized
+			if phoneVal != "" {
+				normalized, err := models.NormalizePhone(phoneVal)
+				if err != nil {
+					writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid phone: %s", err.Error()))
+					return
+				}
+				phone = &normalized
+			}
 		}
 	}
 
+	if namePresent {
+		if !phonePresent {
+			writeError(w, r, http.StatusBadRequest, "phone is required when name is provided")
+			return
+		}
+		var nameVal string
+		if err := json.Unmarshal(nameRaw, &nameVal); err != nil {
+			writeError(w, r, http.StatusBadRequest, "Invalid name value")
+			return
+		}
+		nameVal = strings.TrimSpace(nameVal)
+		if nameVal == "" {
+			writeError(w, r, http.StatusBadRequest, "name cannot be empty")
+			return
+		}
+		invite, err := h.Repo.UpdateInvite(r.Context(), id, nameVal, phone)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				writeError(w, r, http.StatusNotFound, "Invite not found")
+				return
+			}
+			writeError(w, r, http.StatusInternalServerError, "Failed to update invite")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"invite": invite})
+		return
+	}
+
+	// Backward compat: phone-only update.
 	invite, err := h.Repo.UpdateInvitePhone(r.Context(), id, phone)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -258,10 +294,7 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "Failed to update invite")
 		return
 	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"invite": invite,
-	})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"invite": invite})
 }
 
 // MarkWaSent handles PUT /api/admin/invites/{id}/wa-sent.
