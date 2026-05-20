@@ -2,6 +2,7 @@
 
 **Date:** 2026-05-21
 **Status:** Approved
+**Supersedes:** `docs/superpowers/specs/2026-04-08-whatsapp-invite-automation-design.md` (that spec covered the original manual wa.me flow; this replaces it with full automation)
 
 ## Overview
 
@@ -48,6 +49,29 @@ ALTER TABLE invites ADD COLUMN side TEXT CHECK (side IN ('groom', 'bride'));
 
 Add `side` to the `invites` table definition and the `insertInviteSchema`.
 
+### Go layer changes for `side`
+
+| File | Change |
+|------|--------|
+| `internal/models/invite.go` | Add `Side *string \`json:"side"\`` to `Invite` struct |
+| `internal/repository/repository.go` | Add `side *string` to `CreateInviteParams`; add `side *string` to `UpdateInviteParams` |
+| `internal/repository/memory.go` | Store and return `Side` in create/update/list operations |
+| `internal/repository/postgres.go` | Include `side` column in INSERT and UPDATE queries |
+| `internal/handler/contract_test.go` | Add `"side"` to the invite JSON field contract |
+
+### JID-to-role mapping
+
+whatsmeow sessions are keyed by device JID (e.g. `6281234567890.0:12@lid`). On server restart the sqlstore reconnects the client, but `WhatsAppService` needs to know which stored session belongs to groom and which to bride.
+
+Two `app_settings` rows are used as the mapping:
+
+| Key | Value |
+|-----|-------|
+| `wa_groom_jid` | JID string of the groom's linked device, e.g. `6281234567890.0:12@lid` |
+| `wa_bride_jid` | JID string of the bride's linked device |
+
+When a session is successfully established (QR scan complete), the handler writes the device JID to the corresponding `app_settings` key via the existing `UpdateAppSetting` repository call. On `WhatsAppService.Init()`, both keys are read to select the correct sqlstore device for each client. If a key is absent or the stored device no longer exists in the sqlstore, that side starts in `disconnected` state.
+
 ---
 
 ## whatsmeow Service (`internal/service/whatsapp.go`)
@@ -73,20 +97,32 @@ type WhatsAppService struct {
 | Method | Purpose |
 |--------|---------|
 | `SessionStatus(side string) SessionInfo` | Returns `connected`, `qr_pending`, or `disconnected` plus QR data URI if pending |
+| `Connect(side string) error` | Initiates QR code generation for the given side; transitions state to `qr_pending` |
 | `Disconnect(side string) error` | Logs out and clears the stored session |
 | `StartSendJob(msgs []WAMessage, delayRange [2]int) (string, error)` | Enqueues a send job, returns jobID |
 | `GetJob(jobID string) *SendJob` | Returns current job state for polling |
 | `PauseJob(jobID string)` | Signals the job goroutine to pause |
 | `ResumeJob(jobID string)` | Resumes a paused job |
 
+### Phone-to-JID conversion
+
+Before sending, each guest's phone number is normalised to a WhatsApp JID:
+
+1. Strip all non-digit characters and leading `+`.
+2. Build the JID: `<digits>@s.whatsapp.net` (e.g. `+6281234567890` → `6281234567890@s.whatsapp.net`).
+3. Call `client.IsOnWhatsApp([]string{jid})` to verify the number has a WhatsApp account.
+4. If not found: mark the message as skipped with reason `"not_on_whatsapp"` and continue to the next guest.
+
 ### Send job
 
-Each job runs in a goroutine. For each message:
+Each job runs in a goroutine. `WhatsAppService` holds a `Repository` reference so it can write directly to Postgres without going through an HTTP callback. For each message:
+
 1. Pick the correct client based on `side`.
-2. Send the message via `client.SendMessage`.
-3. On success: notify Go handler to mark the invite as `waSentAt = now()` in Postgres.
-4. Sleep for a random delay between 20 and 30 seconds before the next message.
-5. Update job state (sent count, current invite ID, status).
+2. Normalise the phone to JID and verify via `IsOnWhatsApp`; skip with reason `"not_on_whatsapp"` if absent.
+3. Send the message via `client.SendMessage`.
+4. On success: call `repo.MarkWaSent(ctx, inviteID)` to set `waSentAt = now()` in Postgres.
+5. Sleep for a random delay between 20 and 30 seconds before the next message.
+6. Update job state (sent count, current invite ID, status).
 
 Job state is in-memory (`sync.Map`). Jobs are not persisted — if the server restarts mid-send, the job is lost but already-sent invites remain marked in Postgres. The admin can restart sending; already-sent guests are excluded.
 
@@ -99,6 +135,7 @@ All routes are under `/api/admin/` and require the existing admin session middle
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/admin/wa/sessions` | Returns status + QR data URI for both groom and bride sessions |
+| `POST` | `/api/admin/wa/sessions/:side/connect` | Initiates QR generation for the given side (`groom` or `bride`); transitions to `qr_pending` |
 | `DELETE` | `/api/admin/wa/sessions/:side` | Disconnects and clears a session |
 | `POST` | `/api/admin/wa/send-all` | Starts a send job for all unsent invites with phone + side; returns `{ jobId }` |
 | `GET` | `/api/admin/wa/job/:id` | Returns job progress: total, sent, failed, currentInviteId, status |
@@ -208,7 +245,9 @@ The old wa.me one-at-a-time dialog is removed. Individual per-card WhatsApp icon
 | Message send fails for a guest | Marked as failed in job state, not marked `waSentAt`, included in final failure count |
 | Guest has no phone | Already excluded from unsent list (existing behaviour) |
 | Guest has no side | Excluded from send job with a skip count |
+| Guest's number not on WhatsApp | Skipped with reason `"not_on_whatsapp"`, included in skip count |
 | Both sessions needed but only one connected | Send job proceeds for the connected side only; skips the other side with a warning |
+| WhatsApp 4-device limit reached | QR scan will fail non-obviously (connection drops immediately after scan). `GET /api/admin/wa/sessions` will show the side reverting to `disconnected`. Admin must unlink another device in WhatsApp → Linked Devices before scanning again. |
 
 ---
 
