@@ -1948,6 +1948,39 @@ func TestContract_InviteUnmarkWaSent(t *testing.T) {
 	}
 }
 
+func TestContract_InviteUpdate_Side(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create an invite
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	// Update with name+phone+side
+	updateBody := jsonBody(map[string]interface{}{
+		"name":  "Alice Updated",
+		"phone": "+6281234567890",
+		"side":  "groom",
+	})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+	invite := result["invite"].(map[string]interface{})
+	if invite["side"] != "groom" {
+		t.Fatalf("expected side=groom, got %v", invite["side"])
+	}
+
+	// Update side only
+	sideOnly := jsonBody(map[string]interface{}{"side": "bride"})
+	req3 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), sideOnly, cookie, csrf)
+	result3 := contractResponse(t, env, req3, http.StatusOK)
+	invite3 := result3["invite"].(map[string]interface{})
+	if invite3["side"] != "bride" {
+		t.Fatalf("expected side=bride, got %v", invite3["side"])
+	}
+}
+
 func TestContract_InviteGetByCode_NoPII(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrf := adminLogin(t, env)
