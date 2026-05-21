@@ -132,9 +132,9 @@ Each job runs in a goroutine. `WhatsAppService` holds a `Repository` reference s
 | Status | Meaning | Triggered by |
 |--------|---------|--------------|
 | `running` | Actively sending | Job start or Resume |
-| `paused` | Goroutine waiting at iteration boundary | Admin clicks Pause, or session disconnect detected |
+| `paused` | Goroutine waiting at iteration boundary | Admin clicks Pause, or `client.SendMessage` returns a disconnect error |
 | `completed` | All messages processed | Last message sent or skipped |
-| `failed` | Job aborted due to unrecoverable error | e.g. both clients disconnected and no resume within timeout |
+| `failed` | Job aborted by admin | Admin clicks Abort (future scope; not in this release) |
 
 Job state is in-memory (`sync.Map`). Jobs are not persisted — if the server restarts mid-send, the job is lost but already-sent invites remain marked in Postgres. The admin can restart sending; already-sent guests are excluded.
 
@@ -303,7 +303,7 @@ This button is the primary retry mechanism for guests that failed or were skippe
 
 | Scenario | Behaviour |
 |----------|-----------|
-| Session disconnects mid-job | Job pauses, UI shows error on that side, admin re-scans QR, resumes job |
+| Session disconnects mid-job | `client.SendMessage` returns a disconnect error; goroutine sets job status to `paused` and stops iterating. UI polls, sees `paused`, shows reconnect prompt. Admin re-scans QR then resumes. |
 | Message send fails for a guest | Marked as failed in job state, not marked `waSentAt`, included in final failure count. Admin retries via per-card send button. |
 | Guest has no phone | Already excluded from unsent list (existing behaviour) |
 | Guest has no side | Excluded from send job with a skip count |
