@@ -115,6 +115,17 @@ func main() {
 		slog.Info("Google Drive integration enabled")
 	}
 
+	// WhatsApp automation (requires Postgres for whatsmeow session persistence)
+	if cfg.DatabaseURL != "" && dbPool != nil {
+		waService := service.NewWhatsAppService(repo)
+		if err := waService.Init(ctx, cfg.DatabaseURL); err != nil {
+			slog.Warn("WhatsApp service init failed, WA routes disabled", "error", err)
+		} else {
+			routerOpts = append(routerOpts, router.WithWhatsApp(waService))
+			slog.Info("WhatsApp automation enabled")
+		}
+	}
+
 	r := router.New(cfg, repo, sessions, csrf, cache, routerOpts...)
 
 	srv := &http.Server{
