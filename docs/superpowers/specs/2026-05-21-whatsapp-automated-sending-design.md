@@ -99,10 +99,12 @@ type WhatsAppService struct {
 | `SessionStatus(side string) SessionInfo` | Returns `connected`, `qr_pending`, or `disconnected` plus QR data URI if pending |
 | `Connect(side string) error` | Initiates QR code generation for the given side; transitions state to `qr_pending` |
 | `Disconnect(side string) error` | Logs out and clears the stored session |
-| `StartSendJob(msgs []WAMessage, delayRange [2]int) (string, error)` | Enqueues a send job, returns jobID |
-| `GetJob(jobID string) *SendJob` | Returns current job state for polling |
+| `StartSendJob(msgs []WAMessage, delayRange [2]int) (string, error)` | Enqueues a send job, returns jobID. Returns error if a job is already running. |
+| `ActiveJob() *SendJob` | Returns the currently running job, or nil if none. Used by `GET /api/admin/wa/job/active`. |
+| `GetJob(jobID string) *SendJob` | Returns job state by ID for polling |
 | `PauseJob(jobID string)` | Signals the job goroutine to pause |
 | `ResumeJob(jobID string)` | Resumes a paused job |
+| `SendOne(ctx, inviteID, message string) error` | Sends to a single guest synchronously; performs JID lookup, `IsOnWhatsApp` check, send, and `MarkWaSent`. |
 
 ### Phone-to-JID conversion
 
@@ -118,13 +120,22 @@ Before sending, each guest's phone number is normalised to a WhatsApp JID:
 Each job runs in a goroutine. `WhatsAppService` holds a `Repository` reference so it can write directly to Postgres without going through an HTTP callback. For each message:
 
 1. Pick the correct client based on `side`.
-2. Normalise the phone to JID and verify via `IsOnWhatsApp`; skip with reason `"not_on_whatsapp"` if absent.
-3. Send the message via `client.SendMessage`.
-4. On success: call `repo.MarkWaSent(ctx, inviteID)` to set `waSentAt = now()` in Postgres.
-5. Sleep for a random delay between 20 and 30 seconds before the next message.
-6. Update job state (sent count, current invite ID, status).
+2. Re-check `waSentAt` from Postgres — if already set, skip (guards against a per-card manual send racing the bulk job).
+3. Normalise the phone to JID and verify via `IsOnWhatsApp`; skip with reason `"not_on_whatsapp"` if absent.
+4. Send the message via `client.SendMessage`.
+5. On success: call `repo.MarkWaSent(ctx, inviteID)` to set `waSentAt = now()` in Postgres.
+6. Sleep for a random delay between 20 and 30 seconds before the next message.
+7. Update job state (sent count, current invite ID, status).
 
 Job state is in-memory (`sync.Map`). Jobs are not persisted — if the server restarts mid-send, the job is lost but already-sent invites remain marked in Postgres. The admin can restart sending; already-sent guests are excluded.
+
+**Concurrent job prevention:** `StartSendJob` checks if any job in the `sync.Map` has status `running`. If one is active, it returns an error containing the existing `jobId`. The handler responds with HTTP 409 and `{ "error": "job_already_running", "jobId": "<id>" }`. The frontend intercepts the 409 and navigates the admin to the existing job's progress dialog.
+
+**Template pre-rendering:** Messages are rendered client-side at the moment the admin clicks Send, using the current template and each invite's fields. `POST /api/admin/wa/send-all` receives the pre-rendered message string per guest. The goroutine uses only what it received — template changes after the job starts have no effect.
+
+### Single-guest send
+
+`WhatsAppService` exposes a `SendOne(ctx, inviteID string, message string) error` method for synchronous per-invite sending. This is used by the `POST /api/admin/wa/send/:inviteId` endpoint (see Endpoints section). It performs the same JID conversion, `IsOnWhatsApp` check, send, and `MarkWaSent` steps as the bulk job but returns inline — no goroutine, no job state.
 
 ---
 
@@ -137,10 +148,12 @@ All routes are under `/api/admin/` and require the existing admin session middle
 | `GET` | `/api/admin/wa/sessions` | Returns status + QR data URI for both groom and bride sessions |
 | `POST` | `/api/admin/wa/sessions/:side/connect` | Initiates QR generation for the given side (`groom` or `bride`); transitions to `qr_pending` |
 | `DELETE` | `/api/admin/wa/sessions/:side` | Disconnects and clears a session |
-| `POST` | `/api/admin/wa/send-all` | Starts a send job for all unsent invites with phone + side; returns `{ jobId }` |
+| `POST` | `/api/admin/wa/send-all` | Starts a send job for all unsent invites with phone + side; returns `{ jobId }`. Returns 409 if a job is already running. |
+| `GET` | `/api/admin/wa/job/active` | Returns the currently running job or `null`. Called on page mount to reconnect to an in-progress job. |
 | `GET` | `/api/admin/wa/job/:id` | Returns job progress: total, sent, failed, currentInviteId, status |
 | `POST` | `/api/admin/wa/job/:id/pause` | Pauses a running job |
 | `POST` | `/api/admin/wa/job/:id/resume` | Resumes a paused job |
+| `POST` | `/api/admin/wa/send/:inviteId` | Sends to a single guest synchronously; accepts `{ "message": "..." }`. Returns success or error inline. Used for per-card retry. |
 
 ### `GET /api/admin/wa/sessions` response
 
@@ -222,7 +235,7 @@ Replace the one-at-a-time manual dialog with:
 1. Admin clicks **Send All Unsent (N)**.
 2. If any session needed for unsent guests is not connected, show an error: *"Connect groom/bride WhatsApp first."*
 3. If unsent guests have no side, show: *"N guests have no side and will be skipped."* with a confirm to proceed.
-4. On confirm: call `POST /api/admin/wa/send-all` → get `jobId`.
+4. On confirm: render each invite's message client-side using the current template, then call `POST /api/admin/wa/send-all` with the pre-rendered messages → get `jobId`. If the server returns 409, navigate to the existing job's progress dialog instead.
 5. Dialog shows:
    - Overall progress bar (sent / total).
    - Per-side progress bars (groom and bride).
@@ -233,7 +246,25 @@ Replace the one-at-a-time manual dialog with:
 6. Frontend polls `GET /api/admin/wa/job/:id` every 3 seconds to update the UI.
 7. When the job completes, shows a summary: Sent N, Skipped N, Failed N.
 
-The old wa.me one-at-a-time dialog is removed. Individual per-card WhatsApp icon buttons (which open wa.me links) are kept as a fallback for sending to a single guest manually.
+**Reconnect on page mount:** On component mount, call `GET /api/admin/wa/job/active`. If a running job is returned, auto-open the progress dialog and start polling its `jobId`. This lets the admin navigate away and back without losing visibility into the ongoing job.
+
+The old wa.me one-at-a-time dialog is removed.
+
+### 6. Per-card automated send button
+
+Each invite card gains a **Send via WhatsApp** button (replaces the wa.me icon link). It is shown when:
+- The invite has a phone number, and
+- The invite has a `side` assigned, and
+- The correct WA session is connected.
+
+Clicking it:
+1. Renders the invitation message client-side for that invite.
+2. Calls `POST /api/admin/wa/send/:inviteId` with `{ "message": "..." }`.
+3. Shows a loading spinner on the button while waiting.
+4. On success: card status updates to `WA Sent` (same as bulk flow).
+5. On error: shows an inline error badge on the card (e.g. *"Send failed — not on WhatsApp"*).
+
+This button is the primary retry mechanism for guests that failed or were skipped in a bulk send job. The wa.me deep-link fallback is removed.
 
 ---
 
@@ -242,11 +273,14 @@ The old wa.me one-at-a-time dialog is removed. Individual per-card WhatsApp icon
 | Scenario | Behaviour |
 |----------|-----------|
 | Session disconnects mid-job | Job pauses, UI shows error on that side, admin re-scans QR, resumes job |
-| Message send fails for a guest | Marked as failed in job state, not marked `waSentAt`, included in final failure count |
+| Message send fails for a guest | Marked as failed in job state, not marked `waSentAt`, included in final failure count. Admin retries via per-card send button. |
 | Guest has no phone | Already excluded from unsent list (existing behaviour) |
 | Guest has no side | Excluded from send job with a skip count |
-| Guest's number not on WhatsApp | Skipped with reason `"not_on_whatsapp"`, included in skip count |
+| Guest's number not on WhatsApp | Skipped with reason `"not_on_whatsapp"`, included in skip count. Per-card button also returns this error inline. |
 | Both sessions needed but only one connected | Send job proceeds for the connected side only; skips the other side with a warning |
+| Second `POST /api/admin/wa/send-all` while job is running | Returns 409 with existing `jobId`; frontend navigates to the running job's dialog |
+| Per-card send while bulk job is running | Allowed. Bulk job re-checks `waSentAt` before each send, so no duplicate is sent. |
+| `MarkWaSent` DB write fails after successful WA send | Guest will be re-sent if the admin runs send-all again. Acceptable trade-off — a duplicate invitation is less harmful than a missed one. |
 | WhatsApp 4-device limit reached | QR scan will fail non-obviously (connection drops immediately after scan). `GET /api/admin/wa/sessions` will show the side reverting to `disconnected`. Admin must unlink another device in WhatsApp → Linked Devices before scanning again. |
 
 ---
