@@ -142,7 +142,7 @@ export default function InvitesPage() {
   const templateRef = useRef<HTMLTextAreaElement>(null);
 
   const [isSendingOne, setIsSendingOne] = useState<number | null>(null);
-  const [waSessionsEnabled] = useState(true);
+  const waSessionsEnabled = true;
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
 
@@ -168,10 +168,8 @@ export default function InvitesPage() {
   }>({
     queryKey: ["/api/admin/wa/sessions"],
     refetchInterval: (query) => {
-      const d = (query as { state: { data?: { groom?: { status: string }; bride?: { status: string } } } }).state.data;
-      const groomPending = d?.groom?.status === "qr_pending";
-      const bridePending = d?.bride?.status === "qr_pending";
-      return (groomPending || bridePending) ? 3000 : false;
+      const d = query.state.data;
+      return (d?.groom?.status === "qr_pending" || d?.bride?.status === "qr_pending") ? 3000 : false;
     },
     enabled: waSessionsEnabled,
   });
@@ -208,6 +206,12 @@ export default function InvitesPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (jobData?.status === "completed") {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
+    }
+  }, [jobData?.status]);
 
   const createInviteMutation = useMutation({
     mutationFn: async ({ name, phone }: { name: string; phone?: string }) => {
@@ -650,6 +654,11 @@ export default function InvitesPage() {
       if (resp.status === 409) {
         setActiveJobId(d.jobId);
         setShowSendDialog(true);
+        return;
+      }
+
+      if (!resp.ok) {
+        toast({ title: "Failed to start send job", description: d.error ?? "Server error", variant: "destructive" });
         return;
       }
 
