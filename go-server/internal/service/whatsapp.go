@@ -5,14 +5,18 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"sync"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	qrcode "github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
+	waProto "go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
@@ -283,25 +287,272 @@ func phoneToJID(phone string) string {
 	return digits + "@s.whatsapp.net"
 }
 
-// StartSendJob, runJob, ActiveJob, GetJob, PauseJob, ResumeJob, AbortJob, SendOne
-// are implemented in Task 5. Stub them here to satisfy the interface:
+// StartSendJob enqueues a bulk send. Returns error with "job_already_running:<id>" prefix if active.
+func (s *WhatsAppService) StartSendJob(msgs []WAMessage, delayMin, delayMax int) (string, error) {
+	var activeID string
+	s.jobs.Range(func(_, v interface{}) bool {
+		j := v.(*SendJob)
+		st := j.getStatus()
+		if st == "running" || st == "paused" {
+			activeID = j.ID
+			return false
+		}
+		return true
+	})
+	if activeID != "" {
+		return "", fmt.Errorf("job_already_running:%s", activeID)
+	}
 
-func (s *WhatsAppService) StartSendJob(_ []WAMessage, _, _ int) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
+	ctx, cancel := context.WithCancel(context.Background())
+
+	groomTotal, brideTotal := 0, 0
+	for _, m := range msgs {
+		if m.Side == "groom" {
+			groomTotal++
+		} else if m.Side == "bride" {
+			brideTotal++
+		}
+	}
+
+	job := &SendJob{
+		ID:         jobID,
+		Status:     "running",
+		Total:      len(msgs),
+		GroomTotal: groomTotal,
+		BrideTotal: brideTotal,
+		ctx:        ctx,
+		cancel:     cancel,
+		pauseCh:    make(chan struct{}, 1),
+		resumeCh:   make(chan struct{}),
+	}
+	s.jobs.Store(jobID, job)
+
+	go s.runJob(job, msgs, delayMin, delayMax)
+	return jobID, nil
 }
 
-func (s *WhatsAppService) ActiveJob() *SendJob { return nil }
+func (s *WhatsAppService) runJob(job *SendJob, msgs []WAMessage, delayMin, delayMax int) {
+	defer func() {
+		if job.getStatus() == "running" {
+			job.setStatus("completed")
+		}
+	}()
 
-func (s *WhatsAppService) GetJob(_ string) *SendJob { return nil }
+	for _, msg := range msgs {
+		select {
+		case <-job.ctx.Done():
+			job.setStatus("failed")
+			return
+		default:
+		}
 
-func (s *WhatsAppService) PauseJob(_ string) error { return fmt.Errorf("not implemented") }
+		job.mu.Lock()
+		job.CurrentInviteID = msg.InviteID
+		job.mu.Unlock()
 
-func (s *WhatsAppService) ResumeJob(_ string) error { return fmt.Errorf("not implemented") }
+		// Re-check waSentAt to avoid duplicate with per-card send.
+		existing, err := s.repo.GetInviteByID(job.ctx, msg.InviteID)
+		if err != nil || existing == nil || existing.WaSentAt != nil {
+			job.mu.Lock()
+			job.Skipped++
+			job.mu.Unlock()
+			continue
+		}
 
-func (s *WhatsAppService) AbortJob(_ string) error { return fmt.Errorf("not implemented") }
+		client := s.clientFor(msg.Side)
+		if client == nil || !client.IsConnected() {
+			job.mu.Lock()
+			job.Failed++
+			job.mu.Unlock()
+			continue
+		}
 
-func (s *WhatsAppService) SendOne(_ context.Context, _ int, _ string) error {
-	return fmt.Errorf("not implemented")
+		jidStr := phoneToJID(msg.Phone)
+		jid, err := types.ParseJID(jidStr)
+		if err != nil {
+			job.mu.Lock()
+			job.Skipped++
+			job.mu.Unlock()
+			continue
+		}
+
+		results, err := client.IsOnWhatsApp(job.ctx, []string{jidStr})
+		if err != nil || len(results) == 0 || !results[0].IsIn {
+			job.mu.Lock()
+			job.Skipped++
+			job.mu.Unlock()
+			continue
+		}
+
+		_, err = client.SendMessage(job.ctx, jid, &waProto.Message{
+			Conversation: proto.String(msg.Message),
+		})
+		if err != nil {
+			// Likely a disconnect — pause the job so admin can reconnect.
+			job.setStatus("paused")
+			job.mu.Lock()
+			job.Failed++
+			job.mu.Unlock()
+			select {
+			case <-job.resumeCh:
+				job.setStatus("running")
+			case <-job.ctx.Done():
+				job.setStatus("failed")
+				return
+			}
+			continue
+		}
+
+		s.repo.MarkInviteWaSent(job.ctx, msg.InviteID) //nolint:errcheck
+
+		job.mu.Lock()
+		job.Sent++
+		if msg.Side == "groom" {
+			job.GroomSent++
+		} else {
+			job.BrideSent++
+		}
+		job.mu.Unlock()
+
+		// Delay with pause support.
+		sleepDur := time.Duration(delayMin+rand.Intn(delayMax-delayMin+1)) * time.Second
+		sleepTimer := time.NewTimer(sleepDur)
+	sleepLoop:
+		for {
+			select {
+			case <-sleepTimer.C:
+				break sleepLoop
+			case <-job.pauseCh:
+				sleepTimer.Stop()
+				job.setStatus("paused")
+				select {
+				case <-job.resumeCh:
+					job.setStatus("running")
+					sleepTimer.Reset(sleepDur)
+				case <-job.ctx.Done():
+					job.setStatus("failed")
+					return
+				}
+			case <-job.ctx.Done():
+				sleepTimer.Stop()
+				job.setStatus("failed")
+				return
+			}
+		}
+	}
+}
+
+// ActiveJob returns the first running or paused job, or nil.
+func (s *WhatsAppService) ActiveJob() *SendJob {
+	var found *SendJob
+	s.jobs.Range(func(_, v interface{}) bool {
+		j := v.(*SendJob)
+		st := j.getStatus()
+		if st == "running" || st == "paused" {
+			found = j
+			return false
+		}
+		return true
+	})
+	return found
+}
+
+// GetJob returns a job by ID or nil.
+func (s *WhatsAppService) GetJob(jobID string) *SendJob {
+	v, ok := s.jobs.Load(jobID)
+	if !ok {
+		return nil
+	}
+	return v.(*SendJob)
+}
+
+// PauseJob signals the goroutine to pause at the next delay boundary.
+func (s *WhatsAppService) PauseJob(jobID string) error {
+	job := s.GetJob(jobID)
+	if job == nil {
+		return fmt.Errorf("job not found")
+	}
+	if job.getStatus() != "running" {
+		return fmt.Errorf("job is not running")
+	}
+	select {
+	case job.pauseCh <- struct{}{}:
+	default: // already signalled
+	}
+	return nil
+}
+
+// ResumeJob resumes a paused job.
+func (s *WhatsAppService) ResumeJob(jobID string) error {
+	job := s.GetJob(jobID)
+	if job == nil {
+		return fmt.Errorf("job not found")
+	}
+	if job.getStatus() != "paused" {
+		return fmt.Errorf("job is not paused")
+	}
+	select {
+	case job.resumeCh <- struct{}{}:
+	default:
+	}
+	return nil
+}
+
+// AbortJob cancels a running or paused job.
+func (s *WhatsAppService) AbortJob(jobID string) error {
+	job := s.GetJob(jobID)
+	if job == nil {
+		return fmt.Errorf("job not found")
+	}
+	job.cancel()
+	return nil
+}
+
+// SendOne sends to a single guest synchronously. Used for per-card retry.
+func (s *WhatsAppService) SendOne(ctx context.Context, inviteID int, message string) error {
+	invite, err := s.repo.GetInviteByID(ctx, inviteID)
+	if err != nil {
+		return fmt.Errorf("invite lookup: %w", err)
+	}
+	if invite == nil {
+		return fmt.Errorf("invite not found")
+	}
+	if invite.Phone == nil {
+		return fmt.Errorf("invite has no phone number")
+	}
+	if invite.Side == nil {
+		return fmt.Errorf("invite has no side assigned")
+	}
+
+	client := s.clientFor(*invite.Side)
+	if client == nil || !client.IsConnected() || !client.IsLoggedIn() {
+		return fmt.Errorf("whatsapp session for %s not connected", *invite.Side)
+	}
+
+	jidStr := phoneToJID(*invite.Phone)
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid phone JID: %w", err)
+	}
+
+	results, err := client.IsOnWhatsApp(ctx, []string{jidStr})
+	if err != nil {
+		return fmt.Errorf("IsOnWhatsApp check: %w", err)
+	}
+	if len(results) == 0 || !results[0].IsIn {
+		return fmt.Errorf("not_on_whatsapp")
+	}
+
+	_, err = client.SendMessage(ctx, jid, &waProto.Message{
+		Conversation: proto.String(message),
+	})
+	if err != nil {
+		return fmt.Errorf("send failed: %w", err)
+	}
+
+	_, err = s.repo.MarkInviteWaSent(ctx, inviteID)
+	return err
 }
 
 // Ensure WhatsAppService implements WhatsAppServicer at compile time.
