@@ -9,6 +9,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/redis/go-redis/v9 v9.18.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	go.mau.fi/whatsmeow v0.0.0-20260516102357-8d3700152a69
 	golang.org/x/crypto v0.51.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.271.0
@@ -42,11 +44,9 @@ require (
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/vektah/gqlparser/v2 v2.5.27 // indirect
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.9 // indirect
-	go.mau.fi/whatsmeow v0.0.0-20260516102357-8d3700152a69 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel v1.40.0 // indirect

@@ -221,6 +221,11 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 		return nil
 	}
 
+	// Don't start a new QR flow if one is already in progress.
+	if qr := s.getQR(side); qr != "" {
+		return nil
+	}
+
 	qrChan, err := client.GetQRChannel(ctx)
 	if err != nil {
 		return fmt.Errorf("GetQRChannel: %w", err)
