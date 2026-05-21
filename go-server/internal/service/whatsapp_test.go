@@ -30,7 +30,7 @@ func TestSendJob_PauseResume(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 		pauseCh:  make(chan struct{}, 1),
-		resumeCh: make(chan struct{}),
+		resumeCh: make(chan struct{}, 1),
 	}
 
 	// Signal pause by writing to pauseCh
@@ -60,7 +60,7 @@ func TestSendJob_Snapshot(t *testing.T) {
 		ctx:        ctx,
 		cancel:     cancel,
 		pauseCh:    make(chan struct{}, 1),
-		resumeCh:   make(chan struct{}),
+		resumeCh:   make(chan struct{}, 1),
 	}
 	snap := job.Snapshot()
 	if snap["id"] != "abc123" {

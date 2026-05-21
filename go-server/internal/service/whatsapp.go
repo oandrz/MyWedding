@@ -289,6 +289,10 @@ func phoneToJID(phone string) string {
 
 // StartSendJob enqueues a bulk send. Returns error with "job_already_running:<id>" prefix if active.
 func (s *WhatsAppService) StartSendJob(msgs []WAMessage, delayMin, delayMax int) (string, error) {
+	if delayMax <= delayMin {
+		delayMax = delayMin + 1
+	}
+
 	var activeID string
 	s.jobs.Range(func(_, v interface{}) bool {
 		j := v.(*SendJob)
@@ -324,7 +328,7 @@ func (s *WhatsAppService) StartSendJob(msgs []WAMessage, delayMin, delayMax int)
 		ctx:        ctx,
 		cancel:     cancel,
 		pauseCh:    make(chan struct{}, 1),
-		resumeCh:   make(chan struct{}),
+		resumeCh:   make(chan struct{}, 1),
 	}
 	s.jobs.Store(jobID, job)
 
