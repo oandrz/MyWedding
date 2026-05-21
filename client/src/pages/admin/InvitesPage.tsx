@@ -109,6 +109,8 @@ function normalizePhone(raw: string): string {
 
 const DEFAULT_TEMPLATE = "Hi {name}, you're invited to our wedding! RSVP here: {link}";
 
+type WaSessionMap = Record<string, { status: string } | undefined>;
+
 function renderTemplate(template: string, invite: { name: string; code: string }): string {
   const link = `${window.location.origin}/?code=${invite.code}`;
   return template
@@ -148,6 +150,7 @@ export default function InvitesPage() {
   const [lastSentInviteId, setLastSentInviteId] = useState<number | null>(null);
   const [sentIds, setSentIds] = useState<Set<number>>(new Set());
   const [skippedIds, setSkippedIds] = useState<Set<number>>(new Set());
+  const [isSendingOne, setIsSendingOne] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<InvitesResponse>({
     queryKey: ["/api/admin/invites"],
@@ -216,6 +219,7 @@ export default function InvitesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
       setEditingId(null);
+      setEditSide(null);
     },
     onError: (error: Error) => {
       handleAutoLogout(error);
@@ -620,8 +624,6 @@ export default function InvitesPage() {
     });
   };
 
-  const [isSendingOne, setIsSendingOne] = useState<number | null>(null);
-
   const handleSendOne = async (invite: { id: number; name: string; phone?: string | null; code: string; side?: string | null }) => {
     const message = renderTemplate(templateText, invite);
     setIsSendingOne(invite.id);
@@ -642,7 +644,6 @@ export default function InvitesPage() {
   };
 
   // Placeholder — Task 9 will replace this with the actual query
-  type WaSessionMap = Record<string, { status: string } | undefined>;
   const waSessionStatus: WaSessionMap | undefined = undefined as WaSessionMap | undefined;
 
   // Refs for stable keyboard shortcut access to handlers
@@ -687,6 +688,8 @@ export default function InvitesPage() {
   }
 
   const rsvpCount = invites.filter((i) => i.rsvp).length;
+  const groomCount = invites.filter(i => i.side === "groom").length;
+  const brideCount = invites.filter(i => i.side === "bride").length;
 
   return (
     <div className="space-y-6">
@@ -724,17 +727,13 @@ export default function InvitesPage() {
         </Card>
         <Card className="bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">
-              {invites.filter(i => i.side === "groom").length}
-            </CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{groomCount}</CardTitle>
             <CardDescription className="text-blue-100">Groom Guests</CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">
-              {invites.filter(i => i.side === "bride").length}
-            </CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{brideCount}</CardTitle>
             <CardDescription className="text-pink-100">Bride Guests</CardDescription>
           </CardHeader>
         </Card>
@@ -1293,7 +1292,7 @@ export default function InvitesPage() {
                           className="h-8 text-sm font-semibold"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleEditSave(invite.id);
-                            if (e.key === "Escape") setEditingId(null);
+                            if (e.key === "Escape") { setEditingId(null); setEditSide(null); }
                           }}
                           autoFocus
                         />
@@ -1311,7 +1310,7 @@ export default function InvitesPage() {
                             className="w-44 h-7 text-xs font-mono"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") handleEditSave(invite.id);
-                              if (e.key === "Escape") setEditingId(null);
+                              if (e.key === "Escape") { setEditingId(null); setEditSide(null); }
                             }}
                           />
                         </div>
@@ -1348,7 +1347,7 @@ export default function InvitesPage() {
                             size="sm"
                             variant="ghost"
                             className="h-7 w-7 p-0"
-                            onClick={() => setEditingId(null)}
+                            onClick={() => { setEditingId(null); setEditSide(null); }}
                           >
                             <X className="h-3 w-3" />
                           </Button>
