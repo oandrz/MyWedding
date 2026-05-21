@@ -122,14 +122,23 @@ Each job runs in a goroutine. `WhatsAppService` holds a `Repository` reference s
 1. Pick the correct client based on `side`.
 2. Re-check `waSentAt` from Postgres — if already set, skip (guards against a per-card manual send racing the bulk job).
 3. Normalise the phone to JID and verify via `IsOnWhatsApp`; skip with reason `"not_on_whatsapp"` if absent.
-4. Send the message via `client.SendMessage`.
+4. Send the message via `client.SendMessage`. (`whatsmeow.Client.SendMessage` is concurrency-safe; no additional locking needed.)
 5. On success: call `repo.MarkWaSent(ctx, inviteID)` to set `waSentAt = now()` in Postgres.
-6. Sleep for a random delay between 20 and 30 seconds before the next message.
+6. Sleep for a random delay between 20 and 30 seconds. The goroutine selects on a pause channel during this sleep so Pause takes effect at the iteration boundary without blocking mid-send.
 7. Update job state (sent count, current invite ID, status).
+
+**Job status values:**
+
+| Status | Meaning | Triggered by |
+|--------|---------|--------------|
+| `running` | Actively sending | Job start or Resume |
+| `paused` | Goroutine waiting at iteration boundary | Admin clicks Pause, or session disconnect detected |
+| `completed` | All messages processed | Last message sent or skipped |
+| `failed` | Job aborted due to unrecoverable error | e.g. both clients disconnected and no resume within timeout |
 
 Job state is in-memory (`sync.Map`). Jobs are not persisted — if the server restarts mid-send, the job is lost but already-sent invites remain marked in Postgres. The admin can restart sending; already-sent guests are excluded.
 
-**Concurrent job prevention:** `StartSendJob` checks if any job in the `sync.Map` has status `running`. If one is active, it returns an error containing the existing `jobId`. The handler responds with HTTP 409 and `{ "error": "job_already_running", "jobId": "<id>" }`. The frontend intercepts the 409 and navigates the admin to the existing job's progress dialog.
+**Concurrent job prevention:** `StartSendJob` checks if any job in the `sync.Map` has status `running` or `paused`. If one is active, it returns an error containing the existing `jobId`. The handler responds with HTTP 409 and `{ "error": "job_already_running", "jobId": "<id>" }`. The frontend intercepts the 409 and navigates the admin to the existing job's progress dialog.
 
 **Template pre-rendering:** Messages are rendered client-side at the moment the admin clicks Send, using the current template and each invite's fields. `POST /api/admin/wa/send-all` receives the pre-rendered message string per guest. The goroutine uses only what it received — template changes after the job starts have no effect.
 
@@ -178,6 +187,28 @@ All routes are under `/api/admin/` and require the existing admin session middle
   "bride": { "total": 131, "sent": 18 }
 }
 ```
+
+### `GET /api/admin/wa/job/active` response
+
+Same shape as `GET /api/admin/wa/job/:id` when a job with status `running` or `paused` exists, with an additional `"id"` field so the frontend can start polling by ID. Returns `null` when no active job exists.
+
+```json
+{
+  "id": "a1b2c3",
+  "status": "running",
+  "total": 289,
+  "sent": 47,
+  "failed": 0,
+  "skipped": 0,
+  "currentInviteId": 134,
+  "groom": { "total": 158, "sent": 47 },
+  "bride": { "total": 131, "sent": 0 }
+}
+```
+
+### CSRF
+
+All new `POST` and `DELETE` routes under `/api/admin/wa/` are registered inside the existing admin router group, which already applies the CSRF middleware. No additional CSRF wiring is needed.
 
 ---
 
