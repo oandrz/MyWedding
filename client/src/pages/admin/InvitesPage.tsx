@@ -73,8 +73,16 @@ function parseCSV(text: string): string[][] {
 
 const NAME_HEADERS = ["full name", "name", "guest name", "guest", "nama", "nama lengkap"];
 const PHONE_HEADERS = ["phone", "phone number", "whatsapp", "wa", "no hp", "nomor hp", "mobile"];
+const SIDE_HEADERS = ["side", "pihak", "from"];
 
-type ImportEntry = { name: string; phone: string; checked: boolean; dupType: "none" | "existing" | "inFile" };
+function parseSide(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  if (v === "groom" || v === "pengantin pria") return "groom";
+  if (v === "bride" || v === "pengantin wanita") return "bride";
+  return null;
+}
+
+type ImportEntry = { name: string; phone: string; side: string | null; checked: boolean; dupType: "none" | "existing" | "inFile" };
 
 type ImportState =
   | { step: "upload" }
@@ -84,6 +92,7 @@ type ImportState =
       rawRows: string[][];
       nameColumnIndex: number;
       phoneColumnIndex: number | null;
+      sideColumnIndex: number | null;
       entries: ImportEntry[];
     }
   | { step: "importing" };
@@ -267,11 +276,12 @@ export default function InvitesPage() {
   const dragCounterRef = useRef(0);
 
   const bulkCreateMutation = useMutation({
-    mutationFn: async (entries: { name: string; phone?: string }[]) => {
+    mutationFn: async (entries: { name: string; phone?: string; side?: string }[]) => {
       const response = await apiRequest("POST", "/api/admin/invites/bulk", {
         invites: entries.map((e) => ({
           name: e.name,
           ...(e.phone ? { phone: e.phone } : {}),
+          ...(e.side ? { side: e.side } : {}),
         })),
       });
       return response.json();
@@ -298,7 +308,7 @@ export default function InvitesPage() {
 
   /** Derive entries from raw CSV rows for given column indices. */
   const deriveEntries = useCallback(
-    (rawRows: string[][], colIndex: number, phoneColIndex: number | null): ImportEntry[] => {
+    (rawRows: string[][], colIndex: number, phoneColIndex: number | null, sideColIndex: number | null = null): ImportEntry[] => {
       const existingNames = new Set(
         (data?.invites ?? []).map((inv) => inv.name.toLowerCase().trim())
       );
@@ -312,9 +322,10 @@ export default function InvitesPage() {
         .map((row) => ({
           name: (row[colIndex]?.trim() ?? ""),
           phone: phoneColIndex !== null ? (row[phoneColIndex]?.trim() ?? "") : "",
+          side: sideColIndex !== null ? parseSide(row[sideColIndex] ?? "") : null,
         }))
         .filter(({ name }) => isValidName(name))
-        .map(({ name, phone }) => {
+        .map(({ name, phone, side }) => {
           const lower = name.toLowerCase();
           let dupType: "none" | "existing" | "inFile" = "none";
           if (existingNames.has(lower)) {
@@ -323,7 +334,7 @@ export default function InvitesPage() {
             dupType = "inFile";
           }
           seenNames.add(lower);
-          return { name, phone, checked: dupType === "none", dupType };
+          return { name, phone, side, checked: dupType === "none", dupType };
         });
     },
     [data]
@@ -348,13 +359,17 @@ export default function InvitesPage() {
         if (nameCol === -1) nameCol = 0;
         let phoneCol: number | null = headers.findIndex((h) => PHONE_HEADERS.includes(h.toLowerCase()));
         if (phoneCol === -1) phoneCol = null;
+        const sideColIdx = headers.findIndex(h =>
+          SIDE_HEADERS.includes(h.toLowerCase().trim())
+        );
+        const resolvedSideIdx = sideColIdx >= 0 ? sideColIdx : null;
         const rawRows = rows.slice(1);
-        const entries = deriveEntries(rawRows, nameCol, phoneCol);
+        const entries = deriveEntries(rawRows, nameCol, phoneCol, resolvedSideIdx);
         if (entries.length === 0) {
           toast({ title: "Error", description: "No names found in CSV", variant: "destructive" });
           return;
         }
-        setImportState({ step: "preview", headers, rawRows, nameColumnIndex: nameCol, phoneColumnIndex: phoneCol, entries });
+        setImportState({ step: "preview", headers, rawRows, nameColumnIndex: nameCol, phoneColumnIndex: phoneCol, sideColumnIndex: resolvedSideIdx, entries });
       };
       reader.onerror = () => {
         toast({ title: "Error", description: "Failed to read file", variant: "destructive" });
@@ -424,7 +439,7 @@ export default function InvitesPage() {
   const handleColumnChange = (newIndex: number) => {
     setImportState((prev) => {
       if (prev.step !== "preview") return prev;
-      const entries = deriveEntries(prev.rawRows, newIndex, prev.phoneColumnIndex);
+      const entries = deriveEntries(prev.rawRows, newIndex, prev.phoneColumnIndex, prev.sideColumnIndex);
       return { ...prev, nameColumnIndex: newIndex, entries };
     });
   };
@@ -432,7 +447,7 @@ export default function InvitesPage() {
   const handlePhoneColumnChange = (newIndex: number | null) => {
     setImportState((prev) => {
       if (prev.step !== "preview") return prev;
-      const entries = deriveEntries(prev.rawRows, prev.nameColumnIndex, newIndex);
+      const entries = deriveEntries(prev.rawRows, prev.nameColumnIndex, newIndex, prev.sideColumnIndex);
       return { ...prev, phoneColumnIndex: newIndex, entries };
     });
   };
@@ -443,7 +458,7 @@ export default function InvitesPage() {
       .filter((e) => e.checked)
       .map((e) => {
         const phone = e.phone ? normalizePhone(e.phone) : "";
-        return { name: e.name, ...(phone ? { phone } : {}) };
+        return { name: e.name, ...(phone ? { phone } : {}), ...(e.side ? { side: e.side } : {}) };
       });
     if (selected.length === 0) return;
     setImportState({ step: "importing" });
@@ -873,6 +888,9 @@ export default function InvitesPage() {
             const dupCount = importState.entries.filter((e) => e.dupType !== "none").length;
             const allChecked = checkedCount === importState.entries.length;
             const phonesDetected = importState.phoneColumnIndex !== null;
+            const groomCount = importState.entries.filter(e => e.checked && e.side === "groom").length;
+            const brideCount = importState.entries.filter(e => e.checked && e.side === "bride").length;
+            const noSideCount = importState.entries.filter(e => e.checked && !e.side).length;
 
             return (
               <div className="flex flex-col gap-4 min-h-0">
@@ -958,6 +976,24 @@ export default function InvitesPage() {
                       </div>
                     </>
                   )}
+                  {groomCount > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span>🤵 <strong>{groomCount}</strong> groom</span>
+                    </>
+                  )}
+                  {brideCount > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span>👰 <strong>{brideCount}</strong> bride</span>
+                    </>
+                  )}
+                  {noSideCount > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span className="text-amber-600">⚠️ <strong>{noSideCount}</strong> no side</span>
+                    </>
+                  )}
                 </div>
 
                 <Separator />
@@ -996,6 +1032,15 @@ export default function InvitesPage() {
                             )}
                           </span>
                         )}
+                        {entry.side === "groom" && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">🤵 groom</span>
+                        )}
+                        {entry.side === "bride" && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">👰 bride</span>
+                        )}
+                        {entry.side === null && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">⚠️ no side</span>
+                        )}
                         {entry.dupType === "existing" && (
                           <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-xs">
                             Already exists
@@ -1010,6 +1055,12 @@ export default function InvitesPage() {
                     ))}
                   </div>
                 </div>
+
+                {noSideCount > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800 mt-2">
+                    ⚠️ {noSideCount} guest{noSideCount > 1 ? "s have" : " has"} no side — they'll be imported but skipped during automated WhatsApp sending.
+                  </div>
+                )}
 
                 <DialogFooter className="gap-2 sm:gap-0">
                   <Button variant="outline" onClick={handleCancelImport}>
