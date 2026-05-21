@@ -271,7 +271,7 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, http.StatusBadRequest, "name cannot be empty")
 			return
 		}
-		invite, err := h.Repo.UpdateInvite(r.Context(), id, nameVal, phone)
+		invite, err := h.Repo.UpdateInvite(r.Context(), id, nameVal, phone, nil)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, r, http.StatusNotFound, "Invite not found")

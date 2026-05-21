@@ -718,6 +718,7 @@ func (m *MemoryRepository) CreateInvite(_ context.Context, data models.InsertInv
 		Name:      data.Name,
 		Code:      code,
 		Phone:     data.Phone,
+		Side:      data.Side,
 		CreatedAt: now(),
 	}
 	m.invites[inv.ID] = inv
@@ -821,6 +822,7 @@ func (m *MemoryRepository) CreateInvitesBulk(_ context.Context, data []models.In
 			Name:      d.Name,
 			Code:      code,
 			Phone:     d.Phone,
+			Side:      d.Side,
 			CreatedAt: now(),
 		}
 		m.invites[inv.ID] = inv
@@ -841,7 +843,7 @@ func (m *MemoryRepository) UpdateInvitePhone(_ context.Context, id int, phone *s
 	return &inv, nil
 }
 
-func (m *MemoryRepository) UpdateInvite(_ context.Context, id int, name string, phone *string) (*models.Invite, error) {
+func (m *MemoryRepository) UpdateInvite(_ context.Context, id int, name string, phone *string, side *string) (*models.Invite, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	inv, ok := m.invites[id]
@@ -850,6 +852,19 @@ func (m *MemoryRepository) UpdateInvite(_ context.Context, id int, name string, 
 	}
 	inv.Name = name
 	inv.Phone = phone
+	inv.Side = side
+	m.invites[id] = inv
+	return &inv, nil
+}
+
+func (m *MemoryRepository) UpdateInviteSide(_ context.Context, id int, side *string) (*models.Invite, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inv, ok := m.invites[id]
+	if !ok {
+		return nil, fmt.Errorf("invite not found")
+	}
+	inv.Side = side
 	m.invites[id] = inv
 	return &inv, nil
 }
