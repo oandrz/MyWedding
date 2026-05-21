@@ -134,6 +134,10 @@ func (s *WhatsAppService) Init(ctx context.Context, databaseURL string) error {
 	}
 
 	container := sqlstore.NewWithDB(db, "postgres", nil)
+	// Run whatsmeow's own DB migrations to create/upgrade whatsmeow_* tables.
+	if err := container.Upgrade(ctx); err != nil {
+		return fmt.Errorf("whatsmeow sqlstore upgrade: %w", err)
+	}
 	s.store = container
 
 	// Try to restore sessions from stored JIDs in app_settings.
@@ -215,13 +219,9 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 	if s.store == nil {
 		return fmt.Errorf("whatsapp service not initialised")
 	}
+
 	client := s.clientFor(side)
-	if client == nil {
-		deviceStore := s.store.NewDevice()
-		client = whatsmeow.NewClient(deviceStore, nil)
-		s.setClient(side, client)
-	}
-	if client.IsConnected() && client.IsLoggedIn() {
+	if client != nil && client.IsConnected() && client.IsLoggedIn() {
 		return nil
 	}
 
@@ -229,6 +229,17 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 	if qr := s.getQR(side); qr != "" {
 		return nil
 	}
+
+	// Disconnect any stale client before starting a fresh pairing attempt.
+	// whatsmeow's GetQRChannel can only be used once per client instance.
+	if client != nil {
+		client.Disconnect()
+	}
+
+	// Always create a fresh device for each new pairing attempt.
+	deviceStore := s.store.NewDevice()
+	client = whatsmeow.NewClient(deviceStore, nil)
+	s.setClient(side, client)
 
 	qrChan, err := client.GetQRChannel(context.Background())
 	if err != nil {
