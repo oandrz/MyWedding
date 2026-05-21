@@ -16,7 +16,7 @@ import { useDeleteConfirmation } from "@/hooks/useDeleteConfirmation";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   Loader2, Trash2, Search, X, TicketCheck, Plus, Copy, Check, Upload, FileSpreadsheet,
-  AlertTriangle, Users, Phone, MessageCircle, Send, ChevronDown, ChevronUp, SkipForward, Pause, Undo2, Pencil,
+  AlertTriangle, Users, Phone, MessageCircle, Send, ChevronDown, ChevronUp, Pause, Pencil,
 } from "lucide-react";
 import type { Invite } from "@shared/schema";
 
@@ -109,7 +109,6 @@ function normalizePhone(raw: string): string {
 
 const DEFAULT_TEMPLATE = "Hi {name}, you're invited to our wedding! RSVP here: {link}";
 
-type WaSessionMap = Record<string, { status: string } | undefined>;
 
 function renderTemplate(template: string, invite: { name: string; code: string }): string {
   const link = `${window.location.origin}/?code=${invite.code}`;
@@ -142,15 +141,10 @@ export default function InvitesPage() {
   const [templateText, setTemplateText] = useState(DEFAULT_TEMPLATE);
   const templateRef = useRef<HTMLTextAreaElement>(null);
 
-  // Send All dialog state
-  const [sendAllOpen, setSendAllOpen] = useState(false);
-  const [sendAllTotal, setSendAllTotal] = useState(0);
-  const [sendAllSentCount, setSendAllSentCount] = useState(0);
-  const [sendAllSkipCount, setSendAllSkipCount] = useState(0);
-  const [lastSentInviteId, setLastSentInviteId] = useState<number | null>(null);
-  const [sentIds, setSentIds] = useState<Set<number>>(new Set());
-  const [skippedIds, setSkippedIds] = useState<Set<number>>(new Set());
   const [isSendingOne, setIsSendingOne] = useState<number | null>(null);
+  const [waSessionsEnabled] = useState(true);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [showSendDialog, setShowSendDialog] = useState(false);
 
   const { data, isLoading } = useQuery<InvitesResponse>({
     queryKey: ["/api/admin/invites"],
@@ -167,6 +161,53 @@ export default function InvitesPage() {
       setTemplateText(templateData.setting.settingValue);
     }
   }, [templateData]);
+
+  const { data: waSessions, refetch: refetchSessions } = useQuery<{
+    groom: { status: string; phone?: string; qr?: string };
+    bride: { status: string; phone?: string; qr?: string };
+  }>({
+    queryKey: ["/api/admin/wa/sessions"],
+    refetchInterval: (query) => {
+      const d = (query as { state: { data?: { groom?: { status: string }; bride?: { status: string } } } }).state.data;
+      const groomPending = d?.groom?.status === "qr_pending";
+      const bridePending = d?.bride?.status === "qr_pending";
+      return (groomPending || bridePending) ? 3000 : false;
+    },
+    enabled: waSessionsEnabled,
+  });
+
+  const waSessionStatus = waSessions;
+
+  const { data: jobData, refetch: refetchJob } = useQuery<{
+    id: string;
+    status: string;
+    total: number;
+    sent: number;
+    failed: number;
+    skipped: number;
+    groom: { total: number; sent: number };
+    bride: { total: number; sent: number };
+  } | null>({
+    queryKey: ["/api/admin/wa/job", activeJobId],
+    queryFn: () => activeJobId
+      ? apiRequest("GET", `/api/admin/wa/job/${activeJobId}`).then(r => r.json())
+      : Promise.resolve(null),
+    refetchInterval: showSendDialog && activeJobId ? 3000 : false,
+    enabled: !!activeJobId,
+  });
+
+  // On mount: check for an active job and re-open dialog if one exists
+  useEffect(() => {
+    apiRequest("GET", "/api/admin/wa/job/active")
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.id) {
+          setActiveJobId(d.id);
+          setShowSendDialog(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const createInviteMutation = useMutation({
     mutationFn: async ({ name, phone }: { name: string; phone?: string }) => {
@@ -570,58 +611,53 @@ export default function InvitesPage() {
     }
   };
 
-  // Send All handlers
-  const currentSendInvite = sendAllOpen
-    ? unsentWithPhone.find((i) => !sentIds.has(i.id) && !skippedIds.has(i.id))
-    : undefined;
-  const sendInFlightRef = useRef(false);
+  const handleSendAll = async () => {
+    const unsent = invites.filter(i => i.phone && !i.waSentAt);
 
-  const handleSendAndNext = () => {
-    if (!currentSendInvite || sendInFlightRef.current) return;
-    sendInFlightRef.current = true;
-
-    // Open wa.me deep link
-    const msg = renderTemplate(templateText, currentSendInvite);
-    const result = window.open(buildWaLink(currentSendInvite.phone!, msg), "_blank");
-    if (!result) {
-      toast({ title: "Popup blocked", description: "Please allow popups for this site", variant: "destructive" });
+    const needsGroom = unsent.some(i => i.side === "groom");
+    const needsBride = unsent.some(i => i.side === "bride");
+    if (needsGroom && waSessions?.groom?.status !== "connected") {
+      toast({ title: "Connect groom's WhatsApp first", variant: "destructive" });
+      return;
+    }
+    if (needsBride && waSessions?.bride?.status !== "connected") {
+      toast({ title: "Connect bride's WhatsApp first", variant: "destructive" });
+      return;
     }
 
-    // Track for undo
-    setLastSentInviteId(currentSendInvite.id);
+    const noSide = unsent.filter(i => !i.side);
+    if (noSide.length > 0) {
+      if (!window.confirm(`${noSide.length} guests have no side and will be skipped. Continue?`)) return;
+    }
 
-    // Mark sent and advance
-    markWaSentMutation.mutate(currentSendInvite.id, {
-      onSuccess: () => {
-        setSendAllSentCount((c) => c + 1);
-        setSentIds((prev) => { const next = new Set(prev); next.add(currentSendInvite.id); return next; });
-      },
-      onSettled: () => {
-        sendInFlightRef.current = false;
-      },
-    });
-  };
+    const messages = unsent
+      .filter(i => i.side)
+      .map(i => ({
+        inviteId: i.id,
+        phone: i.phone!,
+        side: i.side!,
+        message: renderTemplate(templateText, i),
+      }));
 
-  const handleSendAllSkip = () => {
-    if (!currentSendInvite) return;
-    setSendAllSkipCount((c) => c + 1);
-    setSkippedIds((prev) => { const next = new Set(prev); next.add(currentSendInvite.id); return next; });
-  };
+    try {
+      const resp = await apiRequest("POST", "/api/admin/wa/send-all", {
+        messages,
+        delayMin: 20,
+        delayMax: 30,
+      });
+      const d = await resp.json();
 
-  const handleUndo = () => {
-    if (lastSentInviteId === null) return;
-    const idToUndo = lastSentInviteId;
-    unmarkWaSentMutation.mutate(idToUndo, {
-      onSuccess: () => {
-        setSendAllSentCount((c) => Math.max(0, c - 1));
-        setSentIds((prev) => {
-          const next = new Set(prev);
-          next.delete(idToUndo);
-          return next;
-        });
-        setLastSentInviteId(null);
-      },
-    });
+      if (resp.status === 409) {
+        setActiveJobId(d.jobId);
+        setShowSendDialog(true);
+        return;
+      }
+
+      setActiveJobId(d.jobId);
+      setShowSendDialog(true);
+    } catch {
+      toast({ title: "Failed to start send job", variant: "destructive" });
+    }
   };
 
   const handleSendOne = async (invite: { id: number; name: string; phone?: string | null; code: string; side?: string | null }) => {
@@ -642,41 +678,6 @@ export default function InvitesPage() {
       setIsSendingOne(null);
     }
   };
-
-  // Placeholder — Task 9 will replace this with the actual query
-  const waSessionStatus: WaSessionMap | undefined = undefined as WaSessionMap | undefined;
-
-  // Refs for stable keyboard shortcut access to handlers
-  const handleSendAndNextRef = useRef(handleSendAndNext);
-  handleSendAndNextRef.current = handleSendAndNext;
-  const handleSendAllSkipRef = useRef(handleSendAllSkip);
-  handleSendAllSkipRef.current = handleSendAllSkip;
-  const isPendingRef = useRef(false);
-  isPendingRef.current = markWaSentMutation.isPending || unmarkWaSentMutation.isPending;
-
-  // Keyboard shortcuts for Send All dialog
-  useEffect(() => {
-    if (!sendAllOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isEditable = (e.target as HTMLElement).isContentEditable;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || isEditable) return;
-
-      if (isPendingRef.current) return;
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        handleSendAndNextRef.current();
-      } else if (e.key === "s" || e.key === "S") {
-        e.preventDefault();
-        handleSendAllSkipRef.current();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [sendAllOpen]);
 
   if (isLoading) {
     return (
@@ -742,7 +743,7 @@ export default function InvitesPage() {
       {/* Send All button */}
       {unsentWithPhone.length > 0 && (
         <Button
-          onClick={() => { setSendAllTotal(unsentWithPhone.length); setSentIds(new Set()); setSkippedIds(new Set()); setSendAllSentCount(0); setSendAllSkipCount(0); setLastSentInviteId(null); setSendAllOpen(true); }}
+          onClick={handleSendAll}
           className="gap-2"
           variant="outline"
         >
@@ -750,6 +751,67 @@ export default function InvitesPage() {
           Send All Unsent ({unsentWithPhone.length})
         </Button>
       )}
+
+      {/* WhatsApp Connections */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">WhatsApp Connections</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            {(["groom", "bride"] as const).map(side => {
+              const info = waSessions?.[side];
+              const label = side === "groom" ? "🤵 Groom's Number" : "👰 Bride's Number";
+              return (
+                <div key={side} className={`border rounded-lg p-4 ${
+                  info?.status === "connected" ? "border-green-200 bg-green-50" :
+                  info?.status === "qr_pending" ? "border-yellow-200 bg-yellow-50" :
+                  "border-slate-200 bg-slate-50"
+                }`}>
+                  <div className="font-semibold text-sm mb-2">{label}</div>
+                  {info?.status === "connected" && (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>
+                        <span className="text-xs text-green-700 font-semibold">Connected</span>
+                      </div>
+                      <div className="text-xs font-mono text-slate-500 mb-2">{info.phone}</div>
+                      <Button size="sm" variant="outline" className="text-red-600 border-red-200 text-xs"
+                        onClick={() => apiRequest("DELETE", `/api/admin/wa/sessions/${side}`)
+                          .then(() => refetchSessions())}>
+                        Disconnect
+                      </Button>
+                    </>
+                  )}
+                  {info?.status === "qr_pending" && (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>
+                        <span className="text-xs text-amber-700 font-semibold">Waiting for scan</span>
+                      </div>
+                      {info.qr && <img src={info.qr} alt="QR code" className="w-24 h-24 mb-1"/>}
+                      <div className="text-xs text-amber-700">Open WhatsApp → Linked Devices → Scan</div>
+                    </>
+                  )}
+                  {(!info || info.status === "disconnected") && (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"/>
+                        <span className="text-xs text-slate-500">Disconnected</span>
+                      </div>
+                      <Button size="sm" variant="outline" className="text-xs"
+                        onClick={() => apiRequest("POST", `/api/admin/wa/sessions/${side}/connect`)
+                          .then(() => refetchSessions())}>
+                        Connect
+                      </Button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Message Template Editor */}
       <Card>
@@ -1129,115 +1191,81 @@ export default function InvitesPage() {
           })()}</DialogContent>
       </Dialog>
 
-      {/* Send All Dialog */}
-      <Dialog open={sendAllOpen} onOpenChange={setSendAllOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Send Progress Dialog */}
+      <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-green-600" />
-              Send WhatsApp Messages
-            </DialogTitle>
-            <DialogDescription>
-              Step through unsent invites one at a time
-            </DialogDescription>
+            <DialogTitle>Send WhatsApp Messages</DialogTitle>
           </DialogHeader>
 
-          {currentSendInvite && (
+          {jobData && (
             <div className="space-y-4">
-              {/* Progress */}
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{sendAllSentCount + sendAllSkipCount + 1} of {sendAllTotal}</span>
-                <div className="flex gap-3">
-                  <span className="text-green-600">Sent: {sendAllSentCount}</span>
-                  <span className="text-gray-400">Skipped: {sendAllSkipCount}</span>
+              <div>
+                <div className="flex justify-between text-sm text-slate-500 mb-1">
+                  <span>Sending <strong>{jobData.total}</strong> invitations...</span>
+                  <span className="text-green-600 font-semibold">{jobData.sent} sent</span>
+                </div>
+                <div className="bg-slate-200 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${jobData.total > 0 ? (jobData.sent / jobData.total) * 100 : 0}%` }}
+                  />
                 </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div
-                  className="bg-green-500 h-1.5 rounded-full transition-all"
-                  style={{ width: `${((sendAllSentCount + sendAllSkipCount) / sendAllTotal) * 100}%` }}
-                />
-              </div>
 
-              {/* Current invite */}
-              <Card>
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">{currentSendInvite.name}</h4>
-                    <code className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">{currentSendInvite.code}</code>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="text-xs font-semibold text-blue-700 mb-1">🤵 Groom's side</div>
+                  <div className="text-xs text-blue-600">{jobData.groom?.sent ?? 0} / {jobData.groom?.total ?? 0} sent</div>
+                  <div className="bg-blue-200 rounded-full h-1 mt-1">
+                    <div className="bg-blue-500 h-1 rounded-full" style={{
+                      width: `${(jobData.groom?.total ?? 0) > 0 ? ((jobData.groom?.sent ?? 0) / jobData.groom.total) * 100 : 0}%`
+                    }}/>
                   </div>
-                  <p className="text-sm text-muted-foreground font-mono">{currentSendInvite.phone}</p>
-                </CardContent>
-              </Card>
-
-              {/* Message preview */}
-              <div className="rounded-lg bg-green-50 p-3">
-                <p className="text-xs text-green-700 mb-1 font-medium">Message preview:</p>
-                <p className="text-sm whitespace-pre-wrap text-green-900">
-                  {renderTemplate(templateText, currentSendInvite)}
-                </p>
+                </div>
+                <div className="bg-pink-50 rounded-lg p-3">
+                  <div className="text-xs font-semibold text-pink-700 mb-1">👰 Bride's side</div>
+                  <div className="text-xs text-pink-600">{jobData.bride?.sent ?? 0} / {jobData.bride?.total ?? 0} sent</div>
+                  <div className="bg-pink-200 rounded-full h-1 mt-1">
+                    <div className="bg-pink-500 h-1 rounded-full" style={{
+                      width: `${(jobData.bride?.total ?? 0) > 0 ? ((jobData.bride?.sent ?? 0) / jobData.bride.total) * 100 : 0}%`
+                    }}/>
+                  </div>
+                </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSendAndNext}
-                  disabled={markWaSentMutation.isPending}
-                  className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
-                  autoFocus
-                >
-                  {markWaSentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Send & Next
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                {lastSentInviteId !== null && (
-                  <Button
-                    onClick={handleUndo}
-                    disabled={unmarkWaSentMutation.isPending}
-                    variant="ghost"
-                    className="gap-2"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                    Undo
-                  </Button>
-                )}
-                <Button onClick={handleSendAllSkip} disabled={markWaSentMutation.isPending} variant="ghost" className="gap-2">
-                  <SkipForward className="h-4 w-4" />
-                  Skip
-                </Button>
-                <Button onClick={() => setSendAllOpen(false)} variant="ghost" className="gap-2">
-                  <Pause className="h-4 w-4" />
-                  Pause
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Enter to send &middot; S to skip &middot; Esc to pause
-              </p>
-            </div>
-          )}
-
-          {!currentSendInvite && sendAllOpen && (
-            <div className="text-center py-6">
-              <Check className="h-12 w-12 text-green-500 mx-auto mb-3" />
-              <p className="font-semibold">All done!</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Sent: {sendAllSentCount}, Skipped: {sendAllSkipCount}
-              </p>
-              <div className="flex justify-center gap-2 mt-4">
-                {lastSentInviteId !== null && (
-                  <Button
-                    onClick={handleUndo}
-                    disabled={unmarkWaSentMutation.isPending}
-                    variant="outline"
-                    className="gap-2"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                    Undo Last
-                  </Button>
-                )}
-                <Button onClick={() => setSendAllOpen(false)}>Close</Button>
-              </div>
+              {jobData.status === "completed" ? (
+                <div className="text-center text-sm text-green-700 font-semibold">
+                  ✅ Done — {jobData.sent} sent, {jobData.skipped} skipped, {jobData.failed} failed
+                </div>
+              ) : (
+                <>
+                  <div className="text-xs text-slate-400 text-center">
+                    Est. remaining: ~{Math.round(((jobData.total - jobData.sent) * 25) / 60)} minutes (20–30s delay per message)
+                  </div>
+                  <div className="flex gap-2 justify-center">
+                    {jobData.status === "running" ? (
+                      <Button size="sm" variant="outline"
+                        onClick={() => activeJobId && apiRequest("POST", `/api/admin/wa/job/${activeJobId}/pause`)}>
+                        <Pause className="h-3 w-3 mr-1" /> Pause
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline"
+                        onClick={() => activeJobId && apiRequest("POST", `/api/admin/wa/job/${activeJobId}/resume`)}>
+                        ▶ Resume
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" className="text-red-600"
+                      onClick={() => activeJobId && apiRequest("DELETE", `/api/admin/wa/job/${activeJobId}`)
+                        .then(() => refetchJob())}>
+                      Abort
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-400 text-center">
+                    You can close this dialog — sending continues in the background
+                  </p>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1279,7 +1307,7 @@ export default function InvitesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {!sendAllOpen && filteredInvites.map((invite) => (
+            {filteredInvites.map((invite) => (
               <Card key={invite.id} className={`shadow-sm border-l-4 border-l-amber-500 ${editingId === invite.id ? "border-indigo-300" : ""}`}>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1441,7 +1469,7 @@ export default function InvitesPage() {
                         )}
                       </div>
 
-                      {editingId !== invite.id && invite.phone && invite.side && waSessionStatus?.[invite.side]?.status === "connected" && (
+                      {editingId !== invite.id && invite.phone && invite.side && waSessionStatus?.[invite.side as "groom" | "bride"]?.status === "connected" && (
                         <Button
                           variant="outline"
                           size="sm"
