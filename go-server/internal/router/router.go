@@ -184,6 +184,22 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Patch("/invites/{id}", invite.Update)
 			r.Put("/invites/{id}/wa-sent", invite.MarkWaSent)
 			r.Delete("/invites/{id}/wa-sent", invite.UnmarkWaSent)
+
+			// WhatsApp automation routes (only registered when WA service is configured)
+			if o.whatsapp != nil {
+				wa := &handler.WAHandler{WA: o.whatsapp}
+				r.Get("/wa/session", wa.SessionStatus)
+				r.Post("/wa/connect/{side}", wa.Connect)
+				r.Delete("/wa/connect/{side}", wa.Disconnect)
+				r.Post("/wa/send-all", wa.SendAll)
+				r.Post("/wa/send-one", wa.SendOne)
+				// Static segment "active" must be registered before the wildcard {id}.
+				r.Get("/wa/job/active", wa.ActiveJob)
+				r.Get("/wa/job/{id}", wa.GetJob)
+				r.Post("/wa/job/{id}/pause", wa.PauseJob)
+				r.Post("/wa/job/{id}/resume", wa.ResumeJob)
+				r.Delete("/wa/job/{id}", wa.AbortJob)
+			}
 		})
 	})
 
@@ -210,9 +226,10 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 type Option func(*options)
 
 type options struct {
-	storage service.ObjectStorage
-	drive   *service.GoogleDriveService
-	dbPool  interface{ Ping(context.Context) error }
+	storage    service.ObjectStorage
+	drive      *service.GoogleDriveService
+	dbPool     interface{ Ping(context.Context) error }
+	whatsapp   service.WhatsAppServicer
 }
 
 // WithStorage sets the object storage for file upload routes.
@@ -233,5 +250,12 @@ func WithGoogleDrive(d *service.GoogleDriveService) Option {
 func WithDBPool(pool interface{ Ping(context.Context) error }) Option {
 	return func(o *options) {
 		o.dbPool = pool
+	}
+}
+
+// WithWhatsApp sets the WhatsApp service for WA automation routes.
+func WithWhatsApp(wa service.WhatsAppServicer) Option {
+	return func(o *options) {
+		o.whatsapp = wa
 	}
 }
