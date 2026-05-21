@@ -188,17 +188,17 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			// WhatsApp automation routes (only registered when WA service is configured)
 			if o.whatsapp != nil {
 				wa := &handler.WAHandler{WA: o.whatsapp}
-				r.Get("/wa/session", wa.SessionStatus)
-				r.Post("/wa/connect/{side}", wa.Connect)
-				r.Delete("/wa/connect/{side}", wa.Disconnect)
+				r.Get("/wa/sessions", wa.Sessions)
+				r.Post("/wa/sessions/{side}/connect", wa.Connect)
+				r.Delete("/wa/sessions/{side}", wa.DisconnectSession)
 				r.Post("/wa/send-all", wa.SendAll)
-				r.Post("/wa/send-one", wa.SendOne)
 				// Static segment "active" must be registered before the wildcard {id}.
 				r.Get("/wa/job/active", wa.ActiveJob)
 				r.Get("/wa/job/{id}", wa.GetJob)
 				r.Post("/wa/job/{id}/pause", wa.PauseJob)
 				r.Post("/wa/job/{id}/resume", wa.ResumeJob)
 				r.Delete("/wa/job/{id}", wa.AbortJob)
+				r.Post("/wa/send/{inviteId}", wa.SendOne)
 			}
 		})
 	})

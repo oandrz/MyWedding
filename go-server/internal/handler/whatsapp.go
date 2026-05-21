@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/andreasronaldo/wedding-server/internal/service"
@@ -15,7 +17,7 @@ type WAHandler struct {
 
 // SessionStatus handles GET /api/admin/wa/session.
 // Returns the connection status for both groom and bride sides.
-func (h *WAHandler) SessionStatus(w http.ResponseWriter, r *http.Request) {
+func (h *WAHandler) Sessions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"groom": h.WA.SessionStatus("groom"),
 		"bride": h.WA.SessionStatus("bride"),
@@ -43,7 +45,7 @@ func (h *WAHandler) Connect(w http.ResponseWriter, r *http.Request) {
 
 // Disconnect handles DELETE /api/admin/wa/connect/{side}.
 // Terminates a WhatsApp session for the given side.
-func (h *WAHandler) Disconnect(w http.ResponseWriter, r *http.Request) {
+func (h *WAHandler) DisconnectSession(w http.ResponseWriter, r *http.Request) {
 	side := chi.URLParam(r, "side")
 	if side != "groom" && side != "bride" {
 		writeError(w, r, http.StatusBadRequest, "side must be 'groom' or 'bride'")
@@ -159,31 +161,32 @@ func (h *WAHandler) AbortJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Job aborted"})
 }
 
-// SendOne handles POST /api/admin/wa/send-one.
-// Sends a single WhatsApp message to one invite.
+// SendOne handles POST /api/admin/wa/send/{inviteId}.
 func (h *WAHandler) SendOne(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "inviteId")
+	inviteID, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid invite ID")
+		return
+	}
 	var body struct {
-		InviteID int    `json:"inviteId"`
-		Message  string `json:"message"`
+		Message string `json:"message"`
 	}
-	if err := parseJSON(r, &body); err != nil {
-		writeError(w, r, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if body.InviteID == 0 {
-		writeError(w, r, http.StatusBadRequest, "inviteId is required")
-		return
-	}
-	if body.Message == "" {
+	if err := parseJSON(r, &body); err != nil || body.Message == "" {
 		writeError(w, r, http.StatusBadRequest, "message is required")
 		return
 	}
 
-	if err := h.WA.SendOne(r.Context(), body.InviteID, body.Message); err != nil {
-		writeError(w, r, http.StatusInternalServerError, "Failed to send message")
+	if err := h.WA.SendOne(r.Context(), inviteID, body.Message); err != nil {
+		if err.Error() == "not_on_whatsapp" {
+			writeJSON(w, http.StatusOK, map[string]string{
+				"status": "skipped",
+				"reason": "not_on_whatsapp",
+			})
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, fmt.Sprintf("Send failed: %s", err.Error()))
 		return
 	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"message": "Message sent"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "sent"})
 }

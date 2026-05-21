@@ -85,7 +85,7 @@ func TestContract_WA_SessionStatus(t *testing.T) {
 	env := newTestEnvWithWAService(wa)
 	cookie, csrfToken := adminLogin(t, env)
 
-	req := adminRequest(http.MethodGet, "/api/admin/wa/session", nil, cookie, csrfToken)
+	req := adminRequest(http.MethodGet, "/api/admin/wa/sessions", nil, cookie, csrfToken)
 	body := contractResponse(t, env, req, http.StatusOK)
 
 	groom, ok := body["groom"].(map[string]interface{})
@@ -156,4 +156,23 @@ func TestContract_WA_GetJob_NotFound(t *testing.T) {
 
 	req := adminRequest(http.MethodGet, "/api/admin/wa/job/nonexistent-id", nil, cookie, csrfToken)
 	contractResponse(t, env, req, http.StatusNotFound)
+}
+
+// TestContract_WA_SendOne_Success verifies POST /api/admin/wa/send/{inviteId} returns {status:"sent"}.
+func TestContract_WA_SendOne_Success(t *testing.T) {
+	env := newTestEnvWithWAService(&mockWA{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	// Create an invite first
+	invBody := jsonBody(map[string]interface{}{"name": "Budi"})
+	invReq := adminRequest(http.MethodPost, "/api/admin/invites", invBody, cookie, csrfToken)
+	invResult := contractResponse(t, env, invReq, http.StatusCreated)
+	inviteID := int(invResult["invite"].(map[string]interface{})["id"].(float64))
+
+	body := jsonBody(map[string]interface{}{"message": "Hello Budi!"})
+	req := adminRequest(http.MethodPost, fmt.Sprintf("/api/admin/wa/send/%d", inviteID), body, cookie, csrfToken)
+	result := contractResponse(t, env, req, http.StatusOK)
+	if result["status"] != "sent" {
+		t.Fatalf("expected status=sent, got %v", result["status"])
+	}
 }
