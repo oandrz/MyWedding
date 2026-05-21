@@ -976,22 +976,26 @@ export default function InvitesPage() {
                       </div>
                     </>
                   )}
-                  {groomCount > 0 && (
+                  {importState.sideColumnIndex !== null && (
                     <>
-                      <Separator orientation="vertical" className="h-4" />
-                      <span>🤵 <strong>{groomCount}</strong> groom</span>
-                    </>
-                  )}
-                  {brideCount > 0 && (
-                    <>
-                      <Separator orientation="vertical" className="h-4" />
-                      <span>👰 <strong>{brideCount}</strong> bride</span>
-                    </>
-                  )}
-                  {noSideCount > 0 && (
-                    <>
-                      <Separator orientation="vertical" className="h-4" />
-                      <span className="text-amber-600">⚠️ <strong>{noSideCount}</strong> no side</span>
+                      {groomCount > 0 && (
+                        <>
+                          <Separator orientation="vertical" className="h-4" />
+                          <span>🤵 <strong>{groomCount}</strong> groom</span>
+                        </>
+                      )}
+                      {brideCount > 0 && (
+                        <>
+                          <Separator orientation="vertical" className="h-4" />
+                          <span>👰 <strong>{brideCount}</strong> bride</span>
+                        </>
+                      )}
+                      {noSideCount > 0 && (
+                        <>
+                          <Separator orientation="vertical" className="h-4" />
+                          <span className="text-amber-600">⚠️ <strong>{noSideCount}</strong> no side</span>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1032,14 +1036,18 @@ export default function InvitesPage() {
                             )}
                           </span>
                         )}
-                        {entry.side === "groom" && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">🤵 groom</span>
-                        )}
-                        {entry.side === "bride" && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">👰 bride</span>
-                        )}
-                        {entry.side === null && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">⚠️ no side</span>
+                        {importState.sideColumnIndex !== null && (
+                          <>
+                            {entry.side === "groom" && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">🤵 groom</span>
+                            )}
+                            {entry.side === "bride" && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">👰 bride</span>
+                            )}
+                            {entry.side === null && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">⚠️ no side</span>
+                            )}
+                          </>
                         )}
                         {entry.dupType === "existing" && (
                           <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-xs">
@@ -1056,7 +1064,7 @@ export default function InvitesPage() {
                   </div>
                 </div>
 
-                {noSideCount > 0 && (
+                {importState.sideColumnIndex !== null && noSideCount > 0 && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800 mt-2">
                     ⚠️ {noSideCount} guest{noSideCount > 1 ? "s have" : " has"} no side — they'll be imported but skipped during automated WhatsApp sending.
                   </div>
