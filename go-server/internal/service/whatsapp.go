@@ -230,7 +230,7 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 		return nil
 	}
 
-	qrChan, err := client.GetQRChannel(ctx)
+	qrChan, err := client.GetQRChannel(context.Background())
 	if err != nil {
 		return fmt.Errorf("GetQRChannel: %w", err)
 	}
