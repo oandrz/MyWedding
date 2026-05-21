@@ -113,6 +113,9 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		insert.Side = entry.Side
+		if insert.Side != nil && *insert.Side != "groom" && *insert.Side != "bride" {
+			insert.Side = nil // silently ignore invalid side values
+		}
 
 		inserts = append(inserts, insert)
 	}
@@ -309,8 +312,20 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sidePresent && !phonePresent {
-		// Side-only update.
+	if sidePresent {
+		// Side-only or phone+side (without name): update side, and also phone if present.
+		if phonePresent {
+			// Update phone first, then side.
+			_, err := h.Repo.UpdateInvitePhone(r.Context(), id, phone)
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					writeError(w, r, http.StatusNotFound, "Invite not found")
+					return
+				}
+				writeError(w, r, http.StatusInternalServerError, "Failed to update invite")
+				return
+			}
+		}
 		invite, err := h.Repo.UpdateInviteSide(r.Context(), id, side)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
