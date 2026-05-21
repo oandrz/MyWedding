@@ -162,6 +162,7 @@ All routes are under `/api/admin/` and require the existing admin session middle
 | `GET` | `/api/admin/wa/job/:id` | Returns job progress: total, sent, failed, currentInviteId, status |
 | `POST` | `/api/admin/wa/job/:id/pause` | Pauses a running job |
 | `POST` | `/api/admin/wa/job/:id/resume` | Resumes a paused job |
+| `DELETE` | `/api/admin/wa/job/:id` | Aborts a running or paused job. Required so the admin is never permanently blocked from starting a new send if a job is stuck paused. |
 | `POST` | `/api/admin/wa/send/:inviteId` | Sends to a single guest synchronously; accepts `{ "message": "..." }`. Returns success or error inline. Used for per-card retry. |
 
 ### `GET /api/admin/wa/sessions` response
