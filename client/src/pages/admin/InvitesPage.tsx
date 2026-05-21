@@ -129,10 +129,11 @@ export default function InvitesPage() {
   const [newInvitePhone, setNewInvitePhone] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  // Inline edit state (name + phone)
+  // Inline edit state (name + phone + side)
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
   const [editPhoneValue, setEditPhoneValue] = useState("");
+  const [editSide, setEditSide] = useState<string | null>(null);
 
   // Template editor state
   const [templateExpanded, setTemplateExpanded] = useState(false);
@@ -208,8 +209,8 @@ export default function InvitesPage() {
   });
 
   const updateInviteMutation = useMutation({
-    mutationFn: async ({ id, name, phone }: { id: number; name: string; phone: string | null }) => {
-      const response = await apiRequest("PATCH", `/api/admin/invites/${id}`, { name, phone });
+    mutationFn: async ({ id, name, phone, side }: { id: number; name: string; phone: string | null; side: string | null }) => {
+      const response = await apiRequest("PATCH", `/api/admin/invites/${id}`, { name, phone, side });
       return response.json();
     },
     onSuccess: () => {
@@ -524,7 +525,7 @@ export default function InvitesPage() {
       }
       phone = normalized;
     }
-    updateInviteMutation.mutate({ id: inviteId, name: trimmedName, phone });
+    updateInviteMutation.mutate({ id: inviteId, name: trimmedName, phone, side: editSide });
   };
 
   const insertTemplateVar = (varName: string) => {
@@ -619,6 +620,31 @@ export default function InvitesPage() {
     });
   };
 
+  const [isSendingOne, setIsSendingOne] = useState<number | null>(null);
+
+  const handleSendOne = async (invite: { id: number; name: string; phone?: string | null; code: string; side?: string | null }) => {
+    const message = renderTemplate(templateText, invite);
+    setIsSendingOne(invite.id);
+    try {
+      const resp = await apiRequest("POST", `/api/admin/wa/send/${invite.id}`, { message });
+      const data = await resp.json();
+      if (data.status === "sent") {
+        toast({ title: "Sent!", description: `WhatsApp message sent to ${invite.name}` });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
+      } else if (data.status === "skipped") {
+        toast({ title: "Skipped", description: `${invite.name} is not on WhatsApp`, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Send failed", variant: "destructive" });
+    } finally {
+      setIsSendingOne(null);
+    }
+  };
+
+  // Placeholder — Task 9 will replace this with the actual query
+  type WaSessionMap = Record<string, { status: string } | undefined>;
+  const waSessionStatus: WaSessionMap | undefined = undefined as WaSessionMap | undefined;
+
   // Refs for stable keyboard shortcut access to handlers
   const handleSendAndNextRef = useRef(handleSendAndNext);
   handleSendAndNextRef.current = handleSendAndNext;
@@ -665,7 +691,7 @@ export default function InvitesPage() {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
         <Card className="bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg">
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl font-bold text-white">{invites.length}</CardTitle>
@@ -694,6 +720,22 @@ export default function InvitesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl font-bold text-white">{withPhone - sentCount}</CardTitle>
             <CardDescription className="text-gray-200">WA Unsent</CardDescription>
+          </CardHeader>
+        </Card>
+        <Card className="bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-white">
+              {invites.filter(i => i.side === "groom").length}
+            </CardTitle>
+            <CardDescription className="text-blue-100">Groom Guests</CardDescription>
+          </CardHeader>
+        </Card>
+        <Card className="bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-white">
+              {invites.filter(i => i.side === "bride").length}
+            </CardTitle>
+            <CardDescription className="text-pink-100">Bride Guests</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -1273,6 +1315,25 @@ export default function InvitesPage() {
                             }}
                           />
                         </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-slate-500">Side:</span>
+                          <div className="flex border border-indigo-400 rounded overflow-hidden text-xs">
+                            {(["groom", "bride", null] as (string | null)[]).map(s => (
+                              <button
+                                key={s ?? "none"}
+                                type="button"
+                                onClick={() => setEditSide(s)}
+                                className={`px-3 py-1 transition-colors ${
+                                  editSide === s
+                                    ? "bg-indigo-100 text-indigo-700 font-semibold"
+                                    : "bg-white text-slate-400 hover:bg-slate-50"
+                                } ${s !== "groom" ? "border-l border-slate-200" : ""}`}
+                              >
+                                {s === "groom" ? "🤵 Groom" : s === "bride" ? "👰 Bride" : "None"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -1333,6 +1394,17 @@ export default function InvitesPage() {
                             </button>
                           )}
                         </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {invite.side === "groom" && (
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-200">🤵 Groom</Badge>
+                          )}
+                          {invite.side === "bride" && (
+                            <Badge className="bg-pink-100 text-pink-700 border-pink-200">👰 Bride</Badge>
+                          )}
+                          {!invite.side && (
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">⚠️ No side</Badge>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1370,6 +1442,21 @@ export default function InvitesPage() {
                         )}
                       </div>
 
+                      {editingId !== invite.id && invite.phone && invite.side && waSessionStatus?.[invite.side]?.status === "connected" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isSendingOne === invite.id}
+                          onClick={() => handleSendOne(invite)}
+                          title="Send WhatsApp invitation"
+                        >
+                          {isSendingOne === invite.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <MessageCircle className="h-3 w-3" />
+                          )}
+                        </Button>
+                      )}
                       {editingId !== invite.id && (
                         <Button
                           variant="ghost"
@@ -1378,6 +1465,7 @@ export default function InvitesPage() {
                             setEditingId(invite.id);
                             setEditNameValue(invite.name);
                             setEditPhoneValue(invite.phone ?? "");
+                            setEditSide(invite.side ?? null);
                           }}
                           className="text-gray-400 hover:text-blue-500"
                           title="Edit guest"
