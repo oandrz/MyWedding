@@ -1948,6 +1948,57 @@ func TestContract_InviteUnmarkWaSent(t *testing.T) {
 	}
 }
 
+func TestContract_InviteUpdate_Side(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create an invite
+	body := jsonBody(map[string]interface{}{"name": "Alice"})
+	req := adminRequest(http.MethodPost, "/api/admin/invites", body, cookie, csrf)
+	createResult := contractResponse(t, env, req, http.StatusCreated)
+	inviteID := int(createResult["invite"].(map[string]interface{})["id"].(float64))
+
+	// Update with name+phone+side
+	updateBody := jsonBody(map[string]interface{}{
+		"name":  "Alice Updated",
+		"phone": "+6281234567890",
+		"side":  "groom",
+	})
+	req2 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), updateBody, cookie, csrf)
+	result := contractResponse(t, env, req2, http.StatusOK)
+	invite := result["invite"].(map[string]interface{})
+	if invite["side"] != "groom" {
+		t.Fatalf("expected side=groom, got %v", invite["side"])
+	}
+
+	// Update side only
+	sideOnly := jsonBody(map[string]interface{}{"side": "bride"})
+	req3 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), sideOnly, cookie, csrf)
+	result3 := contractResponse(t, env, req3, http.StatusOK)
+	invite3 := result3["invite"].(map[string]interface{})
+	if invite3["side"] != "bride" {
+		t.Fatalf("expected side=bride, got %v", invite3["side"])
+	}
+
+	// Clear side with null
+	clearBody := jsonBody(map[string]interface{}{"side": nil})
+	req4 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), clearBody, cookie, csrf)
+	result4 := contractResponse(t, env, req4, http.StatusOK)
+	invite4 := result4["invite"].(map[string]interface{})
+	if _, ok := invite4["side"]; ok {
+		t.Fatalf("expected side to be absent after null clear, got %v", invite4["side"])
+	}
+
+	// Update phone+side together (no name)
+	phoneSideBody := jsonBody(map[string]interface{}{"phone": "+6287654321098", "side": "groom"})
+	req5 := adminRequest(http.MethodPatch, fmt.Sprintf("/api/admin/invites/%d", inviteID), phoneSideBody, cookie, csrf)
+	result5 := contractResponse(t, env, req5, http.StatusOK)
+	invite5 := result5["invite"].(map[string]interface{})
+	if invite5["side"] != "groom" {
+		t.Fatalf("expected side=groom after phone+side update, got %v", invite5["side"])
+	}
+}
+
 func TestContract_InviteGetByCode_NoPII(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrf := adminLogin(t, env)

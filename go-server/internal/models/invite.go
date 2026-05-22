@@ -15,6 +15,7 @@ type Invite struct {
 	Code      string  `json:"code"`
 	RsvpID    *int    `json:"rsvpId"`
 	Phone     *string `json:"phone,omitempty"`
+	Side      *string `json:"side,omitempty"`
 	WaSentAt  *string `json:"waSentAt,omitempty"`
 	CreatedAt string  `json:"createdAt"`
 	Rsvp      *Rsvp   `json:"rsvp,omitempty"`
@@ -24,6 +25,7 @@ type Invite struct {
 type InsertInvite struct {
 	Name  string  `json:"name"`
 	Phone *string `json:"phone"`
+	Side  *string `json:"side"`
 }
 
 // BulkCreateInvitesRequest is the request body for bulk invite creation.
@@ -36,6 +38,7 @@ type BulkCreateInvitesRequest struct {
 type BulkInviteEntry struct {
 	Name  string  `json:"name"`
 	Phone *string `json:"phone"`
+	Side  *string `json:"side"`
 }
 
 // GenerateInviteCode creates a random 5-character lowercase alphanumeric code.

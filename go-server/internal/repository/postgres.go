@@ -781,11 +781,11 @@ func (r *PostgresRepository) CreateInvite(ctx context.Context, data models.Inser
 		var createdAt time.Time
 		var waSentAt *time.Time
 		err := r.pool.QueryRow(ctx,
-			`INSERT INTO invites (name, code, phone)
-			 VALUES ($1, $2, $3)
-			 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
-			data.Name, code, data.Phone,
-		).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+			`INSERT INTO invites (name, code, phone, side)
+			 VALUES ($1, $2, $3, $4)
+			 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
+			data.Name, code, data.Phone, data.Side,
+		).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
 		if err != nil {
 			if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 				continue
@@ -822,11 +822,11 @@ func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []model
 
 			var waSentAt *time.Time
 			err := tx.QueryRow(ctx,
-				`INSERT INTO invites (name, code, phone)
-				 VALUES ($1, $2, $3)
-				 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
-				d.Name, code, d.Phone,
-			).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+				`INSERT INTO invites (name, code, phone, side)
+				 VALUES ($1, $2, $3, $4)
+				 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
+				d.Name, code, d.Phone, d.Side,
+			).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
 			if err != nil {
 				if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 					if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+sp); err != nil {
@@ -860,7 +860,7 @@ func (r *PostgresRepository) CreateInvitesBulk(ctx context.Context, data []model
 
 func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.wa_sent_at,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.side, i.wa_sent_at,
 		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
 		 FROM invites i
 		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
@@ -879,7 +879,7 @@ func (r *PostgresRepository) GetInvites(ctx context.Context) ([]models.Invite, e
 		var rsvpName, rsvpEmail, rsvpAttendanceType *string
 
 		if err := rows.Scan(
-			&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt,
+			&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt,
 			&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
 		); err != nil {
 			return nil, err
@@ -909,13 +909,13 @@ func (r *PostgresRepository) GetInviteByID(ctx context.Context, id int) (*models
 	var rsvpName, rsvpEmail, rsvpAttendanceType *string
 
 	err := r.pool.QueryRow(ctx,
-		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.wa_sent_at,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.side, i.wa_sent_at,
 		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
 		 FROM invites i
 		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
 		 WHERE i.id = $1`, id,
 	).Scan(
-		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt,
+		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt,
 		&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -947,13 +947,13 @@ func (r *PostgresRepository) GetInviteByCode(ctx context.Context, code string) (
 	var rsvpName, rsvpEmail, rsvpAttendanceType *string
 
 	err := r.pool.QueryRow(ctx,
-		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.wa_sent_at,
+		`SELECT i.id, i.name, i.code, i.rsvp_id, i.created_at, i.phone, i.side, i.wa_sent_at,
 		        rv.id, rv.name, rv.email, rv.attendance_type, rv.guest_count
 		 FROM invites i
 		 LEFT JOIN rsvp rv ON i.rsvp_id = rv.id
 		 WHERE i.code = $1`, code,
 	).Scan(
-		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt,
+		&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt,
 		&rsvpID, &rsvpName, &rsvpEmail, &rsvpAttendanceType, &rsvpGuestCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -1008,9 +1008,9 @@ func (r *PostgresRepository) UpdateInvitePhone(ctx context.Context, id int, phon
 	var waSentAt *time.Time
 	err := r.pool.QueryRow(ctx,
 		`UPDATE invites SET phone = $1 WHERE id = $2
-		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
 		phone, id,
-	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("invite not found")
 	}
@@ -1022,15 +1022,35 @@ func (r *PostgresRepository) UpdateInvitePhone(ctx context.Context, id int, phon
 	return &inv, nil
 }
 
-func (r *PostgresRepository) UpdateInvite(ctx context.Context, id int, name string, phone *string) (*models.Invite, error) {
+func (r *PostgresRepository) UpdateInvite(ctx context.Context, id int, name string, phone *string, side *string) (*models.Invite, error) {
 	var inv models.Invite
 	var createdAt time.Time
 	var waSentAt *time.Time
 	err := r.pool.QueryRow(ctx,
-		`UPDATE invites SET name = $2, phone = $3 WHERE id = $1
-		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
-		id, name, phone,
-	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+		`UPDATE invites SET name = $2, phone = $3, side = $4 WHERE id = $1
+		 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
+		id, name, phone, side,
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("invite not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.CreatedAt = createdAt.Format(time.RFC3339)
+	inv.WaSentAt = scanWaSentAt(waSentAt)
+	return &inv, nil
+}
+
+func (r *PostgresRepository) UpdateInviteSide(ctx context.Context, id int, side *string) (*models.Invite, error) {
+	var inv models.Invite
+	var createdAt time.Time
+	var waSentAt *time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE invites SET side = $2 WHERE id = $1
+		 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
+		id, side,
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("invite not found")
 	}
@@ -1048,9 +1068,9 @@ func (r *PostgresRepository) MarkInviteWaSent(ctx context.Context, id int) (*mod
 	var waSentAt *time.Time
 	err := r.pool.QueryRow(ctx,
 		`UPDATE invites SET wa_sent_at = NOW() WHERE id = $1
-		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
 		id,
-	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("invite not found")
 	}
@@ -1068,9 +1088,9 @@ func (r *PostgresRepository) UnmarkInviteWaSent(ctx context.Context, id int) (*m
 	var waSentAt *time.Time
 	err := r.pool.QueryRow(ctx,
 		`UPDATE invites SET wa_sent_at = NULL WHERE id = $1
-		 RETURNING id, name, code, rsvp_id, created_at, phone, wa_sent_at`,
+		 RETURNING id, name, code, rsvp_id, created_at, phone, side, wa_sent_at`,
 		id,
-	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &waSentAt)
+	).Scan(&inv.ID, &inv.Name, &inv.Code, &inv.RsvpID, &createdAt, &inv.Phone, &inv.Side, &waSentAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("invite not found")
 	}

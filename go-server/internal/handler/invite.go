@@ -112,6 +112,11 @@ func (h *InviteHandler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		insert.Side = entry.Side
+		if insert.Side != nil && *insert.Side != "groom" && *insert.Side != "bride" {
+			insert.Side = nil // silently ignore invalid side values
+		}
+
 		inserts = append(inserts, insert)
 	}
 
@@ -210,7 +215,8 @@ func (h *InviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Update handles PATCH /api/admin/invites/{id}.
 // Partial update — uses json.RawMessage to distinguish between "phone": null (clear) and absent phone.
-// When "name" is present, "phone" must also be present; both are updated via UpdateInvite.
+// When "name" is present, "phone" must also be present; both are updated via UpdateInvite (side optional).
+// When only "side" is present, UpdateInviteSide is used.
 // When only "phone" is present, UpdateInvitePhone is used (backward compat).
 func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
@@ -228,13 +234,14 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	nameRaw, namePresent := raw["name"]
 	phoneRaw, phonePresent := raw["phone"]
+	sideRaw, sidePresent := raw["side"]
 
-	if !namePresent && !phonePresent {
+	if !namePresent && !phonePresent && !sidePresent {
 		writeError(w, r, http.StatusBadRequest, "No updatable fields provided")
 		return
 	}
 
-	// Parse phone (shared by both paths).
+	// Parse phone (shared by name+phone path).
 	var phone *string
 	if phonePresent {
 		if string(phoneRaw) == "null" {
@@ -256,6 +263,27 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Parse side.
+	var side *string
+	if sidePresent {
+		if string(sideRaw) == "null" {
+			side = nil
+		} else {
+			var sideVal string
+			if err := json.Unmarshal(sideRaw, &sideVal); err != nil {
+				writeError(w, r, http.StatusBadRequest, "Invalid side value")
+				return
+			}
+			if sideVal != "groom" && sideVal != "bride" && sideVal != "" {
+				writeError(w, r, http.StatusBadRequest, "side must be 'groom', 'bride', or null")
+				return
+			}
+			if sideVal != "" {
+				side = &sideVal
+			}
+		}
+	}
+
 	if namePresent {
 		if !phonePresent {
 			writeError(w, r, http.StatusBadRequest, "phone is required when name is provided")
@@ -271,7 +299,34 @@ func (h *InviteHandler) Update(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, http.StatusBadRequest, "name cannot be empty")
 			return
 		}
-		invite, err := h.Repo.UpdateInvite(r.Context(), id, nameVal, phone)
+		invite, err := h.Repo.UpdateInvite(r.Context(), id, nameVal, phone, side)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				writeError(w, r, http.StatusNotFound, "Invite not found")
+				return
+			}
+			writeError(w, r, http.StatusInternalServerError, "Failed to update invite")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"invite": invite})
+		return
+	}
+
+	if sidePresent {
+		// Side-only or phone+side (without name): update side, and also phone if present.
+		if phonePresent {
+			// Update phone first, then side.
+			_, err := h.Repo.UpdateInvitePhone(r.Context(), id, phone)
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					writeError(w, r, http.StatusNotFound, "Invite not found")
+					return
+				}
+				writeError(w, r, http.StatusInternalServerError, "Failed to update invite")
+				return
+			}
+		}
+		invite, err := h.Repo.UpdateInviteSide(r.Context(), id, side)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, r, http.StatusNotFound, "Invite not found")

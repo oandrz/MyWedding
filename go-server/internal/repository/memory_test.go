@@ -1680,6 +1680,61 @@ func TestMemory_CreateInvitesBulk_WithPhone(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Invite side field tests
+// ---------------------------------------------------------------------------
+
+func TestInvite_SideField(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := context.Background()
+
+	groomSide := "groom"
+	inv, err := repo.CreateInvite(ctx, models.InsertInvite{Name: "Budi", Side: &groomSide})
+	if err != nil {
+		t.Fatalf("CreateInvite: %v", err)
+	}
+	if inv.Side == nil || *inv.Side != "groom" {
+		t.Fatalf("expected side=groom, got %v", inv.Side)
+	}
+
+	brideSide := "bride"
+	updated, err := repo.UpdateInviteSide(ctx, inv.ID, &brideSide)
+	if err != nil {
+		t.Fatalf("UpdateInviteSide: %v", err)
+	}
+	if updated.Side == nil || *updated.Side != "bride" {
+		t.Fatalf("expected side=bride after update, got %v", updated.Side)
+	}
+
+	updated2, err := repo.UpdateInvite(ctx, inv.ID, "Budi Santoso", nil, nil)
+	if err != nil {
+		t.Fatalf("UpdateInvite: %v", err)
+	}
+	if updated2.Side != nil {
+		t.Fatalf("expected side cleared after UpdateInvite with nil side, got %v", updated2.Side)
+	}
+}
+
+func TestInvite_BulkCreateWithSide(t *testing.T) {
+	repo := NewMemoryRepository()
+	ctx := context.Background()
+
+	groomSide := "groom"
+	invites, err := repo.CreateInvitesBulk(ctx, []models.InsertInvite{
+		{Name: "Alice", Side: &groomSide},
+		{Name: "Bob"},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvitesBulk: %v", err)
+	}
+	if invites[0].Side == nil || *invites[0].Side != "groom" {
+		t.Fatalf("expected Alice side=groom, got %v", invites[0].Side)
+	}
+	if invites[1].Side != nil {
+		t.Fatalf("expected Bob side=nil, got %v", invites[1].Side)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Interface compliance — compile-time check
 // ---------------------------------------------------------------------------
 
