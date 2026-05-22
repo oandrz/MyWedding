@@ -17,11 +17,31 @@ import (
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
+	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
 )
+
+// waLogAdapter bridges slog to the whatsmeow Logger interface.
+type waLogAdapter struct{ sub string }
+
+func (l waLogAdapter) Debugf(msg string, args ...interface{}) {
+	slog.Debug(fmt.Sprintf(msg, args...), "wa", l.sub)
+}
+func (l waLogAdapter) Infof(msg string, args ...interface{}) {
+	slog.Info(fmt.Sprintf(msg, args...), "wa", l.sub)
+}
+func (l waLogAdapter) Warnf(msg string, args ...interface{}) {
+	slog.Warn(fmt.Sprintf(msg, args...), "wa", l.sub)
+}
+func (l waLogAdapter) Errorf(msg string, args ...interface{}) {
+	slog.Error(fmt.Sprintf(msg, args...), "wa", l.sub)
+}
+func (l waLogAdapter) Sub(module string) waLog.Logger {
+	return waLogAdapter{sub: l.sub + "/" + module}
+}
 
 // Session status constants.
 const (
@@ -134,7 +154,7 @@ func (s *WhatsAppService) Init(ctx context.Context, databaseURL string) error {
 		return fmt.Errorf("whatsapp sqlstore open: %w", err)
 	}
 
-	container := sqlstore.NewWithDB(db, "postgres", nil)
+	container := sqlstore.NewWithDB(db, "postgres", waLogAdapter{sub: "store"})
 	// Run whatsmeow's own DB migrations to create/upgrade whatsmeow_* tables.
 	if err := container.Upgrade(ctx); err != nil {
 		return fmt.Errorf("whatsmeow sqlstore upgrade: %w", err)
@@ -159,7 +179,7 @@ func (s *WhatsAppService) Init(ctx context.Context, databaseURL string) error {
 			slog.Warn("WA restore: no device in store", "side", side, "err", err)
 			continue
 		}
-		client := whatsmeow.NewClient(deviceStore, nil)
+		client := whatsmeow.NewClient(deviceStore, waLogAdapter{sub: side})
 		if err := client.Connect(); err != nil {
 			slog.Warn("WA restore: connect failed", "side", side, "err", err)
 			continue
@@ -245,7 +265,7 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 
 	// Always create a fresh device for each new pairing attempt.
 	deviceStore := s.store.NewDevice()
-	client = whatsmeow.NewClient(deviceStore, nil)
+	client = whatsmeow.NewClient(deviceStore, waLogAdapter{sub: side})
 	s.setClient(side, client)
 
 	qrChan, err := client.GetQRChannel(context.Background())
