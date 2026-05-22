@@ -148,18 +148,24 @@ func (s *WhatsAppService) Init(ctx context.Context, databaseURL string) error {
 		if setting == nil {
 			continue
 		}
+		slog.Info("WA restore attempt", "side", side, "jid", setting.SettingValue)
 		jid, err := types.ParseJID(setting.SettingValue)
 		if err != nil {
+			slog.Warn("WA restore: invalid JID", "side", side, "err", err)
 			continue
 		}
 		deviceStore, err := container.GetDevice(ctx, jid)
 		if err != nil || deviceStore == nil {
+			slog.Warn("WA restore: no device in store", "side", side, "err", err)
 			continue
 		}
 		client := whatsmeow.NewClient(deviceStore, nil)
-		if err := client.Connect(); err == nil {
-			s.setClient(side, client)
+		if err := client.Connect(); err != nil {
+			slog.Warn("WA restore: connect failed", "side", side, "err", err)
+			continue
 		}
+		slog.Info("WA restore: success", "side", side)
+		s.setClient(side, client)
 	}
 	return nil
 }
@@ -249,6 +255,7 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 
 	go func() {
 		for evt := range qrChan {
+			slog.Info("WA QR event", "side", side, "event", evt.Event, "err", evt.Error)
 			switch evt.Event {
 			case "code":
 				png, err := qrcode.Encode(evt.Code, qrcode.Medium, 256)
@@ -257,6 +264,7 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 					s.setQR(side, "data:image/png;base64,"+b64)
 				}
 			case "success":
+				slog.Info("WA pairing success", "side", side, "hasStoreID", client.Store.ID != nil, "loggedIn", client.IsLoggedIn())
 				s.setQR(side, "")
 				if client.Store.ID != nil {
 					jid := client.Store.ID.String()
@@ -268,12 +276,21 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 					}})
 				}
 			case "timeout":
+				slog.Warn("WA pairing timeout", "side", side)
 				s.setQR(side, "")
+			default:
+				slog.Warn("WA unhandled qr event", "side", side, "event", evt.Event)
 			}
 		}
+		slog.Info("WA QR goroutine exited", "side", side)
 	}()
 
-	return client.Connect()
+	if err := client.Connect(); err != nil {
+		slog.Error("WA client.Connect failed", "side", side, "err", err)
+		return err
+	}
+	slog.Info("WA client.Connect returned", "side", side)
+	return nil
 }
 
 // Disconnect logs out and clears the stored session for a side.
