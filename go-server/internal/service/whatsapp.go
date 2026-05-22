@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"regexp"
 	"sync"
@@ -393,11 +394,14 @@ func (s *WhatsAppService) runJob(job *SendJob, msgs []WAMessage, delayMin, delay
 		}
 
 		results, err := client.IsOnWhatsApp(job.ctx, []string{jidStr})
-		if err != nil || len(results) == 0 || !results[0].IsIn {
-			job.mu.Lock()
-			job.Skipped++
-			job.mu.Unlock()
-			continue
+		if err != nil {
+			slog.Warn("IsOnWhatsApp error, attempting send anyway", "jid", jidStr, "err", err)
+		} else if len(results) == 0 || !results[0].IsIn {
+			returnedJID := ""
+			if len(results) > 0 {
+				returnedJID = results[0].JID.String()
+			}
+			slog.Warn("IsOnWhatsApp not registered, attempting send anyway", "jid", jidStr, "returnedJID", returnedJID)
 		}
 
 		_, err = client.SendMessage(job.ctx, jid, &waProto.Message{
@@ -553,10 +557,13 @@ func (s *WhatsAppService) SendOne(ctx context.Context, inviteID int, message str
 
 	results, err := client.IsOnWhatsApp(ctx, []string{jidStr})
 	if err != nil {
-		return fmt.Errorf("IsOnWhatsApp check: %w", err)
-	}
-	if len(results) == 0 || !results[0].IsIn {
-		return fmt.Errorf("not_on_whatsapp")
+		slog.Warn("IsOnWhatsApp error, attempting send anyway", "jid", jidStr, "err", err)
+	} else if len(results) == 0 || !results[0].IsIn {
+		returnedJID := ""
+		if len(results) > 0 {
+			returnedJID = results[0].JID.String()
+		}
+		slog.Warn("IsOnWhatsApp not registered, attempting send anyway", "jid", jidStr, "returnedJID", returnedJID)
 	}
 
 	_, err = client.SendMessage(ctx, jid, &waProto.Message{
