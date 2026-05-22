@@ -273,13 +273,19 @@ func (s *WhatsAppService) startQRSession(side string) error {
 		slog.Debug("WA event", "side", side, "type", fmt.Sprintf("%T", evt))
 	})
 
-	qrChan, err := client.GetQRChannel(context.Background())
+	// Use a cancellable context so the refresh timer can close qrChan directly via
+	// emitQRs's ctx.Done() path, without relying on the event-dispatch chain
+	// (which closes before events.Disconnected is delivered when Disconnect is called).
+	ctx, cancel := context.WithCancel(context.Background())
+	qrChan, err := client.GetQRChannel(ctx)
 	if err != nil {
+		cancel()
 		return fmt.Errorf("GetQRChannel: %w", err)
 	}
-	go s.handleQRLoop(side, client, qrChan)
+	go s.handleQRLoop(side, client, qrChan, cancel)
 
 	if err := client.Connect(); err != nil {
+		cancel()
 		slog.Error("WA client.Connect failed", "side", side, "err", err)
 		return err
 	}
@@ -287,10 +293,14 @@ func (s *WhatsAppService) startQRSession(side string) error {
 	return nil
 }
 
-// handleQRLoop processes QR channel events and auto-refreshes the session to stay ahead
-// of WhatsApp's ~30s companion_reg_refresh notification, which invalidates QR refs and
-// causes the phone to show no interaction when scanning a stale code.
-func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qrChan <-chan whatsmeow.QRChannelItem) {
+// handleQRLoop processes QR channel events. It arms a 15-second refresh timer on the first
+// QR code so we reconnect before WhatsApp's companion_reg_refresh notification (~17s)
+// invalidates the refs — a stale ref causes the phone to show no interaction when scanning.
+//
+// Terminal events (success, pairing errors, phone errors) return early with no reconnect.
+// Non-terminal exits (timeout, context cancel from refresh timer) fall through to auto-reconnect.
+func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qrChan <-chan whatsmeow.QRChannelItem, cancelSession context.CancelFunc) {
+	defer cancelSession()
 	defer slog.Info("WA QR goroutine exited", "side", side)
 
 	var (
@@ -312,15 +322,13 @@ func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qr
 				b64 := base64.StdEncoding.EncodeToString(png)
 				s.setQR(side, "data:image/png;base64,"+b64)
 			}
-			// Arm refresh timer once, on first QR code displayed. Firing at 25s ensures we
-			// reconnect before the companion_reg_refresh notification (~30s) invalidates refs.
+			// Arm once. Cancelling the context closes qrChan via emitQRs's ctx.Done() path,
+			// which is reliable — unlike client.Disconnect() which races with the handler queue.
 			if !timerArmed {
 				timerArmed = true
-				refreshTimer = time.AfterFunc(25*time.Second, func() {
-					slog.Info("WA QR refresh: disconnecting for fresh refs", "side", side)
-					// Disconnecting triggers events.Disconnected → qrChan gets QRChannelTimeout
-					// → this goroutine's timeout case runs → auto-reconnects.
-					client.Disconnect()
+				refreshTimer = time.AfterFunc(15*time.Second, func() {
+					slog.Info("WA QR refresh: cancelling session for fresh refs", "side", side)
+					cancelSession()
 				})
 			}
 
@@ -339,20 +347,7 @@ func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qr
 					SettingType:  "string",
 				}})
 			}
-			return
-
-		case "timeout":
-			if refreshTimer != nil {
-				refreshTimer.Stop()
-			}
-			slog.Info("WA pairing timeout, auto-reconnecting for fresh session", "side", side)
-			s.setQR(side, "")
-			go func() {
-				if err := s.startQRSession(side); err != nil {
-					slog.Error("WA QR auto-reconnect failed", "side", side, "err", err)
-				}
-			}()
-			return
+			return // success — no auto-reconnect
 
 		case "error":
 			if refreshTimer != nil {
@@ -360,6 +355,7 @@ func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qr
 			}
 			slog.Error("WA pairing error", "side", side, "err", evt.Error)
 			s.setQR(side, "")
+			return // permanent error — no auto-reconnect
 
 		case "err-scanned-without-multidevice":
 			if refreshTimer != nil {
@@ -367,12 +363,45 @@ func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qr
 			}
 			slog.Warn("WA QR scanned but phone does not have multi-device enabled", "side", side)
 			s.setQR(side, "")
+			return // user must enable multi-device on phone — no auto-reconnect
+
+		case "err-client-outdated":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Error("WA client version rejected by server, update whatsmeow", "side", side)
+			s.setQR(side, "")
+			return // library update required — no auto-reconnect
+
+		case "err-unexpected-state":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Warn("WA unexpected session state during QR pairing", "side", side)
+			s.setQR(side, "")
+			return // unexpected state — no auto-reconnect
+
+		case "timeout":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Info("WA QR all refs exhausted (natural timeout)", "side", side)
+			s.setQR(side, "")
+			// fall through: qrChan is closed, loop exits below → auto-reconnect
 
 		default:
 			slog.Warn("WA unhandled qr event", "side", side, "event", evt.Event)
-			s.setQR(side, "")
 		}
 	}
+
+	// qrChan closed: either natural timeout (all refs exhausted) or context cancelled (15s refresh).
+	// In both cases reconnect to obtain fresh refs.
+	slog.Info("WA QR session ended, starting fresh session", "side", side)
+	go func() {
+		if err := s.startQRSession(side); err != nil {
+			slog.Error("WA QR auto-reconnect failed", "side", side, "err", err)
+		}
+	}()
 }
 
 // Disconnect logs out and clears the stored session for a side.
