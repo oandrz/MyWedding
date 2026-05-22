@@ -246,64 +246,38 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 	if s.store == nil {
 		return fmt.Errorf("whatsapp service not initialised")
 	}
-
 	client := s.clientFor(side)
 	if client != nil && client.IsConnected() && client.IsLoggedIn() {
 		return nil
 	}
-
 	// Don't start a new QR flow if one is already in progress.
 	if qr := s.getQR(side); qr != "" {
 		return nil
 	}
+	return s.startQRSession(side)
+}
 
-	// Disconnect any stale client before starting a fresh pairing attempt.
-	// whatsmeow's GetQRChannel can only be used once per client instance.
-	if client != nil {
+// startQRSession disconnects any existing client, creates a fresh device, and begins QR pairing.
+// Unlike Connect, this bypasses the "QR already showing" guard, allowing internal auto-refresh.
+func (s *WhatsAppService) startQRSession(side string) error {
+	if client := s.clientFor(side); client != nil {
 		client.Disconnect()
 	}
 
-	// Always create a fresh device for each new pairing attempt.
 	deviceStore := s.store.NewDevice()
-	client = whatsmeow.NewClient(deviceStore, waLogAdapter{sub: side})
+	client := whatsmeow.NewClient(deviceStore, waLogAdapter{sub: side})
 	s.setClient(side, client)
+
+	// Log all whatsmeow events for diagnostics (debug level to avoid noise in production).
+	client.AddEventHandler(func(evt interface{}) {
+		slog.Debug("WA event", "side", side, "type", fmt.Sprintf("%T", evt))
+	})
 
 	qrChan, err := client.GetQRChannel(context.Background())
 	if err != nil {
 		return fmt.Errorf("GetQRChannel: %w", err)
 	}
-
-	go func() {
-		for evt := range qrChan {
-			slog.Info("WA QR event", "side", side, "event", evt.Event, "err", evt.Error)
-			switch evt.Event {
-			case "code":
-				png, err := qrcode.Encode(evt.Code, qrcode.Medium, 256)
-				if err == nil {
-					b64 := base64.StdEncoding.EncodeToString(png)
-					s.setQR(side, "data:image/png;base64,"+b64)
-				}
-			case "success":
-				slog.Info("WA pairing success", "side", side, "hasStoreID", client.Store.ID != nil, "loggedIn", client.IsLoggedIn())
-				s.setQR(side, "")
-				if client.Store.ID != nil {
-					jid := client.Store.ID.String()
-					key := "wa_" + side + "_jid"
-					s.repo.UpsertAppSettings(context.Background(), []models.InsertAppSetting{{
-						SettingKey:   key,
-						SettingValue: jid,
-						SettingType:  "string",
-					}})
-				}
-			case "timeout":
-				slog.Warn("WA pairing timeout", "side", side)
-				s.setQR(side, "")
-			default:
-				slog.Warn("WA unhandled qr event", "side", side, "event", evt.Event)
-			}
-		}
-		slog.Info("WA QR goroutine exited", "side", side)
-	}()
+	go s.handleQRLoop(side, client, qrChan)
 
 	if err := client.Connect(); err != nil {
 		slog.Error("WA client.Connect failed", "side", side, "err", err)
@@ -311,6 +285,94 @@ func (s *WhatsAppService) Connect(ctx context.Context, side string) error {
 	}
 	slog.Info("WA client.Connect returned", "side", side)
 	return nil
+}
+
+// handleQRLoop processes QR channel events and auto-refreshes the session to stay ahead
+// of WhatsApp's ~30s companion_reg_refresh notification, which invalidates QR refs and
+// causes the phone to show no interaction when scanning a stale code.
+func (s *WhatsAppService) handleQRLoop(side string, client *whatsmeow.Client, qrChan <-chan whatsmeow.QRChannelItem) {
+	defer slog.Info("WA QR goroutine exited", "side", side)
+
+	var (
+		refreshTimer *time.Timer
+		timerArmed   bool
+	)
+	defer func() {
+		if refreshTimer != nil {
+			refreshTimer.Stop()
+		}
+	}()
+
+	for evt := range qrChan {
+		slog.Info("WA QR event", "side", side, "event", evt.Event, "err", evt.Error)
+		switch evt.Event {
+		case "code":
+			png, encErr := qrcode.Encode(evt.Code, qrcode.Medium, 256)
+			if encErr == nil {
+				b64 := base64.StdEncoding.EncodeToString(png)
+				s.setQR(side, "data:image/png;base64,"+b64)
+			}
+			// Arm refresh timer once, on first QR code displayed. Firing at 25s ensures we
+			// reconnect before the companion_reg_refresh notification (~30s) invalidates refs.
+			if !timerArmed {
+				timerArmed = true
+				refreshTimer = time.AfterFunc(25*time.Second, func() {
+					slog.Info("WA QR refresh: disconnecting for fresh refs", "side", side)
+					// Disconnecting triggers events.Disconnected → qrChan gets QRChannelTimeout
+					// → this goroutine's timeout case runs → auto-reconnects.
+					client.Disconnect()
+				})
+			}
+
+		case "success":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Info("WA pairing success", "side", side, "hasStoreID", client.Store.ID != nil, "loggedIn", client.IsLoggedIn())
+			s.setQR(side, "")
+			if client.Store.ID != nil {
+				jid := client.Store.ID.String()
+				key := "wa_" + side + "_jid"
+				s.repo.UpsertAppSettings(context.Background(), []models.InsertAppSetting{{
+					SettingKey:   key,
+					SettingValue: jid,
+					SettingType:  "string",
+				}})
+			}
+			return
+
+		case "timeout":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Info("WA pairing timeout, auto-reconnecting for fresh session", "side", side)
+			s.setQR(side, "")
+			go func() {
+				if err := s.startQRSession(side); err != nil {
+					slog.Error("WA QR auto-reconnect failed", "side", side, "err", err)
+				}
+			}()
+			return
+
+		case "error":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Error("WA pairing error", "side", side, "err", evt.Error)
+			s.setQR(side, "")
+
+		case "err-scanned-without-multidevice":
+			if refreshTimer != nil {
+				refreshTimer.Stop()
+			}
+			slog.Warn("WA QR scanned but phone does not have multi-device enabled", "side", side)
+			s.setQR(side, "")
+
+		default:
+			slog.Warn("WA unhandled qr event", "side", side, "event", evt.Event)
+			s.setQR(side, "")
+		}
+	}
 }
 
 // Disconnect logs out and clears the stored session for a side.
