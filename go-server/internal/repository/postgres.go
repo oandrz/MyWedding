@@ -77,11 +77,11 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user models.InsertU
 func (r *PostgresRepository) CreateRsvp(ctx context.Context, data models.InsertRsvp) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO rsvp (name, email, attendance_type, guest_count)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, name, email, attendance_type, guest_count`,
-		data.Name, data.Email, data.AttendanceType, data.GuestCount,
-	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.AttendanceType, &rv.GuestCount)
+		`INSERT INTO rsvp (name, email, phone, attendance_type, guest_count)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id, name, email, phone, attendance_type, guest_count`,
+		data.Name, data.Email, data.Phone, data.AttendanceType, data.GuestCount,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Phone, &rv.AttendanceType, &rv.GuestCount)
 	if err != nil {
 		return nil, err
 	}
@@ -91,11 +91,11 @@ func (r *PostgresRepository) CreateRsvp(ctx context.Context, data models.InsertR
 func (r *PostgresRepository) UpdateRsvp(ctx context.Context, id int, data models.InsertRsvp) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`UPDATE rsvp SET name = $1, email = $2, attendance_type = $3, guest_count = $4
-		 WHERE id = $5
-		 RETURNING id, name, email, attendance_type, guest_count`,
-		data.Name, data.Email, data.AttendanceType, data.GuestCount, id,
-	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.AttendanceType, &rv.GuestCount)
+		`UPDATE rsvp SET name = $1, email = $2, phone = $3, attendance_type = $4, guest_count = $5
+		 WHERE id = $6
+		 RETURNING id, name, email, phone, attendance_type, guest_count`,
+		data.Name, data.Email, data.Phone, data.AttendanceType, data.GuestCount, id,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Phone, &rv.AttendanceType, &rv.GuestCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -107,7 +107,7 @@ func (r *PostgresRepository) UpdateRsvp(ctx context.Context, id int, data models
 
 func (r *PostgresRepository) GetRsvps(ctx context.Context) ([]models.Rsvp, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, name, email, attendance_type, guest_count FROM rsvp`)
+		`SELECT id, name, email, phone, attendance_type, guest_count FROM rsvp`)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (r *PostgresRepository) GetRsvps(ctx context.Context) ([]models.Rsvp, error
 	result := make([]models.Rsvp, 0)
 	for rows.Next() {
 		var rv models.Rsvp
-		if err := rows.Scan(&rv.ID, &rv.Name, &rv.Email, &rv.AttendanceType, &rv.GuestCount); err != nil {
+		if err := rows.Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Phone, &rv.AttendanceType, &rv.GuestCount); err != nil {
 			return nil, err
 		}
 		result = append(result, rv)
@@ -127,8 +127,22 @@ func (r *PostgresRepository) GetRsvps(ctx context.Context) ([]models.Rsvp, error
 func (r *PostgresRepository) GetRsvpByEmail(ctx context.Context, email string) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, email, attendance_type, guest_count FROM rsvp WHERE email = $1`, email,
-	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.AttendanceType, &rv.GuestCount)
+		`SELECT id, name, email, phone, attendance_type, guest_count FROM rsvp WHERE email = $1`, email,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Phone, &rv.AttendanceType, &rv.GuestCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rv, nil
+}
+
+func (r *PostgresRepository) GetRsvpByPhone(ctx context.Context, phone string) (*models.Rsvp, error) {
+	var rv models.Rsvp
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, name, email, phone, attendance_type, guest_count FROM rsvp WHERE phone = $1`, phone,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Phone, &rv.AttendanceType, &rv.GuestCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -141,8 +155,8 @@ func (r *PostgresRepository) GetRsvpByEmail(ctx context.Context, email string) (
 func (r *PostgresRepository) GetRsvpByName(ctx context.Context, name string) (*models.Rsvp, error) {
 	var rv models.Rsvp
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, email, attendance_type, guest_count FROM rsvp WHERE name = $1`, name,
-	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.AttendanceType, &rv.GuestCount)
+		`SELECT id, name, email, phone, attendance_type, guest_count FROM rsvp WHERE name = $1`, name,
+	).Scan(&rv.ID, &rv.Name, &rv.Email, &rv.Phone, &rv.AttendanceType, &rv.GuestCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

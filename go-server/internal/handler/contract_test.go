@@ -11,12 +11,15 @@ package handler_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/andreasronaldo/wedding-server/internal/models"
 )
 
 // ---------------------------------------------------------------------------
@@ -171,11 +174,12 @@ func mapKeys(m map[string]interface{}) []string {
 	return keys
 }
 
-// createRsvp is a shortcut to POST /api/rsvp for setup.
-func createRsvp(t *testing.T, env *testEnv, name, email string, attendanceType string, guestCount *int) {
+// createRsvp is a shortcut to POST /api/rsvp for setup. Submits via the phone-based
+// (no-code) flow using a strict E.164 phone number.
+func createRsvp(t *testing.T, env *testEnv, name, phone string, attendanceType string, guestCount *int) {
 	t.Helper()
 	payload := map[string]interface{}{
-		"name": name, "email": email, "attendanceType": attendanceType,
+		"name": name, "phone": phone, "attendanceType": attendanceType,
 	}
 	if guestCount != nil {
 		payload["guestCount"] = *guestCount
@@ -187,6 +191,23 @@ func createRsvp(t *testing.T, env *testEnv, name, email string, attendanceType s
 	if rec.Code != http.StatusCreated && rec.Code != http.StatusOK {
 		t.Fatalf("createRsvp: unexpected status %d: %s", rec.Code, rec.Body.String())
 	}
+}
+
+// seedRsvpWithEmail inserts an RSVP directly into the repository with a populated
+// email field, bypassing the HTTP handler. Used to test legacy GET /api/rsvp/{email}
+// behavior since the public no-code flow no longer collects email.
+func seedRsvpWithEmail(t *testing.T, env *testEnv, name, email string, attendanceType string, guestCount *int) *models.Rsvp {
+	t.Helper()
+	rsvp, err := env.repo.CreateRsvp(context.Background(), models.InsertRsvp{
+		Name:           name,
+		Email:          email,
+		AttendanceType: attendanceType,
+		GuestCount:     guestCount,
+	})
+	if err != nil {
+		t.Fatalf("seedRsvpWithEmail: %v", err)
+	}
+	return rsvp
 }
 
 // createMessage is a shortcut to POST /api/messages for setup.
@@ -253,6 +274,7 @@ func assertRsvpObject(t *testing.T, obj map[string]interface{}) {
 	assertKeyType(t, obj, "id", "float64")
 	assertKeyType(t, obj, "name", "string")
 	assertKeyType(t, obj, "email", "string")
+	assertNullableType(t, obj, "phone", "string")
 	assertKeyType(t, obj, "attendanceType", "string")
 	// guestCount may be null or a number
 	assertKeyExists(t, obj, "guestCount")
@@ -447,10 +469,10 @@ func TestContract_Health(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. POST /api/rsvp (new)
+// 5. POST /api/rsvp (new, no-code phone flow)
 // Contract: { "message": "Thank you for your RSVP!",
 //
-//	"rsvp": { "id": <int>, "name": "...", "email": "...",
+//	"rsvp": { "id": <int>, "name": "...", "email": "", "phone": "+...",
 //	          "attendanceType": <string>, "guestCount": <int|null> } }
 //
 // Status: 201
@@ -460,7 +482,7 @@ func TestContract_RsvpCreate(t *testing.T) {
 
 	gc := 3
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attendanceType": "both", "guestCount": gc,
+		"name": "Alice", "phone": "+6281234567890", "attendanceType": "both", "guestCount": gc,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -474,7 +496,8 @@ func TestContract_RsvpCreate(t *testing.T) {
 
 	// Verify values
 	assertStringValue(t, rsvp, "name", "Alice")
-	assertStringValue(t, rsvp, "email", "alice@example.com")
+	assertStringValue(t, rsvp, "email", "")
+	assertStringValue(t, rsvp, "phone", "+6281234567890")
 	assertStringValue(t, rsvp, "attendanceType", "both")
 	assertFloat64Value(t, rsvp, "guestCount", 3)
 }
@@ -486,7 +509,7 @@ func TestContract_RsvpCreateNullGuestCount(t *testing.T) {
 	env := newTestEnv()
 
 	body := jsonBody(map[string]interface{}{
-		"name": "Bob", "email": "bob@example.com", "attendanceType": "decline",
+		"name": "Bob", "phone": "+6281234567891", "attendanceType": "decline",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -500,7 +523,7 @@ func TestContract_RsvpCreateNullGuestCount(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 6. POST /api/rsvp (existing email → update)
+// 6. POST /api/rsvp (existing phone → update)
 // Contract: { "message": "Your RSVP has been updated successfully!",
 //
 //	"rsvp": { ... } }
@@ -511,11 +534,11 @@ func TestContract_RsvpUpdate(t *testing.T) {
 	env := newTestEnv()
 
 	// First create
-	createRsvp(t, env, "Alice", "alice@example.com", "both", nil)
+	createRsvp(t, env, "Alice", "+6281234567890", "both", nil)
 
-	// Second POST with same email → update
+	// Second POST with same phone → update
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice Updated", "email": "alice@example.com", "attendanceType": "decline",
+		"name": "Alice Updated", "phone": "+6281234567890", "attendanceType": "decline",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -526,7 +549,7 @@ func TestContract_RsvpUpdate(t *testing.T) {
 
 	rsvp := assertObject(t, result, "rsvp")
 	assertRsvpObject(t, rsvp)
-	assertStringValue(t, rsvp, "email", "alice@example.com")
+	assertStringValue(t, rsvp, "phone", "+6281234567890")
 	assertStringValue(t, rsvp, "attendanceType", "decline")
 }
 
@@ -542,9 +565,9 @@ func TestContract_RsvpList(t *testing.T) {
 	env := newTestEnv()
 
 	gc := 2
-	createRsvp(t, env, "Alice", "alice@example.com", "both", &gc)
-	createRsvp(t, env, "Bob", "bob@example.com", "both", nil)
-	createRsvp(t, env, "Charlie", "charlie@example.com", "decline", nil)
+	createRsvp(t, env, "Alice", "+6281234567890", "both", &gc)
+	createRsvp(t, env, "Bob", "+6281234567891", "both", nil)
+	createRsvp(t, env, "Charlie", "+6281234567892", "decline", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
@@ -610,7 +633,7 @@ func TestContract_RsvpListEmpty(t *testing.T) {
 // ---------------------------------------------------------------------------
 func TestContract_RsvpCheckFound(t *testing.T) {
 	env := newTestEnv()
-	createRsvp(t, env, "Alice", "alice@example.com", "both", nil)
+	createRsvp(t, env, "Alice", "+6281234567890", "both", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp/check?name=Alice", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
@@ -641,7 +664,8 @@ func TestContract_RsvpCheckNotFound(t *testing.T) {
 // ---------------------------------------------------------------------------
 func TestContract_RsvpGetByEmail(t *testing.T) {
 	env := newTestEnv()
-	createRsvp(t, env, "Alice", "alice@example.com", "both", nil)
+	// Seed directly with an email since the public no-code flow no longer collects email.
+	seedRsvpWithEmail(t, env, "Alice", "alice@example.com", "both", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/rsvp/alice@example.com", nil)
 	result := contractResponse(t, env, req, http.StatusOK)
@@ -1645,7 +1669,7 @@ func TestContract_ErrorResponseShape(t *testing.T) {
 			body:       jsonBody(map[string]interface{}{"name": "Alice"}),
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "BAD_REQUEST",
-			wantMsg:    "Name and email are required",
+			wantMsg:    "Name and phone are required",
 		},
 		{
 			name:       "message missing fields",
@@ -1711,7 +1735,10 @@ func TestContract_NoCamelCaseViolations(t *testing.T) {
 
 	// Set up data so responses contain populated objects
 	gc := 2
-	createRsvp(t, env, "Alice", "alice@example.com", "both", &gc)
+	createRsvp(t, env, "Alice", "+6281234567890", "both", &gc)
+	// Seed an email-bearing RSVP directly so the legacy GET /api/rsvp/{email}
+	// endpoint can be exercised by the camelCase walk below.
+	seedRsvpWithEmail(t, env, "Legacy", "alice@example.com", "both", &gc)
 	createMessage(t, env, "Alice", "Hello!")
 	createMedia(t, env, "Alice", "alice@example.com", "https://example.com/pic.jpg")
 

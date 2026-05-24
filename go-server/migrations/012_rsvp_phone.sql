@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE rsvp ADD COLUMN IF NOT EXISTS phone TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_rsvp_phone ON rsvp(phone);
+
+COMMIT;

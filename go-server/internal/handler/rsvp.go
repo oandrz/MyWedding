@@ -17,10 +17,10 @@ type RsvpHandler struct {
 	Sanitizer *service.Sanitizer
 }
 
-// rsvpRequest is the combined request body for both email-based and code-based RSVP flows.
+// rsvpRequest is the combined request body for both phone-based and code-based RSVP flows.
 type rsvpRequest struct {
 	Name           string `json:"name"`
-	Email          string `json:"email"`
+	Phone          string `json:"phone"`
 	Code           string `json:"code"`
 	AttendanceType string `json:"attendanceType"`
 	GuestCount     *int   `json:"guestCount"`
@@ -45,17 +45,23 @@ func (h *RsvpHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Route based on request body: code present → invite code flow, otherwise → email flow
+	// Route based on request body: code present → invite code flow, otherwise → phone flow
 	if body.Code != "" {
 		h.createWithCode(w, r, body)
 	} else {
-		h.createWithEmail(w, r, body)
+		h.createWithPhone(w, r, body)
 	}
 }
 
-func (h *RsvpHandler) createWithEmail(w http.ResponseWriter, r *http.Request, body rsvpRequest) {
-	if body.Name == "" || body.Email == "" {
-		writeError(w, r, http.StatusBadRequest, "Name and email are required")
+func (h *RsvpHandler) createWithPhone(w http.ResponseWriter, r *http.Request, body rsvpRequest) {
+	if body.Name == "" || body.Phone == "" {
+		writeError(w, r, http.StatusBadRequest, "Name and phone are required")
+		return
+	}
+
+	normalizedPhone, err := models.NormalizePhone(body.Phone)
+	if err != nil {
+		writeError(w, r, http.StatusBadRequest, "Invalid phone: "+err.Error())
 		return
 	}
 
@@ -75,12 +81,13 @@ func (h *RsvpHandler) createWithEmail(w http.ResponseWriter, r *http.Request, bo
 
 	insertData := models.InsertRsvp{
 		Name:           name,
-		Email:          body.Email,
+		Email:          "",
+		Phone:          &normalizedPhone,
 		AttendanceType: body.AttendanceType,
 		GuestCount:     body.GuestCount,
 	}
 
-	existing, err := h.Repo.GetRsvpByEmail(r.Context(), body.Email)
+	existing, err := h.Repo.GetRsvpByPhone(r.Context(), normalizedPhone)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "Failed to check existing RSVP")
 		return

@@ -115,6 +115,7 @@ func (m *MemoryRepository) CreateRsvp(_ context.Context, data models.InsertRsvp)
 		ID:             m.rsvpIDSeq,
 		Name:           data.Name,
 		Email:          data.Email,
+		Phone:          data.Phone,
 		AttendanceType: data.AttendanceType,
 		GuestCount:     data.GuestCount,
 	}
@@ -131,6 +132,7 @@ func (m *MemoryRepository) UpdateRsvp(_ context.Context, id int, data models.Ins
 	}
 	r.Name = data.Name
 	r.Email = data.Email
+	r.Phone = data.Phone
 	r.AttendanceType = data.AttendanceType
 	r.GuestCount = data.GuestCount
 	m.rsvps[id] = r
@@ -152,6 +154,17 @@ func (m *MemoryRepository) GetRsvpByEmail(_ context.Context, email string) (*mod
 	defer m.mu.Unlock()
 	for _, r := range m.rsvps {
 		if r.Email == email {
+			return &r, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MemoryRepository) GetRsvpByPhone(_ context.Context, phone string) (*models.Rsvp, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, r := range m.rsvps {
+		if r.Phone != nil && *r.Phone == phone {
 			return &r, nil
 		}
 	}

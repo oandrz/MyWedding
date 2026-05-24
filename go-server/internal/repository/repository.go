@@ -19,6 +19,7 @@ type Repository interface {
 	UpdateRsvp(ctx context.Context, id int, data models.InsertRsvp) (*models.Rsvp, error)
 	GetRsvps(ctx context.Context) ([]models.Rsvp, error)
 	GetRsvpByEmail(ctx context.Context, email string) (*models.Rsvp, error)
+	GetRsvpByPhone(ctx context.Context, phone string) (*models.Rsvp, error)
 	GetRsvpByName(ctx context.Context, name string) (*models.Rsvp, error)
 	DeleteRsvp(ctx context.Context, id int) (bool, error)
 

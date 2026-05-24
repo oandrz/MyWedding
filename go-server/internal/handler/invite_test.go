@@ -112,9 +112,9 @@ func TestInvite_Delete_CascadesRsvp(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrf := adminLogin(t, env)
 
-	// Create RSVP via email flow
+	// Create RSVP via phone flow
 	rsvpBody := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@test.com",
+		"name": "Alice", "phone": "+6281234567890",
 		"attendanceType": "both", "guestCount": 2,
 	})
 	rsvpReq := httptest.NewRequest(http.MethodPost, "/api/rsvp", rsvpBody)

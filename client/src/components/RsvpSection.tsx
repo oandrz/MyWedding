@@ -12,23 +12,25 @@ import { fadeIn, staggerContainer } from "@/lib/animations";
 import confetti from "canvas-confetti";
 import { useLanguage, interpolate } from "@/contexts/LanguageContext";
 
-// Schema for email-based RSVP (flag off)
-const emailRsvpSchema = z.object({
+// Schema for phone-based (no-code) RSVP
+const phoneRsvpSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
+  phone: z.string().regex(/^\+\d{7,15}$/, {
+    message: "Use international format, e.g. +6281234567890",
+  }),
   attendanceType: z.enum(["both", "holy_matrimony", "reception", "decline"]),
   guestCount: z.number().optional()
 });
 
-// Schema for code-based RSVP (flag on) — no email needed
+// Schema for code-based RSVP — guest already known via invite code
 const codeRsvpSchema = z.object({
   attendanceType: z.enum(["both", "holy_matrimony", "reception", "decline"]),
   guestCount: z.number().optional()
 });
 
-type EmailRsvpFormValues = z.infer<typeof emailRsvpSchema>;
+type PhoneRsvpFormValues = z.infer<typeof phoneRsvpSchema>;
 type CodeRsvpFormValues = z.infer<typeof codeRsvpSchema>;
-type RsvpFormValues = EmailRsvpFormValues | CodeRsvpFormValues;
+type RsvpFormValues = PhoneRsvpFormValues | CodeRsvpFormValues;
 
 const RsvpSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -68,11 +70,11 @@ const RsvpSection = () => {
   // Flow determined by URL param: ?code= → code flow, otherwise → email flow
   const useCodeFlow = !!inviteCode;
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EmailRsvpFormValues>({
-    resolver: zodResolver(useCodeFlow ? codeRsvpSchema as any : emailRsvpSchema),
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<PhoneRsvpFormValues>({
+    resolver: zodResolver(useCodeFlow ? codeRsvpSchema as any : phoneRsvpSchema),
     defaultValues: {
       name: "",
-      email: "",
+      phone: "",
       attendanceType: "both",
       guestCount: 1
     }
@@ -364,7 +366,7 @@ const RsvpSection = () => {
                 </div>
               )}
 
-              {/* Name & Email fields — only for email-based flow */}
+              {/* Name & Phone fields — only for no-code (phone-based) flow */}
               {!useCodeFlow && (
                 <>
                   {/* Name Field */}
@@ -381,17 +383,18 @@ const RsvpSection = () => {
                     )}
                   </div>
 
-                  {/* Email */}
+                  {/* Phone */}
                   <div>
-                    <label htmlFor="email" className="block text-foreground font-montserrat text-sm mb-2">Email</label>
+                    <label htmlFor="phone" className="block text-foreground font-montserrat text-sm mb-2">Phone</label>
                     <input
-                      type="email"
-                      id="email"
+                      type="tel"
+                      id="phone"
+                      placeholder="+6281234567890"
                       className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                      {...register("email")}
+                      {...register("phone")}
                     />
-                    {errors.email && (
-                      <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+                    {errors.phone && (
+                      <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
                     )}
                   </div>
                 </>
