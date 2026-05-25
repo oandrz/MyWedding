@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -154,6 +154,10 @@ describe("GallerySection — Preloading", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("preloads full-size image when carousel thumbnail loads", () => {
     const preloadedSrcs: string[] = [];
     class MockImage {
@@ -172,6 +176,5 @@ describe("GallerySection — Preloading", () => {
     fireEvent.load(thumbnailImg!);
 
     expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
-    vi.unstubAllGlobals();
   });
 });
