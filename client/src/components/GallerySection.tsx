@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useRef, useState, useEffect, useCallback, Component, type ReactNode } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, Component, type ReactNode } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, revealText } from "@/lib/animations";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -197,8 +197,11 @@ const GallerySection = () => {
     neighborIndices.forEach((idx) => preloadImage(galleryImages[idx].src));
   }, [selectedImageIndex, galleryImages, preloadImage]);
 
-  // Reset full-size loaded state whenever the selected image changes
-  useEffect(() => {
+  // Reset full-size loaded state whenever the selected image changes.
+  // useLayoutEffect runs synchronously after DOM mutations and before the browser
+  // paints, guaranteeing the reset happens before any cached onLoad fires and
+  // preventing the race where a preloaded image becomes permanently invisible.
+  useLayoutEffect(() => {
     setIsFullSizeLoaded(false);
   }, [selectedImageIndex]);
 

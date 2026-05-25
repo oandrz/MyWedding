@@ -285,4 +285,22 @@ describe("GallerySection — Fullscreen blur-up", () => {
 
     expect(fullsizeImg!.style.opacity).toBe("1");
   });
+
+  it("resets opacity to 0 when navigating to the next image after current has loaded", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Open fullscreen at image 0 and simulate it loading
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+    let fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    fireEvent.load(fullsizeImg!);
+    expect(fullsizeImg!.style.opacity).toBe("1");
+
+    // Navigate to next image
+    fireEvent.click(document.querySelector('[data-testid="next-image"]')!);
+
+    // Full-size image should be invisible (new image, not yet loaded)
+    fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    expect(fullsizeImg!.style.opacity).toBe("0");
+  });
 });
