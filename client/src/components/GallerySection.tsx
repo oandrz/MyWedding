@@ -110,6 +110,7 @@ const GallerySection = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isFullSizeLoaded, setIsFullSizeLoaded] = useState(false);
   const preloadedUrls = useRef<Set<string>>(new Set());
 
   const preloadImage = useCallback((url: string) => {
@@ -195,6 +196,11 @@ const GallerySection = () => {
     );
     neighborIndices.forEach((idx) => preloadImage(galleryImages[idx].src));
   }, [selectedImageIndex, galleryImages, preloadImage]);
+
+  // Reset full-size loaded state whenever the selected image changes
+  useEffect(() => {
+    setIsFullSizeLoaded(false);
+  }, [selectedImageIndex]);
 
   const handlePrevious = () => {
     if (selectedImageIndex === null) return;
@@ -346,11 +352,25 @@ const GallerySection = () => {
                     <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
                   </button>
                 )}
-                <div className="flex items-center justify-center w-full h-full">
+                <div className="relative flex items-center justify-center w-full h-full">
+                  {galleryImages[selectedImageIndex].thumbnail !== galleryImages[selectedImageIndex].src && (
+                    <img
+                      src={galleryImages[selectedImageIndex].thumbnail}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-contain"
+                      style={{ filter: "blur(20px)", transform: "scale(1.05)" }}
+                      data-testid="blur-placeholder"
+                    />
+                  )}
                   <img
+                    key={selectedImageIndex}
                     src={galleryImages[selectedImageIndex].src}
                     alt={galleryImages[selectedImageIndex].alt}
-                    className="max-w-[calc(100vw-80px)] max-h-[calc(100vh-80px)] md:max-w-[calc(100vw-120px)] md:max-h-[calc(100vh-120px)] w-auto h-auto object-contain"
+                    className="relative max-w-[calc(100vw-80px)] max-h-[calc(100vh-80px)] md:max-w-[calc(100vw-120px)] md:max-h-[calc(100vh-120px)] w-auto h-auto object-contain transition-opacity duration-300"
+                    style={{ opacity: isFullSizeLoaded ? 1 : 0 }}
+                    onLoad={() => setIsFullSizeLoaded(true)}
+                    onError={() => setIsFullSizeLoaded(true)}
                     data-testid="fullsize-image"
                   />
                 </div>

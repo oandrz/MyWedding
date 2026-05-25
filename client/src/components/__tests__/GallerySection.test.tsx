@@ -224,3 +224,65 @@ describe("GallerySection — Preloading", () => {
     expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
   });
 });
+
+describe("GallerySection — Fullscreen blur-up", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders blurred thumbnail placeholder immediately when fullscreen opens", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const blurPlaceholder = document.querySelector('[data-testid="blur-placeholder"]');
+    expect(blurPlaceholder).not.toBeNull();
+    expect(blurPlaceholder).toHaveAttribute("src", "/storage/gallery/thumbnails/thumb1.jpg");
+  });
+
+  it("renders full-size image with opacity 0 before it loads", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    expect(fullsizeImg).not.toBeNull();
+    expect(fullsizeImg!.style.opacity).toBe("0");
+  });
+
+  it("sets full-size image to opacity 1 when it finishes loading", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    fireEvent.load(fullsizeImg!);
+
+    expect(fullsizeImg!.style.opacity).toBe("1");
+  });
+
+  it("does not render blur placeholder when thumbnail and src are the same URL", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES); // no thumbnailUrl — thumbnail === src
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    expect(document.querySelector('[data-testid="blur-placeholder"]')).toBeNull();
+    expect(document.querySelector('[data-testid="fullsize-image"]')).not.toBeNull();
+  });
+
+  it("sets opacity 1 on full-size image when it errors", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    fireEvent.error(fullsizeImg!);
+
+    expect(fullsizeImg!.style.opacity).toBe("1");
+  });
+});
