@@ -3,6 +3,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// Mock LanguageContext to avoid provider requirement
+vi.mock("@/contexts/LanguageContext", () => ({
+  useLanguage: () => ({
+    lang: "en",
+    setLang: vi.fn(),
+    t: (key: string) => key,
+    dateLocale: undefined,
+  }),
+  LanguageProvider: ({ children }: any) => <>{children}</>,
+}));
+
 // Mock framer-motion to avoid animation issues in tests
 vi.mock("framer-motion", () => ({
   motion: {
@@ -45,6 +56,14 @@ const MOCK_GALLERY_IMAGES = [
   { id: 1, imageUrl: "https://example.com/img1.jpg", title: "Photo 1", description: "", category: "gallery", displayOrder: 1 },
   { id: 2, imageUrl: "https://example.com/img2.jpg", title: "Photo 2", description: "", category: "gallery", displayOrder: 2 },
   { id: 3, imageUrl: "https://example.com/img3.jpg", title: "Photo 3", description: "", category: "gallery", displayOrder: 3 },
+];
+
+const MOCK_GALLERY_IMAGES_WITH_THUMBS = [
+  { id: 1, imageUrl: "/storage/gallery/img1.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb1.jpg", title: "Photo 1", description: "", category: "gallery", displayOrder: 1 },
+  { id: 2, imageUrl: "/storage/gallery/img2.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb2.jpg", title: "Photo 2", description: "", category: "gallery", displayOrder: 2 },
+  { id: 3, imageUrl: "/storage/gallery/img3.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb3.jpg", title: "Photo 3", description: "", category: "gallery", displayOrder: 3 },
+  { id: 4, imageUrl: "/storage/gallery/img4.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb4.jpg", title: "Photo 4", description: "", category: "gallery", displayOrder: 4 },
+  { id: 5, imageUrl: "/storage/gallery/img5.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb5.jpg", title: "Photo 5", description: "", category: "gallery", displayOrder: 5 },
 ];
 
 function renderGallerySection(
@@ -127,5 +146,32 @@ describe("GallerySection — Carousel", () => {
     expect(screen.getByTestId("carousel-dot-0")).toBeInTheDocument();
     expect(screen.getByTestId("carousel-dot-1")).toBeInTheDocument();
     expect(screen.getByTestId("carousel-dot-2")).toBeInTheDocument();
+  });
+});
+
+describe("GallerySection — Preloading", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("preloads full-size image when carousel thumbnail loads", () => {
+    const preloadedSrcs: string[] = [];
+    class MockImage {
+      set src(val: string) { preloadedSrcs.push(val); }
+      get src() { return ""; }
+    }
+    vi.stubGlobal("Image", MockImage);
+
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Find the thumbnail img for the first carousel item and fire onLoad
+    const thumbnailImg = document.querySelector<HTMLImageElement>(
+      'img[src="/storage/gallery/thumbnails/thumb1.jpg"]'
+    );
+    expect(thumbnailImg).not.toBeNull();
+    fireEvent.load(thumbnailImg!);
+
+    expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
+    vi.unstubAllGlobals();
   });
 });

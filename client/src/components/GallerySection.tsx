@@ -32,7 +32,12 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
 };
 
 // Optimized Image Component
-const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: string; index: number }) => {
+const OptimizedImage = ({ thumbnail, alt, index, onLoad }: {
+  thumbnail: string;
+  alt: string;
+  index: number;
+  onLoad?: () => void;
+}) => {
   const safeThumb = thumbnail || '';
   const optimizedSrc = safeThumb.includes('unsplash.com')
     ? getResponsiveImageUrl(safeThumb, 600, 70)
@@ -46,6 +51,7 @@ const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: str
         className="w-full h-full object-cover"
         loading={index < 4 ? "eager" : "lazy"}
         decoding="async"
+        onLoad={onLoad}
       />
     </div>
   );
@@ -104,6 +110,14 @@ const GallerySection = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const preloadedUrls = useRef<Set<string>>(new Set());
+
+  const preloadImage = useCallback((url: string) => {
+    if (!url || preloadedUrls.current.has(url)) return;
+    preloadedUrls.current.add(url);
+    const img = new Image();
+    img.src = url;
+  }, []);
 
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
@@ -276,6 +290,7 @@ const GallerySection = () => {
                             thumbnail={photo.thumbnail}
                             alt={photo.alt}
                             index={index}
+                            onLoad={() => preloadImage(photo.src)}
                           />
                         </div>
                       </CarouselItem>
