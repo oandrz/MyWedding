@@ -40,7 +40,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [lang]
   );
 
-  const dateLocale = lang === "id" ? "id-ID" : "en-US";
+  const dateLocale = lang === "id" ? "id-ID" : "en-GB";
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t, dateLocale }}>
