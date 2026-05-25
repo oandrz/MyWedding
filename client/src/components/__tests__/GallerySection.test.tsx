@@ -177,4 +177,26 @@ describe("GallerySection — Preloading", () => {
 
     expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
   });
+
+  it("preloads ±2 neighbor full-size images when fullscreen opens", () => {
+    const preloadedSrcs: string[] = [];
+    class MockImage {
+      set src(val: string) { preloadedSrcs.push(val); }
+      get src() { return ""; }
+    }
+    vi.stubGlobal("Image", MockImage);
+
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Open fullscreen at index 2 (middle)
+    const carouselItem = screen.getByTestId("gallery-image-2");
+    const clickableCard = carouselItem.querySelector(".cursor-pointer");
+    fireEvent.click(clickableCard!);
+
+    // Neighbors of index 2: indices 0, 1, 3, 4
+    expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img2.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
+  });
 });

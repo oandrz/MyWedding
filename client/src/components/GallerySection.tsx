@@ -187,6 +187,15 @@ const GallerySection = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedImageIndex, galleryImages.length]);
 
+  // Preload ±2 neighbor full-size images when fullscreen opens or navigates
+  useEffect(() => {
+    if (selectedImageIndex === null || galleryImages.length === 0) return;
+    [-2, -1, 1, 2].forEach((offset) => {
+      const idx = (selectedImageIndex + offset + galleryImages.length) % galleryImages.length;
+      preloadImage(galleryImages[idx].src);
+    });
+  }, [selectedImageIndex, galleryImages, preloadImage]);
+
   const handlePrevious = () => {
     if (selectedImageIndex === null) return;
     setSelectedImageIndex((selectedImageIndex - 1 + galleryImages.length) % galleryImages.length);
