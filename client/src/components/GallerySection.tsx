@@ -190,10 +190,10 @@ const GallerySection = () => {
   // Preload ±2 neighbor full-size images when fullscreen opens or navigates
   useEffect(() => {
     if (selectedImageIndex === null || galleryImages.length === 0) return;
-    [-2, -1, 1, 2].forEach((offset) => {
-      const idx = (selectedImageIndex + offset + galleryImages.length) % galleryImages.length;
-      preloadImage(galleryImages[idx].src);
-    });
+    const neighborIndices = new Set(
+      [-2, -1, 1, 2].map((offset) => (selectedImageIndex + offset + galleryImages.length) % galleryImages.length)
+    );
+    neighborIndices.forEach((idx) => preloadImage(galleryImages[idx].src));
   }, [selectedImageIndex, galleryImages, preloadImage]);
 
   const handlePrevious = () => {

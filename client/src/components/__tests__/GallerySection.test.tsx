@@ -199,4 +199,28 @@ describe("GallerySection — Preloading", () => {
     expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
     expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
   });
+
+  it("wraps correctly when fullscreen opens at index 0", () => {
+    const preloadedSrcs: string[] = [];
+    class MockImage {
+      set src(val: string) { preloadedSrcs.push(val); }
+      get src() { return ""; }
+    }
+    vi.stubGlobal("Image", MockImage);
+
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Open fullscreen at index 0 (first image)
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    const clickableCard = carouselItem.querySelector(".cursor-pointer");
+    fireEvent.click(clickableCard!);
+
+    // Neighbors of index 0 with wraparound:
+    // offset -2 → index 3 (img4), offset -1 → index 4 (img5)
+    // offset +1 → index 1 (img2), offset +2 → index 2 (img3)
+    expect(preloadedSrcs).toContain("/storage/gallery/img2.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img3.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
+  });
 });
