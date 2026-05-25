@@ -86,10 +86,10 @@ describe("RsvpSection", () => {
     });
   });
 
-  it("renders form fields (name, email, guest count)", () => {
+  it("renders form fields (name, phone, guest count)", () => {
     renderRsvpSection();
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/number of guests/i)).toBeInTheDocument();
   });
 
@@ -160,7 +160,7 @@ describe("RsvpSection", () => {
     renderRsvpSection();
 
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "John Doe" } });
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "john@example.com" } });
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "+6281234567890" } });
 
     const submitButton = screen.getByTestId("button-submit-rsvp");
     fireEvent.click(submitButton);
@@ -168,6 +168,8 @@ describe("RsvpSection", () => {
     await waitFor(() => {
       expect(capturedBody).toBeDefined();
       expect(capturedBody.attendanceType).toBe("both");
+      expect(capturedBody.phone).toBe("+6281234567890");
+      expect(capturedBody).not.toHaveProperty("email");
       expect(capturedBody).not.toHaveProperty("attending");
     });
 
@@ -224,7 +226,7 @@ describe("RsvpSection", () => {
     );
 
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "John" } });
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "john@test.com" } });
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "+6281234567890" } });
     fireEvent.click(screen.getByTestId("button-submit-rsvp"));
 
     await waitFor(() => {

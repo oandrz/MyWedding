@@ -453,7 +453,7 @@ func TestRsvpCreate(t *testing.T) {
 
 	gc := 2
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attendanceType": "both", "guestCount": gc,
+		"name": "Alice", "phone": "+6281234567890", "attendanceType": "both", "guestCount": gc,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -473,12 +473,12 @@ func TestRsvpCreate(t *testing.T) {
 	}
 }
 
-func TestRsvpCreateDuplicateEmailUpdates(t *testing.T) {
+func TestRsvpCreateDuplicatePhoneUpdates(t *testing.T) {
 	env := newTestEnv()
 
 	// First create
 	body1 := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attendanceType": "both",
+		"name": "Alice", "phone": "+6281234567890", "attendanceType": "both",
 	})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/rsvp", body1)
 	req1.Header.Set("Content-Type", "application/json")
@@ -489,9 +489,9 @@ func TestRsvpCreateDuplicateEmailUpdates(t *testing.T) {
 		t.Fatalf("expected 201 for first create, got %d", rec1.Code)
 	}
 
-	// Second create with same email -> update
+	// Second create with same phone -> update
 	body2 := jsonBody(map[string]interface{}{
-		"name": "Alice Updated", "email": "alice@example.com", "attendanceType": "decline",
+		"name": "Alice Updated", "phone": "+6281234567890", "attendanceType": "decline",
 	})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/rsvp", body2)
 	req2.Header.Set("Content-Type", "application/json")
@@ -514,9 +514,9 @@ func TestRsvpListWithStats(t *testing.T) {
 	// Create some RSVPs
 	gc2 := 2
 	for _, r := range []map[string]interface{}{
-		{"name": "Alice", "email": "alice@example.com", "attendanceType": "both", "guestCount": gc2},
-		{"name": "Bob", "email": "bob@example.com", "attendanceType": "both"},
-		{"name": "Charlie", "email": "charlie@example.com", "attendanceType": "decline"},
+		{"name": "Alice", "phone": "+6281234567890", "attendanceType": "both", "guestCount": gc2},
+		{"name": "Bob", "phone": "+6281234567891", "attendanceType": "both"},
+		{"name": "Charlie", "phone": "+6281234567892", "attendanceType": "decline"},
 	} {
 		body := jsonBody(r)
 		req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
@@ -575,7 +575,7 @@ func TestRsvpCheck(t *testing.T) {
 
 	// Create an RSVP
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attendanceType": "both",
+		"name": "Alice", "phone": "+6281234567890", "attendanceType": "both",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -622,14 +622,8 @@ func TestRsvpCheckMissingName(t *testing.T) {
 func TestRsvpGetByEmail(t *testing.T) {
 	env := newTestEnv()
 
-	// Create
-	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attendanceType": "both",
-	})
-	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
-	req.Header.Set("Content-Type", "application/json")
-	rec := httptest.NewRecorder()
-	env.handler.ServeHTTP(rec, req)
+	// Seed directly with an email since the public no-code flow no longer collects email.
+	seedRsvpWithEmail(t, env, "Alice", "alice@example.com", "both", nil)
 
 	// Get by email
 	req2 := httptest.NewRequest(http.MethodGet, "/api/rsvp/alice@example.com", nil)
@@ -662,9 +656,9 @@ func TestRsvpDelete(t *testing.T) {
 	env := newTestEnv()
 	cookie, csrfToken := adminLogin(t, env)
 
-	// Create RSVP
+	// Create RSVP via phone flow
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@example.com", "attendanceType": "both",
+		"name": "Alice", "phone": "+6281234567890", "attendanceType": "both",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")

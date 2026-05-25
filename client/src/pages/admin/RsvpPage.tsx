@@ -68,10 +68,12 @@ export default function RsvpPage() {
 
   const filteredRsvps = useMemo(() => {
     return rsvps.filter((rsvp) => {
+      const needle = debouncedSearch.toLowerCase();
       const matchesSearch =
         !debouncedSearch ||
-        rsvp.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        rsvp.email.toLowerCase().includes(debouncedSearch.toLowerCase());
+        rsvp.name.toLowerCase().includes(needle) ||
+        (rsvp.email ?? "").toLowerCase().includes(needle) ||
+        (rsvp.phone ?? "").toLowerCase().includes(needle);
 
       let matchesFilter = true;
       if (attendingFilter === "holy_matrimony") {
@@ -143,7 +145,7 @@ export default function RsvpPage() {
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by name or email..."
+            placeholder="Search by name, phone or email..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="pl-10 pr-10"
@@ -199,7 +201,12 @@ export default function RsvpPage() {
                       <h3 className="font-semibold text-lg text-gray-900">
                         {rsvp.name}
                       </h3>
-                      <p className="text-sm text-gray-600">{rsvp.email}</p>
+                      {rsvp.phone && (
+                        <p className="text-sm text-gray-600">{rsvp.phone}</p>
+                      )}
+                      {rsvp.email && (
+                        <p className="text-sm text-gray-600">{rsvp.email}</p>
+                      )}
                     </div>
                     <div className="flex gap-1 flex-wrap">
                       {(rsvp.attendanceType === "both" || rsvp.attendanceType === "holy_matrimony") && (

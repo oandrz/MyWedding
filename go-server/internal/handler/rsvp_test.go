@@ -27,7 +27,7 @@ func TestRsvp_Create_WithAttendanceType(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := newTestEnv()
 			body := jsonBody(map[string]interface{}{
-				"name": "Alice", "email": "alice@test.com",
+				"name": "Alice", "phone": "+6281234567890",
 				"attendanceType": tc.attendanceType, "guestCount": 2,
 			})
 			req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
@@ -45,7 +45,7 @@ func TestRsvp_Create_WithAttendanceType(t *testing.T) {
 func TestRsvp_InvalidAttendanceType_Returns400(t *testing.T) {
 	env := newTestEnv()
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@test.com", "attendanceType": "party",
+		"name": "Alice", "phone": "+6281234567890", "attendanceType": "party",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -55,7 +55,7 @@ func TestRsvp_InvalidAttendanceType_Returns400(t *testing.T) {
 func TestRsvp_Decline_ClearsGuestCount(t *testing.T) {
 	env := newTestEnv()
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@test.com",
+		"name": "Alice", "phone": "+6281234567890",
 		"attendanceType": "decline", "guestCount": 3,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
@@ -68,11 +68,11 @@ func TestRsvp_Decline_ClearsGuestCount(t *testing.T) {
 	}
 }
 
-func TestRsvp_DuplicateEmail_UpdatesAttendanceType(t *testing.T) {
+func TestRsvp_DuplicatePhone_UpdatesAttendanceType(t *testing.T) {
 	env := newTestEnv()
 
 	body1 := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@test.com",
+		"name": "Alice", "phone": "+6281234567890",
 		"attendanceType": "both", "guestCount": 2,
 	})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/rsvp", body1)
@@ -80,7 +80,7 @@ func TestRsvp_DuplicateEmail_UpdatesAttendanceType(t *testing.T) {
 	contractResponse(t, env, req1, http.StatusCreated)
 
 	body2 := jsonBody(map[string]interface{}{
-		"name": "Alice Updated", "email": "alice@test.com",
+		"name": "Alice Updated", "phone": "+6281234567890",
 		"attendanceType": "reception",
 	})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/rsvp", body2)
@@ -101,15 +101,15 @@ func TestRsvp_ListStats_IncludesEventCounts(t *testing.T) {
 
 	// Create mixed RSVPs
 	for _, tc := range []struct {
-		name, email, attendanceType string
+		name, phone, attendanceType string
 	}{
-		{"Alice", "alice@test.com", "both"},
-		{"Bob", "bob@test.com", "holy_matrimony"},
-		{"Charlie", "charlie@test.com", "reception"},
-		{"Diana", "diana@test.com", "decline"},
+		{"Alice", "+6281234567890", "both"},
+		{"Bob", "+6281234567891", "holy_matrimony"},
+		{"Charlie", "+6281234567892", "reception"},
+		{"Diana", "+6281234567893", "decline"},
 	} {
 		body := jsonBody(map[string]interface{}{
-			"name": tc.name, "email": tc.email,
+			"name": tc.name, "phone": tc.phone,
 			"attendanceType": tc.attendanceType, "guestCount": 1,
 		})
 		req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
@@ -271,12 +271,12 @@ func TestRsvp_Create_WithInviteCode_NoCode(t *testing.T) {
 	contractResponse(t, env, req, http.StatusBadRequest)
 }
 
-func TestRsvp_Create_FlagOff_StillUsesEmail(t *testing.T) {
+func TestRsvp_Create_NoCode_UsesPhone(t *testing.T) {
 	env := newTestEnv()
 
-	// Flag off (default) — email-based flow should work
+	// No code present → phone-based no-code flow should work
 	body := jsonBody(map[string]interface{}{
-		"name": "Alice", "email": "alice@test.com",
+		"name": "Alice", "phone": "+6281234567890",
 		"attendanceType": "both", "guestCount": 2,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
@@ -286,6 +286,74 @@ func TestRsvp_Create_FlagOff_StillUsesEmail(t *testing.T) {
 	rsvp := result["rsvp"].(map[string]interface{})
 	if rsvp["name"] != "Alice" {
 		t.Fatalf("expected name=Alice, got %v", rsvp["name"])
+	}
+	if rsvp["phone"] != "+6281234567890" {
+		t.Fatalf("expected phone=+6281234567890, got %v", rsvp["phone"])
+	}
+	if rsvp["email"] != "" {
+		t.Fatalf("expected empty email for no-code phone flow, got %v", rsvp["email"])
+	}
+}
+
+func TestRsvp_NoCode_RejectsInvalidPhone(t *testing.T) {
+	tests := []struct {
+		name  string
+		phone string
+	}{
+		{"missing plus prefix", "081234567890"},
+		{"too short", "+12345"},
+		{"too long", "+1234567890123456"},
+		{"letters", "+62812abc4567"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newTestEnv()
+			body := jsonBody(map[string]interface{}{
+				"name": "Alice", "phone": tc.phone, "attendanceType": "both",
+			})
+			req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+			req.Header.Set("Content-Type", "application/json")
+			contractResponse(t, env, req, http.StatusBadRequest)
+		})
+	}
+}
+
+func TestRsvp_NoCode_MissingPhone_Returns400(t *testing.T) {
+	env := newTestEnv()
+	body := jsonBody(map[string]interface{}{
+		"name": "Alice", "attendanceType": "both",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+	req.Header.Set("Content-Type", "application/json")
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+// Regression: the code flow (?code=) is unaffected by the no-code email→phone swap.
+// It still accepts {code, attendanceType} and returns email="" with phone=null.
+func TestRsvp_CodeFlow_Unaffected_ByPhoneSwap(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	// Create an invite
+	invBody := jsonBody(map[string]interface{}{"name": "Alice"})
+	invReq := adminRequest(http.MethodPost, "/api/admin/invites", invBody, cookie, csrf)
+	invResult := contractResponse(t, env, invReq, http.StatusCreated)
+	code := invResult["invite"].(map[string]interface{})["code"].(string)
+
+	// Submit RSVP with code only — no phone, no email
+	body := jsonBody(map[string]interface{}{
+		"code": code, "attendanceType": "both", "guestCount": 1,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
+	req.Header.Set("Content-Type", "application/json")
+	result := contractResponse(t, env, req, http.StatusCreated)
+
+	rsvp := result["rsvp"].(map[string]interface{})
+	if rsvp["email"] != "" {
+		t.Fatalf("expected empty email for code flow, got %v", rsvp["email"])
+	}
+	if rsvp["phone"] != nil {
+		t.Fatalf("expected nil phone for code flow, got %v", rsvp["phone"])
 	}
 }
 
@@ -315,7 +383,7 @@ func TestRsvp_Create_DeadlineEnforcement(t *testing.T) {
 				}
 			}
 			body := jsonBody(map[string]interface{}{
-				"name": "Alice", "email": "alice@test.com", "attendanceType": "both",
+				"name": "Alice", "phone": "+6281234567890", "attendanceType": "both",
 			})
 			req := httptest.NewRequest(http.MethodPost, "/api/rsvp", body)
 			req.Header.Set("Content-Type", "application/json")
