@@ -6,7 +6,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -17,13 +16,9 @@ import { apiRequest } from "@/lib/queryClient";
 
 const urlImageSchema = z.object({
   imageUrl: z.string().url("Must be a valid URL"),
-  title: z.string().optional(),
-  description: z.string().optional(),
 });
 
 const fileUploadSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
   file: z.any().refine((file) => file instanceof File || file === undefined, "Please select a file"),
 });
 
@@ -53,8 +48,6 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
     resolver: zodResolver(urlImageSchema),
     defaultValues: {
       imageUrl: editingImage?.imageUrl || "",
-      title: editingImage?.title || "",
-      description: editingImage?.description || "",
     }
   });
 
@@ -62,8 +55,6 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
   const fileForm = useForm<FileUploadForm>({
     resolver: zodResolver(fileUploadSchema),
     defaultValues: {
-      title: editingImage?.title || "",
-      description: editingImage?.description || "",
       file: undefined,
     }
   });
@@ -74,19 +65,23 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
       if (editingImage) {
         // Update existing image
         return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, {
-          ...data,
+          imageUrl: data.imageUrl,
           imageKey: editingImage.imageKey,
           imageType,
-          isActive: true
+          isActive: true,
+          title: editingImage.title ?? "",
+          description: editingImage.description ?? "",
         });
       } else {
         // Create new image
         const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
         return apiRequest("POST", "/api/admin/config-images", {
-          ...data,
+          imageUrl: data.imageUrl,
           imageKey,
           imageType,
-          isActive: true
+          isActive: true,
+          title: "",
+          description: "",
         });
       }
     },
@@ -146,8 +141,8 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
         storagePath,
         imageKey,
         imageType,
-        title: data.title || '',
-        description: data.description || '',
+        title: editingImage?.title ?? '',
+        description: editingImage?.description ?? '',
       });
       return completeRes.json();
     },
@@ -432,34 +427,6 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
                   )}
                 </div>
 
-                <FormField
-                  control={fileForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title (Optional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Image title" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={fileForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} placeholder="Image description" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <div className="flex gap-2 pt-4">
                   <Button
                     type="submit"
@@ -557,34 +524,6 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
                     </div>
                   )}
                 </div>
-
-                <FormField
-                  control={urlForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title (Optional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Image title" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={urlForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} placeholder="Image description" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <div className="flex gap-2 pt-4">
                   <Button
