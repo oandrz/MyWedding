@@ -218,16 +218,6 @@ describe("RsvpSection", () => {
   });
 
   it("shows closed toast when submit returns 403", async () => {
-    const qc = createTestQueryClient();
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-    qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
-    qc.setQueryData(["/api/feature-flags"], {
-      featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
-    });
-    qc.setQueryData(["/api/app-settings"], {
-      settings: [{ id: 1, settingKey: "rsvp_deadline", settingValue: tomorrow, settingType: "date", description: null, updatedAt: "" }],
-    });
-
     const originalFetch = global.fetch;
     global.fetch = vi.fn((url, options) => {
       const urlStr = typeof url === "string" ? url : url.toString();
@@ -244,13 +234,7 @@ describe("RsvpSection", () => {
       );
     }) as any;
 
-    render(
-      <LanguageProvider>
-        <QueryClientProvider client={qc}>
-          <RsvpSection />
-        </QueryClientProvider>
-      </LanguageProvider>
-    );
+    renderWithDeadline(false);
 
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "+6281234567890" } });
@@ -276,6 +260,28 @@ describe("RsvpSection", () => {
 
   it("falls back to 4 guest options when rsvp_max_guests is not set", () => {
     renderRsvpSection();
+    const select = screen.getByLabelText(/number of guests/i) as HTMLSelectElement;
+    expect(select.options).toHaveLength(4);
+  });
+
+  it("falls back to 4 when rsvp_max_guests is 0 or invalid", () => {
+    const qc = createTestQueryClient();
+    qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
+    qc.setQueryData(["/api/feature-flags"], {
+      featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
+    });
+    qc.setQueryData(["/api/app-settings"], {
+      settings: [
+        { id: 1, settingKey: "rsvp_max_guests", settingValue: "0", settingType: "number", description: null, updatedAt: "" },
+      ],
+    });
+    render(
+      <LanguageProvider>
+        <QueryClientProvider client={qc}>
+          <RsvpSection />
+        </QueryClientProvider>
+      </LanguageProvider>
+    );
     const select = screen.getByLabelText(/number of guests/i) as HTMLSelectElement;
     expect(select.options).toHaveLength(4);
   });
