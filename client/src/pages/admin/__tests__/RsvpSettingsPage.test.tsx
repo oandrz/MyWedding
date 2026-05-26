@@ -55,6 +55,15 @@ describe("RsvpSettingsPage – max guests", () => {
     expect(screen.getByTestId("button-save-rsvp-max-guests")).toBeDisabled();
   });
 
+  it("save button is disabled when value is out of range (0 or above 20)", () => {
+    renderPage();
+    fireEvent.change(screen.getByTestId("input-rsvp-max-guests"), { target: { value: "0" } });
+    expect(screen.getByTestId("button-save-rsvp-max-guests")).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId("input-rsvp-max-guests"), { target: { value: "21" } });
+    expect(screen.getByTestId("button-save-rsvp-max-guests")).toBeDisabled();
+  });
+
   it("calls bulk update API with rsvp_max_guests when Save is clicked", async () => {
     let capturedBody: any;
     const originalFetch = global.fetch;

@@ -249,7 +249,7 @@ export default function RsvpSettingsPage() {
               />
               <Button
                 onClick={() => maxGuestsMutation.mutate(maxGuestsInput)}
-                disabled={maxGuestsMutation.isPending || !maxGuestsInput}
+                disabled={maxGuestsMutation.isPending || !maxGuestsInput || Number(maxGuestsInput) < 1 || Number(maxGuestsInput) > 20}
                 data-testid="button-save-rsvp-max-guests"
               >
                 {maxGuestsMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
