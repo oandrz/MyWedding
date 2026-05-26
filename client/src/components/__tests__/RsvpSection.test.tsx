@@ -264,24 +264,8 @@ describe("RsvpSection", () => {
     expect(select.options).toHaveLength(4);
   });
 
-  it("falls back to 4 when rsvp_max_guests is 0 or invalid", () => {
-    const qc = createTestQueryClient();
-    qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
-    qc.setQueryData(["/api/feature-flags"], {
-      featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
-    });
-    qc.setQueryData(["/api/app-settings"], {
-      settings: [
-        { id: 1, settingKey: "rsvp_max_guests", settingValue: "0", settingType: "number", description: null, updatedAt: "" },
-      ],
-    });
-    render(
-      <LanguageProvider>
-        <QueryClientProvider client={qc}>
-          <RsvpSection />
-        </QueryClientProvider>
-      </LanguageProvider>
-    );
+  it("falls back to 4 when rsvp_max_guests is 0", () => {
+    renderWithMaxGuests(0);
     const select = screen.getByLabelText(/number of guests/i) as HTMLSelectElement;
     expect(select.options).toHaveLength(4);
   });
