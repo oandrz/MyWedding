@@ -260,7 +260,7 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl p-0 gap-0">
-        <div className="flex flex-col max-h-[90vh] p-6">
+        <div className="flex flex-col max-h-[90vh] p-6 pr-10">
           {/* Pinned header */}
           <DialogHeader className="shrink-0 pb-4">
             <div className="flex items-center gap-3">
