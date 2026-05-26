@@ -67,6 +67,14 @@ const RsvpSection = () => {
     return deadline <= today;
   })();
 
+  const maxGuests = (() => {
+    const setting = appSettingsData?.settings?.find(
+      (s: any) => s.settingKey === 'rsvp_max_guests'
+    );
+    const parsed = parseInt(setting?.settingValue ?? '4', 10);
+    return parsed > 0 ? parsed : 4;
+  })();
+
   // Flow determined by URL param: ?code= → code flow, otherwise → email flow
   const useCodeFlow = !!inviteCode;
 
@@ -432,17 +440,16 @@ const RsvpSection = () => {
               {showGuestOptions && (
                 <div>
                   <label htmlFor="guestCount" className="block text-foreground font-montserrat text-sm mb-2">{t("numberOfGuests")}</label>
-                  <select 
-                    id="guestCount" 
+                  <select
+                    id="guestCount"
                     className="w-full px-4 py-2 border border-gray-300 rounded-md font-montserrat text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
                     {...register("guestCount", {
                       setValueAs: (value) => parseInt(value, 10)
                     })}
                   >
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
+                    {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
                   </select>
                 </div>
               )}

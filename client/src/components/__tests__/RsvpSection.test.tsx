@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock("framer-motion", () => ({
@@ -51,9 +52,11 @@ function renderRsvpSection() {
     featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
   });
   return render(
-    <QueryClientProvider client={qc}>
-      <RsvpSection />
-    </QueryClientProvider>
+    <LanguageProvider>
+      <QueryClientProvider client={qc}>
+        <RsvpSection />
+      </QueryClientProvider>
+    </LanguageProvider>
   );
 }
 
@@ -71,9 +74,31 @@ function renderWithDeadline(pastDeadline: boolean) {
   });
 
   return render(
-    <QueryClientProvider client={qc}>
-      <RsvpSection />
-    </QueryClientProvider>
+    <LanguageProvider>
+      <QueryClientProvider client={qc}>
+        <RsvpSection />
+      </QueryClientProvider>
+    </LanguageProvider>
+  );
+}
+
+function renderWithMaxGuests(maxGuests: number) {
+  const qc = createTestQueryClient();
+  qc.setQueryData(["/api/rsvp/check", ""], { exists: false, rsvp: null });
+  qc.setQueryData(["/api/feature-flags"], {
+    featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
+  });
+  qc.setQueryData(["/api/app-settings"], {
+    settings: [
+      { id: 1, settingKey: "rsvp_max_guests", settingValue: String(maxGuests), settingType: "number", description: null, updatedAt: "" },
+    ],
+  });
+  return render(
+    <LanguageProvider>
+      <QueryClientProvider client={qc}>
+        <RsvpSection />
+      </QueryClientProvider>
+    </LanguageProvider>
   );
 }
 
@@ -220,9 +245,11 @@ describe("RsvpSection", () => {
     }) as any;
 
     render(
-      <QueryClientProvider client={qc}>
-        <RsvpSection />
-      </QueryClientProvider>
+      <LanguageProvider>
+        <QueryClientProvider client={qc}>
+          <RsvpSection />
+        </QueryClientProvider>
+      </LanguageProvider>
     );
 
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "John" } });
@@ -236,5 +263,20 @@ describe("RsvpSection", () => {
     });
 
     global.fetch = originalFetch;
+  });
+
+  it("renders dynamic guest count options up to rsvp_max_guests", () => {
+    renderWithMaxGuests(3);
+    const select = screen.getByLabelText(/number of guests/i) as HTMLSelectElement;
+    expect(select.options).toHaveLength(3);
+    expect(select.options[0].value).toBe("1");
+    expect(select.options[1].value).toBe("2");
+    expect(select.options[2].value).toBe("3");
+  });
+
+  it("falls back to 4 guest options when rsvp_max_guests is not set", () => {
+    renderRsvpSection();
+    const select = screen.getByLabelText(/number of guests/i) as HTMLSelectElement;
+    expect(select.options).toHaveLength(4);
   });
 });
