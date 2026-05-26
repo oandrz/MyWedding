@@ -259,295 +259,295 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-              <Upload className="h-6 w-6 text-white" />
+      <DialogContent className="max-w-2xl p-0 gap-0">
+        <div className="flex flex-col max-h-[90vh] p-6">
+          {/* Pinned header */}
+          <DialogHeader className="shrink-0 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                <Upload className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">
+                  {editingImage ? "Edit" : "Add"} {imageType === "banner" ? "Banner" : "Gallery"} Image
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  {editingImage ? "Update the image details or replace the image" : "Upload a file or add an image URL"}
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-xl">
-                {editingImage ? "Edit" : "Add"} {imageType === "banner" ? "Banner" : "Gallery"} Image
-              </DialogTitle>
-              <DialogDescription className="text-sm text-gray-500">
-                {editingImage ? "Update the image details or replace the image" : "Upload a file or add an image URL"}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="upload" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Upload File
-            </TabsTrigger>
-            <TabsTrigger value="url" className="gap-2">
-              <Link className="h-4 w-4" />
-              Add URL
-            </TabsTrigger>
-          </TabsList>
+          {/* Tabs: pinned tab bar + scrollable content */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+            <TabsList className="grid w-full grid-cols-2 shrink-0">
+              <TabsTrigger value="upload" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Upload File
+              </TabsTrigger>
+              <TabsTrigger value="url" className="gap-2">
+                <Link className="h-4 w-4" />
+                Add URL
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="upload" className="space-y-4">
-            <Form {...fileForm}>
-              <form onSubmit={fileForm.handleSubmit(onFileSubmit)} className="space-y-4">
-                {/* Drag and Drop Area */}
-                <div
-                  className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                    dragActive
-                      ? "border-blue-400 bg-blue-50"
-                      : uploadedFile
-                      ? "border-green-400 bg-green-50"
-                      : "border-gray-300 bg-gray-50"
-                  }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                >
-                  {isProcessing ? (
-                    <div className="space-y-3">
-                      <Settings className="h-12 w-12 text-blue-600 mx-auto animate-spin" />
-                      <div>
-                        <p className="text-lg font-medium text-blue-800">Processing Image...</p>
-                        <p className="text-sm text-blue-600">Optimizing size and format</p>
-                      </div>
-                    </div>
-                  ) : uploadedFile ? (
-                    <div className="space-y-3">
-                      {processedImage?.analysis.isOptimalSize && processedImage?.analysis.isOptimalRatio ? (
-                        <CheckCircle className="h-12 w-12 text-green-600 mx-auto" />
+            <div className="flex-1 overflow-y-auto min-h-0 py-4">
+              <TabsContent value="upload" className="space-y-4 mt-0">
+                <Form {...fileForm}>
+                  <form id="upload-form" onSubmit={fileForm.handleSubmit(onFileSubmit)} className="space-y-4">
+                    {/* Drag and Drop Area */}
+                    <div
+                      className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                        dragActive
+                          ? "border-blue-400 bg-blue-50"
+                          : uploadedFile
+                          ? "border-green-400 bg-green-50"
+                          : "border-gray-300 bg-gray-50"
+                      }`}
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                    >
+                      {isProcessing ? (
+                        <div className="space-y-3">
+                          <Settings className="h-12 w-12 text-blue-600 mx-auto animate-spin" />
+                          <div>
+                            <p className="text-lg font-medium text-blue-800">Processing Image...</p>
+                            <p className="text-sm text-blue-600">Optimizing size and format</p>
+                          </div>
+                        </div>
+                      ) : uploadedFile ? (
+                        <div className="space-y-3">
+                          {processedImage?.analysis.isOptimalSize && processedImage?.analysis.isOptimalRatio ? (
+                            <CheckCircle className="h-12 w-12 text-green-600 mx-auto" />
+                          ) : (
+                            <AlertTriangle className="h-12 w-12 text-orange-600 mx-auto" />
+                          )}
+                          <div>
+                            <p className="text-lg font-medium text-green-800">
+                              {processedImage?.optimized ? "Image Optimized!" : "File Ready"}
+                            </p>
+                            <p className="text-sm text-green-600">{uploadedFile.name}</p>
+                            {processedImage && (
+                              <ImagePreview processedImage={processedImage} imageType={imageType} />
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setUploadedFile(null);
+                                clearProcessedImage();
+                                fileForm.setValue("file", undefined);
+                              }}
+                              className="mt-2"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
-                        <AlertTriangle className="h-12 w-12 text-orange-600 mx-auto" />
+                        <div className="space-y-3">
+                          <Upload className="h-12 w-12 text-blue-400 mx-auto" />
+                          <div>
+                            <p className="text-lg font-medium text-blue-600">Drag a file here</p>
+                            <p className="text-sm text-gray-500">Or, if you prefer...</p>
+                            <Button
+                              type="button"
+                              className="mt-3"
+                              onClick={() => fileInputRef.current?.click()}
+                            >
+                              Select a file from your computer
+                            </Button>
+                          </div>
+                        </div>
                       )}
-                      <div>
-                        <p className="text-lg font-medium text-green-800">
-                          {processedImage?.optimized ? "Image Optimized!" : "File Ready"}
-                        </p>
-                        <p className="text-sm text-green-600">{uploadedFile.name}</p>
-
-                        {/* Image Analysis Results */}
-                        {processedImage && (
-                          <ImagePreview processedImage={processedImage} imageType={imageType} />
-                        )}
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setUploadedFile(null);
-                            clearProcessedImage();
-                            fileForm.setValue("file", undefined);
-                          }}
-                          className="mt-2"
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <Upload className="h-12 w-12 text-blue-400 mx-auto" />
-                      <div>
-                        <p className="text-lg font-medium text-blue-600">Drag a file here</p>
-                        <p className="text-sm text-gray-500">Or, if you prefer...</p>
-                        <Button
-                          type="button"
-                          className="mt-3"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          Select a file from your computer
-                        </Button>
+
+                    {/* Image Guidelines */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <h4 className="text-sm font-medium text-blue-800">
+                          Recommended {imageType === "banner" ? "Banner" : "Gallery"} Image Guidelines
+                        </h4>
                       </div>
+                      {imageType === "banner" ? (
+                        <div className="space-y-2 text-sm text-blue-700">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="font-medium">Optimal Dimensions:</span>
+                              <div className="text-xs mt-1">
+                                • 1920 x 1080px (16:9 ratio)<br/>
+                                • 1600 x 900px (alternative)<br/>
+                                • 1280 x 720px (minimum)
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium">Best Practices:</span>
+                              <div className="text-xs mt-1">
+                                • Keep file under 200KB<br/>
+                                • Use JPEG or WebP format<br/>
+                                • Position subjects in upper half
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 text-sm text-blue-700">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="font-medium">Optimal Dimensions:</span>
+                              <div className="text-xs mt-1">
+                                • 1080 x 1080px (square)<br/>
+                                • 1080 x 1350px (portrait)<br/>
+                                • 1350 x 1080px (landscape)
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium">Best Practices:</span>
+                              <div className="text-xs mt-1">
+                                • Keep file under 150KB<br/>
+                                • Use JPEG or WebP format<br/>
+                                • Square format works best
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </form>
+                </Form>
+              </TabsContent>
 
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </div>
+              <TabsContent value="url" className="space-y-4 mt-0">
+                <Form {...urlForm}>
+                  <form id="url-form" onSubmit={urlForm.handleSubmit(onUrlSubmit)} className="space-y-4">
+                    <FormField
+                      control={urlForm.control}
+                      name="imageUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Image URL</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="https://example.com/image.jpg"
+                              type="url"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Image Guidelines */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    <h4 className="text-sm font-medium text-blue-800">
-                      Recommended {imageType === "banner" ? "Banner" : "Gallery"} Image Guidelines
-                    </h4>
-                  </div>
-
-                  {imageType === "banner" ? (
-                    <div className="space-y-2 text-sm text-blue-700">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="font-medium">Optimal Dimensions:</span>
-                          <div className="text-xs mt-1">
-                            • 1920 x 1080px (16:9 ratio)<br/>
-                            • 1600 x 900px (alternative)<br/>
-                            • 1280 x 720px (minimum)
-                          </div>
-                        </div>
-                        <div>
-                          <span className="font-medium">Best Practices:</span>
-                          <div className="text-xs mt-1">
-                            • Keep file under 200KB<br/>
-                            • Use JPEG or WebP format<br/>
-                            • Position subjects in upper half
-                          </div>
-                        </div>
+                    {/* Image Guidelines */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <h4 className="text-sm font-medium text-blue-800">
+                          Recommended {imageType === "banner" ? "Banner" : "Gallery"} Image Guidelines
+                        </h4>
                       </div>
+                      {imageType === "banner" ? (
+                        <div className="space-y-2 text-sm text-blue-700">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="font-medium">Optimal Dimensions:</span>
+                              <div className="text-xs mt-1">
+                                • 1920 x 1080px (16:9 ratio)<br/>
+                                • 1600 x 900px (alternative)<br/>
+                                • 1280 x 720px (minimum)
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium">Best Practices:</span>
+                              <div className="text-xs mt-1">
+                                • Keep file under 200KB<br/>
+                                • Use JPEG or WebP format<br/>
+                                • Position subjects in upper half
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 text-sm text-blue-700">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="font-medium">Optimal Dimensions:</span>
+                              <div className="text-xs mt-1">
+                                • 1080 x 1080px (square)<br/>
+                                • 1080 x 1350px (portrait)<br/>
+                                • 1350 x 1080px (landscape)
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium">Best Practices:</span>
+                              <div className="text-xs mt-1">
+                                • Keep file under 150KB<br/>
+                                • Use JPEG or WebP format<br/>
+                                • Square format works best
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="space-y-2 text-sm text-blue-700">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="font-medium">Optimal Dimensions:</span>
-                          <div className="text-xs mt-1">
-                            • 1080 x 1080px (square)<br/>
-                            • 1080 x 1350px (portrait)<br/>
-                            • 1350 x 1080px (landscape)
-                          </div>
-                        </div>
-                        <div>
-                          <span className="font-medium">Best Practices:</span>
-                          <div className="text-xs mt-1">
-                            • Keep file under 150KB<br/>
-                            • Use JPEG or WebP format<br/>
-                            • Square format works best
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </form>
+                </Form>
+              </TabsContent>
+            </div>
+          </Tabs>
 
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    type="submit"
-                    disabled={fileMutation.isPending || !uploadedFile}
-                    className="flex-1"
-                  >
-                    {fileMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      "Upload Image"
-                    )}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleClose}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </TabsContent>
-
-          <TabsContent value="url" className="space-y-4">
-            <Form {...urlForm}>
-              <form onSubmit={urlForm.handleSubmit(onUrlSubmit)} className="space-y-4">
-                <FormField
-                  control={urlForm.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image URL</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="https://example.com/image.jpg"
-                          type="url"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Image Guidelines for URL Tab */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    <h4 className="text-sm font-medium text-blue-800">
-                      Recommended {imageType === "banner" ? "Banner" : "Gallery"} Image Guidelines
-                    </h4>
-                  </div>
-
-                  {imageType === "banner" ? (
-                    <div className="space-y-2 text-sm text-blue-700">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="font-medium">Optimal Dimensions:</span>
-                          <div className="text-xs mt-1">
-                            • 1920 x 1080px (16:9 ratio)<br/>
-                            • 1600 x 900px (alternative)<br/>
-                            • 1280 x 720px (minimum)
-                          </div>
-                        </div>
-                        <div>
-                          <span className="font-medium">Best Practices:</span>
-                          <div className="text-xs mt-1">
-                            • Keep file under 200KB<br/>
-                            • Use JPEG or WebP format<br/>
-                            • Position subjects in upper half
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 text-sm text-blue-700">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="font-medium">Optimal Dimensions:</span>
-                          <div className="text-xs mt-1">
-                            • 1080 x 1080px (square)<br/>
-                            • 1080 x 1350px (portrait)<br/>
-                            • 1350 x 1080px (landscape)
-                          </div>
-                        </div>
-                        <div>
-                          <span className="font-medium">Best Practices:</span>
-                          <div className="text-xs mt-1">
-                            • Keep file under 150KB<br/>
-                            • Use JPEG or WebP format<br/>
-                            • Square format works best
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    type="submit"
-                    disabled={urlMutation.isPending}
-                    className="flex-1"
-                  >
-                    {urlMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Adding...
-                      </>
-                    ) : (
-                      "Add Image"
-                    )}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleClose}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </TabsContent>
-        </Tabs>
+          {/* Pinned footer — always visible regardless of scroll position */}
+          <div className="shrink-0 flex gap-2 pt-4 border-t mt-2">
+            {activeTab === "upload" ? (
+              <Button
+                type="submit"
+                form="upload-form"
+                disabled={fileMutation.isPending || !uploadedFile}
+                className="flex-1"
+              >
+                {fileMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Upload Image"
+                )}
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                form="url-form"
+                disabled={urlMutation.isPending}
+                className="flex-1"
+              >
+                {urlMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Image"
+                )}
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
