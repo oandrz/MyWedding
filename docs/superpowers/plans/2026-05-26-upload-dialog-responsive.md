@@ -1,19 +1,34 @@
-import { useState, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { useImageAnalysis } from "@/hooks/useImageAnalysis";
-import { ImagePreview } from "@/components/ImagePreview";
-import { Upload, Link, X, Loader2, Info, AlertTriangle, CheckCircle, Settings } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+# Upload Dialog Responsive Layout Fix Implementation Plan
 
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Make the admin image upload dialog usable on all screen sizes by removing unused title/description fields and restructuring it into a three-zone flex layout with a permanently visible footer button.
+
+**Architecture:** Two sequential changes to a single component. Task 1 removes the title/description form fields and updates mutation payloads to preserve existing values on edit. Task 2 restructures the dialog into a flex column — pinned header, scrollable middle (drag zone + guidelines), pinned footer (Upload/Add buttons always visible) — using the HTML5 `form` attribute to link footer buttons to their forms by id.
+
+**Tech Stack:** React 18, TypeScript, react-hook-form + Zod, TanStack React Query, Shadcn UI (Dialog, Tabs), Vitest + Testing Library (jsdom)
+
+---
+
+## File Map
+
+| File | Change |
+|------|--------|
+| `client/src/components/ImageUploadModal.tsx` | Remove title/description schema fields + FormFields; update mutations; restructure layout |
+| `client/src/components/__tests__/ImageUploadModal.test.tsx` | New file — one test verifying footer button linkage |
+
+---
+
+## Task 1: Remove title and description fields
+
+**Files:**
+- Modify: `client/src/components/ImageUploadModal.tsx:18-70` (schemas, types, form defaults, mutations)
+
+- [ ] **Step 1: Simplify both Zod schemas**
+
+In `client/src/components/ImageUploadModal.tsx`, replace lines 18–28:
+
+```tsx
 const urlImageSchema = z.object({
   imageUrl: z.string().url("Must be a valid URL"),
 });
@@ -24,243 +39,238 @@ const fileUploadSchema = z.object({
 
 type UrlImageForm = z.infer<typeof urlImageSchema>;
 type FileUploadForm = z.infer<typeof fileUploadSchema>;
+```
 
-interface ImageUploadModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  imageType: "banner" | "gallery" | "bride-profile" | "groom-profile" | "verse-image";
-  editingImage?: any; // ConfigImage type
-  onSuccess?: () => void;
-}
+- [ ] **Step 2: Update `urlForm` defaultValues**
 
-const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess }: ImageUploadModalProps) => {
-  const [activeTab, setActiveTab] = useState("upload");
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+Replace the `urlForm` `useForm` call (around line 52):
 
-  const { processedImage, isProcessing, optimizeImage, clearProcessedImage } = useImageAnalysis(imageType);
+```tsx
+const urlForm = useForm<UrlImageForm>({
+  resolver: zodResolver(urlImageSchema),
+  defaultValues: {
+    imageUrl: editingImage?.imageUrl || "",
+  }
+});
+```
 
-  // URL form
-  const urlForm = useForm<UrlImageForm>({
-    resolver: zodResolver(urlImageSchema),
-    defaultValues: {
-      imageUrl: editingImage?.imageUrl || "",
-    }
+- [ ] **Step 3: Update `fileForm` defaultValues**
+
+Replace the `fileForm` `useForm` call (around line 61):
+
+```tsx
+const fileForm = useForm<FileUploadForm>({
+  resolver: zodResolver(fileUploadSchema),
+  defaultValues: {
+    file: undefined,
+  }
+});
+```
+
+- [ ] **Step 4: Update `urlMutation` mutation payloads**
+
+In `urlMutation.mutationFn` (around lines 74–91), replace both the edit and create `apiRequest` calls so title/description come from `editingImage` (not from form data):
+
+```tsx
+mutationFn: async (data: UrlImageForm) => {
+  if (editingImage) {
+    return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, {
+      imageUrl: data.imageUrl,
+      imageKey: editingImage.imageKey,
+      imageType,
+      isActive: true,
+      title: editingImage.title ?? "",
+      description: editingImage.description ?? "",
+    });
+  } else {
+    const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
+    return apiRequest("POST", "/api/admin/config-images", {
+      imageUrl: data.imageUrl,
+      imageKey,
+      imageType,
+      isActive: true,
+      title: "",
+      description: "",
+    });
+  }
+},
+```
+
+- [ ] **Step 5: Update `fileMutation` complete step payload**
+
+In `fileMutation.mutationFn` (around lines 143–152), replace the `apiRequest` call for `/api/admin/upload/complete`:
+
+```tsx
+const completeRes = await apiRequest('POST', '/api/admin/upload/complete', {
+  storagePath,
+  imageKey,
+  imageType,
+  title: editingImage?.title ?? '',
+  description: editingImage?.description ?? '',
+});
+```
+
+- [ ] **Step 6: Remove title FormField from the upload tab**
+
+In `client/src/components/ImageUploadModal.tsx`, delete the `<FormField>` block for `name="title"` inside `<TabsContent value="upload">` (around lines 435–447):
+
+```tsx
+// DELETE this entire block:
+<FormField
+  control={fileForm.control}
+  name="title"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Title (Optional)</FormLabel>
+      <FormControl>
+        <Input {...field} placeholder="Image title" />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+- [ ] **Step 7: Remove description FormField from the upload tab**
+
+Delete the `<FormField>` block for `name="description"` inside `<TabsContent value="upload">` (around lines 449–461):
+
+```tsx
+// DELETE this entire block:
+<FormField
+  control={fileForm.control}
+  name="description"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Description (Optional)</FormLabel>
+      <FormControl>
+        <Textarea {...field} placeholder="Image description" />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+- [ ] **Step 8: Remove title and description FormFields from the URL tab**
+
+Delete both `<FormField>` blocks for `name="title"` and `name="description"` inside `<TabsContent value="url">` (around lines 561–587). Same structure as the blocks removed in Steps 6–7, just inside the URL tab form.
+
+- [ ] **Step 9: Remove unused `Textarea` import**
+
+In `client/src/components/ImageUploadModal.tsx` line 9, remove `Textarea` from the import (it was only used by the removed description field):
+
+```tsx
+// Before:
+import { Textarea } from "@/components/ui/textarea";
+
+// After: delete this line entirely
+```
+
+- [ ] **Step 10: Run TypeScript check**
+
+```bash
+cd /Volumes/Oink_Machine/Intelij/MyWedding && npm run check 2>&1 | tail -15
+```
+
+Expected: no type errors. If you see errors referencing `title` or `description` on `data.title`, verify the mutation payloads from Steps 4–5 use `editingImage?.title` instead.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add client/src/components/ImageUploadModal.tsx
+git commit -m "refactor: remove unused title and description fields from upload dialog"
+```
+
+---
+
+## Task 2: Flex-column layout with pinned footer
+
+**Files:**
+- Modify: `client/src/components/ImageUploadModal.tsx` (JSX structure only, no logic changes)
+- Create: `client/src/components/__tests__/ImageUploadModal.test.tsx`
+
+- [ ] **Step 1: Write the failing test**
+
+Create `client/src/components/__tests__/ImageUploadModal.test.tsx`:
+
+```tsx
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import ImageUploadModal from "../ImageUploadModal";
+
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+}));
+
+vi.mock("@/hooks/useImageAnalysis", () => ({
+  useImageAnalysis: () => ({
+    processedImage: null,
+    isProcessing: false,
+    optimizeImage: vi.fn().mockResolvedValue({
+      file: new File([""], "photo.jpg", { type: "image/jpeg" }),
+      optimized: false,
+      analysis: { isOptimalSize: true, isOptimalRatio: true },
+    }),
+    clearProcessedImage: vi.fn(),
+  }),
+}));
+
+vi.mock("@/lib/queryClient", () => ({
+  apiRequest: vi.fn(),
+}));
+
+vi.mock("@/components/ImagePreview", () => ({
+  ImagePreview: () => null,
+}));
+
+describe("ImageUploadModal", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  // File upload form
-  const fileForm = useForm<FileUploadForm>({
-    resolver: zodResolver(fileUploadSchema),
-    defaultValues: {
-      file: undefined,
-    }
+  it("footer Upload Image button is linked to upload-form via form attribute and sits outside the form", () => {
+    render(
+      <ImageUploadModal
+        isOpen={true}
+        onClose={vi.fn()}
+        imageType="gallery"
+      />
+    );
+
+    const form = document.getElementById("upload-form");
+    expect(form).not.toBeNull();
+
+    const submitButton = screen.getByRole("button", { name: /upload image/i });
+    expect(submitButton).toHaveAttribute("form", "upload-form");
+    expect(form).not.toContainElement(submitButton);
   });
+});
+```
 
-  // URL submission mutation
-  const urlMutation = useMutation({
-    mutationFn: async (data: UrlImageForm) => {
-      if (editingImage) {
-        // Update existing image
-        return apiRequest("PUT", `/api/admin/config-images/${editingImage.imageKey}`, {
-          imageUrl: data.imageUrl,
-          imageKey: editingImage.imageKey,
-          imageType,
-          isActive: true,
-          title: editingImage.title ?? "",
-          description: editingImage.description ?? "",
-        });
-      } else {
-        // Create new image
-        const imageKey = imageType === "banner" ? "banner" : `gallery_${Date.now()}`;
-        return apiRequest("POST", "/api/admin/config-images", {
-          imageUrl: data.imageUrl,
-          imageKey,
-          imageType,
-          isActive: true,
-          title: "",
-          description: "",
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/config-images/${imageType}`] });
-      toast({
-        title: "Success",
-        description: "Image added successfully!"
-      });
-      urlForm.reset();
-      onSuccess?.();
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add image",
-        variant: "destructive"
-      });
-    }
-  });
+- [ ] **Step 2: Run the test to confirm it fails**
 
-  // File upload mutation for config images - now uses App Storage directly
-  const fileMutation = useMutation({
-    mutationFn: async (data: FileUploadForm) => {
-      const file = data.file as File;
-      const timestamp = Date.now();
-      const imageKey = editingImage?.imageKey || (imageType === "banner" ? "banner" : `gallery_${timestamp}`);
+```bash
+cd /Volumes/Oink_Machine/Intelij/MyWedding && npx vitest run client/src/components/__tests__/ImageUploadModal.test.tsx 2>&1 | tail -20
+```
 
-      // Step 1 — get a signed upload URL from the Go backend (tiny JSON request, passes WAF)
-      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.type.split('/')[1] ?? 'jpg');
-      const urlRes = await apiRequest('POST', '/api/admin/upload/signed-url', {
-        imageKey,
-        imageType,
-        filename: `upload.${ext}`,
-      });
-      const body = await urlRes.json();
-      const signedUrl: string = body.signedUrl;
-      const storagePath: string = body.storagePath;
-      if (!signedUrl || !storagePath) {
-        throw new Error('Invalid signed URL response from server');
-      }
+Expected: test fails — the form has no `id`, the button has no `form` attribute, and the button is currently inside the form.
 
-      // Step 2 — PUT the binary directly to Supabase (bypasses CloudFront entirely)
-      const uploadRes = await fetch(signedUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      });
-      if (!uploadRes.ok) {
-        throw new Error(`Direct upload to storage failed with status ${uploadRes.status}`);
-      }
+- [ ] **Step 3: Restructure the dialog return statement**
 
-      // Step 3 — notify Go to generate thumbnail and save the DB record
-      const completeRes = await apiRequest('POST', '/api/admin/upload/complete', {
-        storagePath,
-        imageKey,
-        imageType,
-        title: editingImage?.title ?? '',
-        description: editingImage?.description ?? '',
-      });
-      return completeRes.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/config-images"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/config-images/${imageType}`] });
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully!"
-      });
-      fileForm.reset();
-      setUploadedFile(null);
-      onSuccess?.();
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to upload image",
-        variant: "destructive"
-      });
-    }
-  });
+In `client/src/components/ImageUploadModal.tsx`, replace the entire `return (...)` block (line 265 to end of component) with:
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith("image/")) {
-        await handleFileProcessing(file);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload an image file",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      await handleFileProcessing(file);
-    }
-  };
-
-  const handleFileProcessing = async (file: File) => {
-    try {
-      setUploadedFile(file);
-      const processed = await optimizeImage(file);
-      fileForm.setValue("file", processed.file);
-
-      // Show feedback to user
-      if (processed.optimized) {
-        const originalSizeKB = Math.round(file.size / 1024);
-        const newSizeKB = Math.round(processed.file.size / 1024);
-        toast({
-          title: "Image Optimized!",
-          description: `Compressed from ${originalSizeKB}KB to ${newSizeKB}KB`,
-        });
-      }
-    } catch (error) {
-      console.error("Error processing image:", error);
-      toast({
-        title: "Processing Error",
-        description: "Failed to process image, using original",
-        variant: "destructive"
-      });
-      // Fallback to original file
-      setUploadedFile(file);
-      fileForm.setValue("file", file);
-    }
-  };
-
-  const onUrlSubmit = (data: UrlImageForm) => {
-    urlMutation.mutate(data);
-  };
-
-  const onFileSubmit = (data: FileUploadForm) => {
-    const fileToUpload = processedImage?.file || uploadedFile;
-    if (!fileToUpload) {
-      toast({
-        title: "No file selected",
-        description: "Please select an image file to upload",
-        variant: "destructive"
-      });
-      return;
-    }
-    fileMutation.mutate({ ...data, file: fileToUpload });
-  };
-
-  const handleClose = () => {
-    urlForm.reset();
-    fileForm.reset();
-    setUploadedFile(null);
-    clearProcessedImage();
-    setActiveTab("upload");
-    onClose();
-  };
-
+```tsx
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl p-0 gap-0">
-        <div className="flex flex-col max-h-[90vh] p-6 pr-10">
+        <div className="flex flex-col max-h-[90vh] p-6">
           {/* Pinned header */}
           <DialogHeader className="shrink-0 pb-4">
             <div className="flex items-center gap-3">
@@ -551,6 +561,40 @@ const ImageUploadModal = ({ isOpen, onClose, imageType, editingImage, onSuccess 
       </DialogContent>
     </Dialog>
   );
-};
+```
 
-export default ImageUploadModal;
+- [ ] **Step 4: Run the test to confirm it passes**
+
+```bash
+cd /Volumes/Oink_Machine/Intelij/MyWedding && npx vitest run client/src/components/__tests__/ImageUploadModal.test.tsx 2>&1 | tail -20
+```
+
+Expected: 1 test passes.
+
+- [ ] **Step 5: TypeScript check**
+
+```bash
+cd /Volumes/Oink_Machine/Intelij/MyWedding && npm run check 2>&1 | tail -10
+```
+
+Expected: no type errors.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add client/src/components/ImageUploadModal.tsx client/src/components/__tests__/ImageUploadModal.test.tsx
+git commit -m "feat: responsive flex-column layout for upload dialog with pinned footer"
+```
+
+---
+
+## Verification
+
+- [ ] Start the dev server: from project root run `npm run dev`, from `go-server/` run `make run-dev`
+- [ ] Open `http://localhost:5173` and navigate to the admin Config page
+- [ ] Open the upload dialog (click "Add Gallery Image" or "Add Banner Image")
+- [ ] Resize the browser window to a narrow height (600px) — the "Upload Image" / "Add Image" button must remain visible at the bottom
+- [ ] On the Upload tab: select a file, confirm the Upload Image button in the footer is enabled and clickable
+- [ ] On the URL tab: enter a URL, confirm the Add Image button in the footer is enabled and clickable
+- [ ] Confirm the Cancel button always works (calls onClose)
+- [ ] Confirm drag-and-drop zone still accepts files

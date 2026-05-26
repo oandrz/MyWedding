@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Mock LanguageContext to avoid provider requirement
+vi.mock("@/contexts/LanguageContext", () => ({
+  useLanguage: () => ({
+    lang: "en",
+    setLang: vi.fn(),
+    t: (key: string) => key,
+    dateLocale: undefined,
+  }),
+  LanguageProvider: ({ children }: any) => <>{children}</>,
+}));
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock("framer-motion", () => ({
@@ -45,6 +56,14 @@ const MOCK_GALLERY_IMAGES = [
   { id: 1, imageUrl: "https://example.com/img1.jpg", title: "Photo 1", description: "", category: "gallery", displayOrder: 1 },
   { id: 2, imageUrl: "https://example.com/img2.jpg", title: "Photo 2", description: "", category: "gallery", displayOrder: 2 },
   { id: 3, imageUrl: "https://example.com/img3.jpg", title: "Photo 3", description: "", category: "gallery", displayOrder: 3 },
+];
+
+const MOCK_GALLERY_IMAGES_WITH_THUMBS = [
+  { id: 1, imageUrl: "/storage/gallery/img1.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb1.jpg", title: "Photo 1", description: "", category: "gallery", displayOrder: 1 },
+  { id: 2, imageUrl: "/storage/gallery/img2.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb2.jpg", title: "Photo 2", description: "", category: "gallery", displayOrder: 2 },
+  { id: 3, imageUrl: "/storage/gallery/img3.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb3.jpg", title: "Photo 3", description: "", category: "gallery", displayOrder: 3 },
+  { id: 4, imageUrl: "/storage/gallery/img4.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb4.jpg", title: "Photo 4", description: "", category: "gallery", displayOrder: 4 },
+  { id: 5, imageUrl: "/storage/gallery/img5.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb5.jpg", title: "Photo 5", description: "", category: "gallery", displayOrder: 5 },
 ];
 
 function renderGallerySection(
@@ -127,5 +146,161 @@ describe("GallerySection — Carousel", () => {
     expect(screen.getByTestId("carousel-dot-0")).toBeInTheDocument();
     expect(screen.getByTestId("carousel-dot-1")).toBeInTheDocument();
     expect(screen.getByTestId("carousel-dot-2")).toBeInTheDocument();
+  });
+});
+
+describe("GallerySection — Preloading", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("preloads full-size image when carousel thumbnail loads", () => {
+    const preloadedSrcs: string[] = [];
+    class MockImage {
+      set src(val: string) { preloadedSrcs.push(val); }
+      get src() { return ""; }
+    }
+    vi.stubGlobal("Image", MockImage);
+
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Find the thumbnail img for the first carousel item and fire onLoad
+    const thumbnailImg = document.querySelector<HTMLImageElement>(
+      'img[src="/storage/gallery/thumbnails/thumb1.jpg"]'
+    );
+    expect(thumbnailImg).not.toBeNull();
+    fireEvent.load(thumbnailImg!);
+
+    expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
+  });
+
+  it("preloads ±2 neighbor full-size images when fullscreen opens", () => {
+    const preloadedSrcs: string[] = [];
+    class MockImage {
+      set src(val: string) { preloadedSrcs.push(val); }
+      get src() { return ""; }
+    }
+    vi.stubGlobal("Image", MockImage);
+
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Open fullscreen at index 2 (middle)
+    const carouselItem = screen.getByTestId("gallery-image-2");
+    const clickableCard = carouselItem.querySelector(".cursor-pointer");
+    fireEvent.click(clickableCard!);
+
+    // Neighbors of index 2: indices 0, 1, 3, 4
+    expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img2.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
+  });
+
+  it("wraps correctly when fullscreen opens at index 0", () => {
+    const preloadedSrcs: string[] = [];
+    class MockImage {
+      set src(val: string) { preloadedSrcs.push(val); }
+      get src() { return ""; }
+    }
+    vi.stubGlobal("Image", MockImage);
+
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Open fullscreen at index 0 (first image)
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    const clickableCard = carouselItem.querySelector(".cursor-pointer");
+    fireEvent.click(clickableCard!);
+
+    // Neighbors of index 0 with wraparound:
+    // offset -2 → index 3 (img4), offset -1 → index 4 (img5)
+    // offset +1 → index 1 (img2), offset +2 → index 2 (img3)
+    expect(preloadedSrcs).toContain("/storage/gallery/img2.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img3.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
+  });
+});
+
+describe("GallerySection — Fullscreen blur-up", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders blurred thumbnail placeholder immediately when fullscreen opens", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const blurPlaceholder = document.querySelector('[data-testid="blur-placeholder"]');
+    expect(blurPlaceholder).not.toBeNull();
+    expect(blurPlaceholder).toHaveAttribute("src", "/storage/gallery/thumbnails/thumb1.jpg");
+  });
+
+  it("renders full-size image with opacity 0 before it loads", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    expect(fullsizeImg).not.toBeNull();
+    expect(fullsizeImg!.style.opacity).toBe("0");
+  });
+
+  it("sets full-size image to opacity 1 when it finishes loading", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    fireEvent.load(fullsizeImg!);
+
+    expect(fullsizeImg!.style.opacity).toBe("1");
+  });
+
+  it("does not render blur placeholder when thumbnail and src are the same URL", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES); // no thumbnailUrl — thumbnail === src
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    expect(document.querySelector('[data-testid="blur-placeholder"]')).toBeNull();
+    expect(document.querySelector('[data-testid="fullsize-image"]')).not.toBeNull();
+  });
+
+  it("sets opacity 1 on full-size image when it errors", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+
+    const fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    fireEvent.error(fullsizeImg!);
+
+    expect(fullsizeImg!.style.opacity).toBe("1");
+  });
+
+  it("resets opacity to 0 when navigating to the next image after current has loaded", () => {
+    renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
+
+    // Open fullscreen at image 0 and simulate it loading
+    const carouselItem = screen.getByTestId("gallery-image-0");
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
+    let fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    fireEvent.load(fullsizeImg!);
+    expect(fullsizeImg!.style.opacity).toBe("1");
+
+    // Navigate to next image
+    fireEvent.click(document.querySelector('[data-testid="next-image"]')!);
+
+    // Full-size image should be invisible (new image, not yet loaded)
+    fullsizeImg = document.querySelector<HTMLElement>('[data-testid="fullsize-image"]');
+    expect(fullsizeImg!.style.opacity).toBe("0");
   });
 });

@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useRef, useState, useEffect, useCallback, Component, type ReactNode } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, Component, type ReactNode } from "react";
 import { GALLERY_PHOTOS } from "@/lib/constants";
 import { fadeIn, staggerContainer, revealText } from "@/lib/animations";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,7 +32,12 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
 };
 
 // Optimized Image Component
-const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: string; index: number }) => {
+const OptimizedImage = ({ thumbnail, alt, index, onLoad }: {
+  thumbnail: string;
+  alt: string;
+  index: number;
+  onLoad?: () => void;
+}) => {
   const safeThumb = thumbnail || '';
   const optimizedSrc = safeThumb.includes('unsplash.com')
     ? getResponsiveImageUrl(safeThumb, 600, 70)
@@ -46,6 +51,7 @@ const OptimizedImage = ({ thumbnail, alt, index }: { thumbnail: string; alt: str
         className="w-full h-full object-cover"
         loading={index < 4 ? "eager" : "lazy"}
         decoding="async"
+        onLoad={onLoad}
       />
     </div>
   );
@@ -104,6 +110,15 @@ const GallerySection = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isFullSizeLoaded, setIsFullSizeLoaded] = useState(false);
+  const preloadedUrls = useRef<Set<string>>(new Set());
+
+  const preloadImage = useCallback((url: string) => {
+    if (!url || preloadedUrls.current.has(url)) return;
+    preloadedUrls.current.add(url);
+    const img = new Image();
+    img.src = url;
+  }, []);
 
   const isSectionInView = useInView(sectionRef, { once: true, amount: 0.1 });
   const isTitleInView = useInView(titleRef, { once: true, amount: 0.3 });
@@ -172,6 +187,23 @@ const GallerySection = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedImageIndex, galleryImages.length]);
+
+  // Preload ±2 neighbor full-size images when fullscreen opens or navigates
+  useEffect(() => {
+    if (selectedImageIndex === null || galleryImages.length === 0) return;
+    const neighborIndices = new Set(
+      [-2, -1, 1, 2].map((offset) => (selectedImageIndex + offset + galleryImages.length) % galleryImages.length)
+    );
+    neighborIndices.forEach((idx) => preloadImage(galleryImages[idx].src));
+  }, [selectedImageIndex, galleryImages, preloadImage]);
+
+  // Reset full-size loaded state whenever the selected image changes.
+  // useLayoutEffect runs synchronously after DOM mutations and before the browser
+  // paints, guaranteeing the reset happens before any cached onLoad fires and
+  // preventing the race where a preloaded image becomes permanently invisible.
+  useLayoutEffect(() => {
+    setIsFullSizeLoaded(false);
+  }, [selectedImageIndex]);
 
   const handlePrevious = () => {
     if (selectedImageIndex === null) return;
@@ -276,6 +308,7 @@ const GallerySection = () => {
                             thumbnail={photo.thumbnail}
                             alt={photo.alt}
                             index={index}
+                            onLoad={() => preloadImage(photo.src)}
                           />
                         </div>
                       </CarouselItem>
@@ -322,11 +355,25 @@ const GallerySection = () => {
                     <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
                   </button>
                 )}
-                <div className="flex items-center justify-center w-full h-full">
+                <div className="relative flex items-center justify-center w-full h-full">
+                  {galleryImages[selectedImageIndex].thumbnail !== galleryImages[selectedImageIndex].src && (
+                    <img
+                      src={galleryImages[selectedImageIndex].thumbnail}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-contain"
+                      style={{ filter: "blur(20px)", transform: "scale(1.05)" }}
+                      data-testid="blur-placeholder"
+                    />
+                  )}
                   <img
+                    key={selectedImageIndex}
                     src={galleryImages[selectedImageIndex].src}
                     alt={galleryImages[selectedImageIndex].alt}
-                    className="max-w-[calc(100vw-80px)] max-h-[calc(100vh-80px)] md:max-w-[calc(100vw-120px)] md:max-h-[calc(100vh-120px)] w-auto h-auto object-contain"
+                    className="relative max-w-[calc(100vw-80px)] max-h-[calc(100vh-80px)] md:max-w-[calc(100vw-120px)] md:max-h-[calc(100vh-120px)] w-auto h-auto object-contain transition-opacity duration-300"
+                    style={{ opacity: isFullSizeLoaded ? 1 : 0 }}
+                    onLoad={() => setIsFullSizeLoaded(true)}
+                    onError={() => setIsFullSizeLoaded(true)}
                     data-testid="fullsize-image"
                   />
                 </div>
