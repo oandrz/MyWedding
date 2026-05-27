@@ -1,11 +1,12 @@
 package service
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"regexp"
 	"strings"
 	"sync"
@@ -20,102 +21,35 @@ const weddingFolderID = "1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC"
 
 var sizePattern = regexp.MustCompile(`=s\d+$`)
 
-// GoogleDriveService handles Google Drive operations.
+// GoogleDriveService handles Google Drive read operations.
 type GoogleDriveService struct {
-	oauthConfig  *oauth2.Config
-	token        *oauth2.Token
-	folderID     string
-	thumbLinks   sync.Map // fileID → thumbnailLink string
+	httpClient *http.Client
+	folderID   string
+	thumbLinks sync.Map // fileID → thumbnailLink string
 }
 
-// NewGoogleDriveService creates a new Drive service.
-func NewGoogleDriveService(clientID, clientSecret, redirectURI, refreshToken string) *GoogleDriveService {
-	if redirectURI == "" {
-		redirectURI = "http://localhost:5000/auth/google/callback"
+// NewGoogleDriveServiceFromServiceAccount creates a Drive service from a base64-encoded service account JSON key.
+func NewGoogleDriveServiceFromServiceAccount(saJSONBase64 string) (*GoogleDriveService, error) {
+	if saJSONBase64 == "" {
+		return nil, fmt.Errorf("service account JSON is empty")
 	}
-
-	cfg := &oauth2.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		RedirectURL:  redirectURI,
-		Scopes:       []string{drive.DriveScope},
-		Endpoint:     google.Endpoint,
-	}
-
-	var token *oauth2.Token
-	if refreshToken != "" {
-		token = &oauth2.Token{RefreshToken: refreshToken}
-		slog.Info("Google Drive service initialized with refresh token")
-	} else {
-		slog.Info("Google Drive service initialized — OAuth2 setup required")
-	}
-
-	return &GoogleDriveService{
-		oauthConfig: cfg,
-		token:       token,
-		folderID:    weddingFolderID,
-	}
-}
-
-// GetAuthURL returns the OAuth2 authorization URL.
-func (s *GoogleDriveService) GetAuthURL() string {
-	return s.oauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
-}
-
-// HandleAuthCallback exchanges the auth code for tokens.
-func (s *GoogleDriveService) HandleAuthCallback(ctx context.Context, code string) (*oauth2.Token, error) {
-	token, err := s.oauthConfig.Exchange(ctx, code)
+	saJSON, err := base64.StdEncoding.DecodeString(saJSONBase64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code: %w", err)
+		return nil, fmt.Errorf("failed to decode service account JSON: %w", err)
 	}
-	s.token = token
-	return token, nil
+	creds, err := google.CredentialsFromJSON(context.Background(), saJSON, drive.DriveReadonlyScope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse service account credentials: %w", err)
+	}
+	slog.Info("Google Drive service initialized with service account")
+	return &GoogleDriveService{
+		httpClient: oauth2.NewClient(context.Background(), creds.TokenSource),
+		folderID:   weddingFolderID,
+	}, nil
 }
 
 func (s *GoogleDriveService) driveService(ctx context.Context) (*drive.Service, error) {
-	if s.token == nil {
-		return nil, fmt.Errorf("no access, refresh token or API key set; please complete OAuth2 authorization first")
-	}
-	client := s.oauthConfig.Client(ctx, s.token)
-	return drive.NewService(ctx, option.WithHTTPClient(client))
-}
-
-// UploadFile uploads a file buffer to Google Drive.
-func (s *GoogleDriveService) UploadFile(ctx context.Context, data []byte, filename, mimeType, guestName string) (fileID, webViewLink string, err error) {
-	srv, err := s.driveService(ctx)
-	if err != nil {
-		return "", "", err
-	}
-
-	name := filename
-	if guestName != "" {
-		name = guestName + "_" + filename
-	}
-
-	f := &drive.File{
-		Name:    name,
-		Parents: []string{s.folderID},
-	}
-
-	res, err := srv.Files.Create(f).
-		Media(bytes.NewReader(data)).
-		Fields("id,webViewLink").
-		Do()
-	if err != nil {
-		return "", "", fmt.Errorf("drive upload failed: %w", err)
-	}
-
-	// Make publicly viewable
-	_, permErr := srv.Permissions.Create(res.Id, &drive.Permission{
-		Role: "reader",
-		Type: "anyone",
-	}).Do()
-	if permErr != nil {
-		slog.Warn("Failed to set public permission", "fileId", res.Id, "error", permErr)
-	}
-
-	slog.Info("Uploaded to Google Drive", "file", name, "id", res.Id)
-	return res.Id, res.WebViewLink, nil
+	return drive.NewService(ctx, option.WithHTTPClient(s.httpClient))
 }
 
 // GetFolderContents lists files in the wedding folder and caches thumbnail links.
@@ -152,15 +86,12 @@ func (s *GoogleDriveService) GetFolderContents(ctx context.Context) ([]*drive.Fi
 	return res.Files, nil
 }
 
-// GetThumbnailReader fetches a file's thumbnail using the server OAuth token and
-// returns a reader for the image bytes. size is like "w800" or "w1600".
+// GetThumbnailReader fetches a file's thumbnail and returns a reader for the image bytes.
 func (s *GoogleDriveService) GetThumbnailReader(ctx context.Context, fileID, size string) (io.ReadCloser, string, error) {
-	// Try cache first (populated by GetFolderContents).
 	var thumbLink string
 	if v, ok := s.thumbLinks.Load(fileID); ok {
 		thumbLink = v.(string)
 	} else {
-		// Cache miss: fetch the thumbnail link individually.
 		srv, err := s.driveService(ctx)
 		if err != nil {
 			return nil, "", err
@@ -176,15 +107,13 @@ func (s *GoogleDriveService) GetThumbnailReader(ctx context.Context, fileID, siz
 		s.thumbLinks.Store(fileID, thumbLink)
 	}
 
-	// Map "w800" → "s800" for the lh3 size parameter.
 	px := strings.TrimPrefix(size, "w")
 	if px == "" {
 		px = "800"
 	}
 	url := sizePattern.ReplaceAllString(thumbLink, "=s"+px)
 
-	client := s.oauthConfig.Client(ctx, s.token)
-	resp, err := client.Get(url)
+	resp, err := s.httpClient.Get(url)
 	if err != nil {
 		return nil, "", fmt.Errorf("thumbnail fetch failed: %w", err)
 	}
