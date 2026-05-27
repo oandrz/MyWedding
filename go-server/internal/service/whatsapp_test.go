@@ -161,9 +161,16 @@ func TestBuildAndStartSendJob_DefaultTemplate(t *testing.T) {
 
 	svc := NewWhatsAppService(repo)
 	// No wa_message_template in repo — should use the default
-	_, err := svc.BuildAndStartSendJob(ctx, []int{inv.ID}, "https://example.com", 0, 1)
+	jobID, err := svc.BuildAndStartSendJob(ctx, []int{inv.ID}, "https://example.com", 0, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	job := svc.GetJob(jobID)
+	if job == nil {
+		t.Fatal("job not found")
+	}
+	if snap := job.Snapshot(); snap["total"].(int) != 1 {
+		t.Errorf("total = %v, want 1", snap["total"])
 	}
 }
 
