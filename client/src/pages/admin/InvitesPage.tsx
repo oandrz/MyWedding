@@ -353,14 +353,22 @@ export default function InvitesPage() {
 
   const bulkCreateMutation = useMutation({
     mutationFn: async (entries: { name: string; phone?: string; side?: string }[]) => {
-      const response = await apiRequest("POST", "/api/admin/invites/bulk", {
-        invites: entries.map((e) => ({
-          name: e.name,
-          ...(e.phone ? { phone: e.phone } : {}),
-          ...(e.side ? { side: e.side } : {}),
-        })),
-      });
-      return response.json();
+      const payload = entries.map((e) => ({
+        name: e.name,
+        ...(e.phone ? { phone: e.phone } : {}),
+        ...(e.side ? { side: e.side } : {}),
+      }));
+      // Send in batches of 50 to stay under CloudFront WAF body-size inspection limits
+      const BATCH_SIZE = 50;
+      const allInvites: Invite[] = [];
+      for (let i = 0; i < payload.length; i += BATCH_SIZE) {
+        const response = await apiRequest("POST", "/api/admin/invites/bulk", {
+          invites: payload.slice(i, i + BATCH_SIZE),
+        });
+        const data = await response.json();
+        allInvites.push(...(data.invites ?? []));
+      }
+      return { invites: allInvites };
     },
     onSuccess: (data: { invites: Invite[] }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
