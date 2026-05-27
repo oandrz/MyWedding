@@ -95,24 +95,15 @@ func main() {
 		slog.Info("Local file storage enabled (development)")
 	}
 
-	// Google Drive integration
-	if cfg.GoogleClientID != "" && cfg.GoogleSecret != "" {
-		redirectURI := os.Getenv("GOOGLE_REDIRECT_URI")
-
-		// Env var takes precedence; fall back to token persisted in DB after OAuth
-		refreshToken := cfg.GoogleRefresh
-		if refreshToken == "" {
-			if setting, err := repo.GetAppSetting(ctx, "google_refresh_token"); err == nil && setting != nil {
-				refreshToken = setting.SettingValue
-				slog.Info("Loaded Google refresh token from database")
-			}
+	// Google Drive integration (service account)
+	if cfg.GoogleServiceAccountJSON != "" {
+		gdrive, err := service.NewGoogleDriveServiceFromServiceAccount(cfg.GoogleServiceAccountJSON)
+		if err != nil {
+			slog.Error("Failed to initialize Google Drive service account", "error", err)
+		} else {
+			routerOpts = append(routerOpts, router.WithGoogleDrive(gdrive))
+			slog.Info("Google Drive integration enabled (service account)")
 		}
-
-		gdrive := service.NewGoogleDriveService(
-			cfg.GoogleClientID, cfg.GoogleSecret, redirectURI, refreshToken,
-		)
-		routerOpts = append(routerOpts, router.WithGoogleDrive(gdrive))
-		slog.Info("Google Drive integration enabled")
 	}
 
 	// WhatsApp automation (requires Postgres for whatsmeow session persistence)

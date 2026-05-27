@@ -118,12 +118,8 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	// Google Drive routes (if configured)
 	if o.drive != nil {
 		gdrive := &handler.GoogleDriveHandler{
-			Repo:  repo,
 			Drive: o.drive,
 		}
-		r.Get("/api/google-auth-url", gdrive.GetAuthURL)
-		r.Get("/auth/google/callback", gdrive.AuthCallback)
-		r.Post("/api/upload-to-drive", gdrive.UploadToDrive)
 		r.Get("/api/drive-folder-contents", gdrive.GetDriveFolderContents)
 		r.Get("/api/drive-thumbnail", gdrive.GetThumbnail)
 	}

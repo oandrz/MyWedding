@@ -89,7 +89,7 @@
 - **Binary builds**: `go build -o bin/wedding-server ./cmd/server`
 - **Architecture**: Chi router, handler structs with dependency injection, repository pattern
 - **Main.go**: Auto-selects PostgresRepository (if DATABASE_URL set) or MemoryRepository
-- **Optional services**: GCS storage (GCS_BUCKET_ID), Google Drive (GOOGLE_CLIENT_ID+SECRET), LocalStorage fallback in dev
+- **Optional services**: GCS storage (GCS_BUCKET_ID), Google Drive (GOOGLE_SERVICE_ACCOUNT_JSON), LocalStorage fallback in dev
 - **Cookie settings**: env-aware (secure + sameSite=none in prod, lax in dev)
 - **Cache**: 30s TTL on feature flags and config images, invalidated on writes
 - **Key files**:
