@@ -19,13 +19,11 @@ type Config struct {
 	AdminPasswordHash string // bcrypt hash — preferred over AdminPassword
 	SessionMaxAge     int    // seconds
 	CORSOrigins        []string
-	SupabaseURL        string
-	SupabaseServiceKey string
-	SupabaseBucketID   string
-	GoogleClientID     string
-	GoogleSecret       string
-	GoogleRefresh      string
-	StaticDir          string
+	SupabaseURL              string
+	SupabaseServiceKey       string
+	SupabaseBucketID         string
+	GoogleServiceAccountJSON string
+	StaticDir                string
 }
 
 func Load() *Config {
@@ -46,19 +44,17 @@ func Load() *Config {
 	port := getEnvInt("PORT", 5000)
 
 	cfg := &Config{
-		Env:                env,
-		Port:               port,
-		DatabaseURL:        getEnv("DATABASE_URL", ""),
-		RedisURL:           getEnv("REDIS_URL", ""),
-		AdminPassword:      getEnv("ADMIN_PASSWORD", "admin123"),
-		SessionMaxAge:      getEnvInt("SESSION_MAX_AGE", 1800), // 30 minutes
-		SupabaseURL:        getEnv("SUPABASE_URL", ""),
-		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
-		SupabaseBucketID:   getEnv("SUPABASE_BUCKET_ID", ""),
-		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
-		GoogleSecret:       getEnv("GOOGLE_CLIENT_SECRET", ""),
-		GoogleRefresh:      getEnv("GOOGLE_REFRESH_TOKEN", ""),
-		StaticDir:          getEnv("STATIC_DIR", ""),
+		Env:                      env,
+		Port:                     port,
+		DatabaseURL:              getEnv("DATABASE_URL", ""),
+		RedisURL:                 getEnv("REDIS_URL", ""),
+		AdminPassword:            getEnv("ADMIN_PASSWORD", "admin123"),
+		SessionMaxAge:            getEnvInt("SESSION_MAX_AGE", 1800), // 30 minutes
+		SupabaseURL:              getEnv("SUPABASE_URL", ""),
+		SupabaseServiceKey:       getEnv("SUPABASE_SERVICE_KEY", ""),
+		SupabaseBucketID:         getEnv("SUPABASE_BUCKET_ID", ""),
+		GoogleServiceAccountJSON: getEnv("GOOGLE_SERVICE_ACCOUNT_JSON", ""),
+		StaticDir:                getEnv("STATIC_DIR", ""),
 	}
 
 	cfg.AdminPasswordHash = getEnv("ADMIN_PASSWORD_HASH", "")
