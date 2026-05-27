@@ -984,7 +984,7 @@ export default function InvitesPage() {
         open={importState.step === "preview"}
         onOpenChange={(open) => { if (!open) handleCancelImport(); }}
       >
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-amber-600" />
@@ -1005,7 +1005,7 @@ export default function InvitesPage() {
             const noSideCount = importState.entries.filter(e => e.checked && !e.side).length;
 
             return (
-              <div className="flex flex-col gap-4 min-h-0">
+              <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-hidden">
                 {/* Column selectors */}
                 {importState.headers.length > 1 && (
                   <div className="space-y-2">
@@ -1126,7 +1126,7 @@ export default function InvitesPage() {
                 </div>
 
                 {/* Name + phone list */}
-                <div className="max-h-[40vh] overflow-y-auto rounded-md border">
+                <div className="flex-1 min-h-0 overflow-y-auto rounded-md border">
                   <div className="divide-y">
                     {importState.entries.map((entry, i) => (
                       <label
@@ -1181,23 +1181,28 @@ export default function InvitesPage() {
                     ⚠️ {noSideCount} guest{noSideCount > 1 ? "s have" : " has"} no side — they'll be imported but skipped during automated WhatsApp sending.
                   </div>
                 )}
-
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button variant="outline" onClick={handleCancelImport}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleImport}
-                    disabled={checkedCount === 0}
-                    className="gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Import {checkedCount} {checkedCount === 1 ? "guest" : "guests"}
-                  </Button>
-                </DialogFooter>
               </div>
             );
-          })()}</DialogContent>
+          })()}
+          {importState.step === "preview" && (() => {
+            const checkedCount = importState.entries.filter((e) => e.checked).length;
+            return (
+              <DialogFooter className="gap-2 sm:gap-0 flex-shrink-0 pt-4 border-t">
+                <Button variant="outline" onClick={handleCancelImport}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={checkedCount === 0}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import {checkedCount} {checkedCount === 1 ? "guest" : "guests"}
+                </Button>
+              </DialogFooter>
+            );
+          })()}
+        </DialogContent>
       </Dialog>
 
       {/* Send Progress Dialog */}
