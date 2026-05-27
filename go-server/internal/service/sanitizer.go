@@ -23,8 +23,10 @@ func NewSanitizer() *Sanitizer {
 }
 
 // Sanitize strips disallowed HTML from the input string, allowing basic formatting.
+// HTML entities introduced by bluemonday (e.g. &amp;) are decoded back to their
+// literal characters since all callers render the result as plain text.
 func (s *Sanitizer) Sanitize(input string) string {
-	return s.policy.Sanitize(input)
+	return html.UnescapeString(s.policy.Sanitize(input))
 }
 
 // SanitizeStrict strips all HTML tags from the input string, suitable for plain-text fields like names.

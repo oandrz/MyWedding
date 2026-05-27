@@ -21,6 +21,8 @@ func TestSanitize(t *testing.T) {
 		{"strips onclick", `<b onclick="alert('xss')">Bold</b>`, "<b>Bold</b>"},
 		{"strips img", `<img src="x" onerror="alert('xss')">`, ""},
 		{"empty string", "", ""},
+		{"preserves ampersand", "Tom & Jerry", "Tom & Jerry"},
+		{"preserves ampersand with tags", "<b>Tom & Jerry</b>", "<b>Tom & Jerry</b>"},
 	}
 
 	for _, tt := range tests {
@@ -28,6 +30,30 @@ func TestSanitize(t *testing.T) {
 			got := s.Sanitize(tt.input)
 			if got != tt.want {
 				t.Errorf("Sanitize(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSanitizeStrict(t *testing.T) {
+	s := NewSanitizer()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"plain text", "Hello World", "Hello World"},
+		{"preserves ampersand", "Tom & Jerry", "Tom & Jerry"},
+		{"strips bold", "<b>Bold</b>", "Bold"},
+		{"strips script", `<script>alert('xss')</script>Hello`, "Hello"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := s.SanitizeStrict(tt.input)
+			if got != tt.want {
+				t.Errorf("SanitizeStrict(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}
