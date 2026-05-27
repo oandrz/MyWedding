@@ -20,7 +20,7 @@ func validServiceAccountJSON(t *testing.T) string {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
-	raw, _ := json.Marshal(map[string]string{
+	raw, marshalErr := json.Marshal(map[string]string{
 		"type":              "service_account",
 		"project_id":        "test-project",
 		"private_key_id":    "key-id",
@@ -30,6 +30,9 @@ func validServiceAccountJSON(t *testing.T) string {
 		"auth_uri":          "https://accounts.google.com/o/oauth2/auth",
 		"token_uri":         "https://oauth2.googleapis.com/token",
 	})
+	if marshalErr != nil {
+		t.Fatalf("marshal service account JSON: %v", marshalErr)
+	}
 	return base64.StdEncoding.EncodeToString(raw)
 }
 

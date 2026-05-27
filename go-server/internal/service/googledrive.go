@@ -42,6 +42,7 @@ func NewGoogleDriveServiceFromServiceAccount(saJSONBase64 string) (*GoogleDriveS
 		return nil, fmt.Errorf("failed to parse service account credentials: %w", err)
 	}
 	slog.Info("Google Drive service initialized with service account")
+	// context.Background() intentionally used — this client is a long-lived singleton and token refreshes must not be tied to any request context.
 	return &GoogleDriveService{
 		httpClient: oauth2.NewClient(context.Background(), creds.TokenSource),
 		folderID:   weddingFolderID,
@@ -117,7 +118,7 @@ func (s *GoogleDriveService) GetThumbnailReader(ctx context.Context, fileID, siz
 	if err != nil {
 		return nil, "", fmt.Errorf("thumbnail fetch failed: %w", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
 		return nil, "", fmt.Errorf("thumbnail fetch returned %d", resp.StatusCode)
 	}
