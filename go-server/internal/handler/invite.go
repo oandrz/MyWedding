@@ -213,6 +213,27 @@ func (h *InviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// BulkDelete handles DELETE /api/admin/invites/bulk.
+// Body: { "ids": [1, 2, 3] } — omit ids or send empty array to delete all invites.
+func (h *InviteHandler) BulkDelete(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IDs []int `json:"ids"`
+	}
+	// Ignore parse errors — an empty body means delete-all.
+	_ = parseJSON(r, &body)
+
+	count, err := h.Repo.BulkDeleteInvites(r.Context(), body.IDs)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "Failed to delete invites")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"deleted": count,
+		"message": fmt.Sprintf("Deleted %d invite(s)", count),
+	})
+}
+
 // Update handles PATCH /api/admin/invites/{id}.
 // Partial update — uses json.RawMessage to distinguish between "phone": null (clear) and absent phone.
 // When "name" is present, "phone" must also be present; both are updated via UpdateInvite (side optional).

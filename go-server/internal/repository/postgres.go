@@ -999,6 +999,34 @@ func (r *PostgresRepository) DeleteInvite(ctx context.Context, id int) (bool, er
 	return tag.RowsAffected() > 0, nil
 }
 
+func (r *PostgresRepository) BulkDeleteInvites(ctx context.Context, ids []int) (int, error) {
+	if len(ids) == 0 {
+		// Delete all: cascade RSVPs first, then invites.
+		_, err := r.pool.Exec(ctx, `DELETE FROM rsvp WHERE id IN (SELECT rsvp_id FROM invites WHERE rsvp_id IS NOT NULL)`)
+		if err != nil {
+			return 0, err
+		}
+		tag, err := r.pool.Exec(ctx, `DELETE FROM invites`)
+		if err != nil {
+			return 0, err
+		}
+		return int(tag.RowsAffected()), nil
+	}
+
+	_, err := r.pool.Exec(ctx,
+		`DELETE FROM rsvp WHERE id IN (SELECT rsvp_id FROM invites WHERE id = ANY($1) AND rsvp_id IS NOT NULL)`,
+		ids,
+	)
+	if err != nil {
+		return 0, err
+	}
+	tag, err := r.pool.Exec(ctx, `DELETE FROM invites WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 func (r *PostgresRepository) UpdateInviteRsvpID(ctx context.Context, inviteID int, rsvpID *int) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE invites SET rsvp_id = $1 WHERE id = $2`,

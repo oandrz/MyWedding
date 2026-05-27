@@ -130,6 +130,12 @@ export default function InvitesPage() {
   const [newInvitePhone, setNewInvitePhone] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
+  // Multi-select / bulk-delete state
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [deleteAllMode, setDeleteAllMode] = useState(false);
+
   // Inline edit state (name + phone + side)
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
@@ -253,6 +259,26 @@ export default function InvitesPage() {
         description: `Failed to delete invite: ${error.message}`,
         variant: "destructive",
       });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async ({ ids, deleteAll }: { ids: number[]; deleteAll: boolean }) => {
+      const body = deleteAll ? {} : { ids };
+      return apiRequest("DELETE", "/api/admin/invites/bulk", body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rsvp"] });
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+      setShowBulkDeleteDialog(false);
+      setDeleteAllMode(false);
+      toast({ title: "Success", description: "Invites deleted successfully" });
+    },
+    onError: (error: Error) => {
+      handleAutoLogout(error);
+      toast({ title: "Error", description: `Failed to delete invites: ${error.message}`, variant: "destructive" });
     },
   });
 
@@ -589,6 +615,19 @@ export default function InvitesPage() {
       textarea.focus();
       textarea.setSelectionRange(start + varName.length, start + varName.length);
     });
+  };
+
+  const toggleSelectInvite = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
   };
 
   const copyInviteLink = async (invite: Invite) => {
@@ -1308,23 +1347,119 @@ export default function InvitesPage() {
         </div>
       )}
 
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={showBulkDeleteDialog} onOpenChange={(open) => { if (!open) { setShowBulkDeleteDialog(false); setDeleteAllMode(false); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete invites?</DialogTitle>
+            <DialogDescription>
+              {deleteAllMode
+                ? "This will permanently delete all invites and their linked RSVPs. This cannot be undone."
+                : `This will permanently delete ${selectedIds.size} invite(s) and their linked RSVPs. This cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowBulkDeleteDialog(false); setDeleteAllMode(false); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate({ ids: [...selectedIds], deleteAll: deleteAllMode })}
+            >
+              {bulkDeleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Invites List */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <TicketCheck className="h-6 w-6 text-amber-600" />
-            <div>
-              <CardTitle className="text-xl">Guest Invites</CardTitle>
-              <CardDescription>Manage invite codes, phone numbers, and track RSVPs</CardDescription>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <TicketCheck className="h-6 w-6 text-amber-600" />
+              <div>
+                <CardTitle className="text-xl">Guest Invites</CardTitle>
+                <CardDescription>Manage invite codes, phone numbers, and track RSVPs</CardDescription>
+              </div>
             </div>
+            {invites.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={isSelecting ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => { if (isSelecting) exitSelectionMode(); else setIsSelecting(true); }}
+                >
+                  {isSelecting ? "Cancel" : "Select"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => { setDeleteAllMode(true); setShowBulkDeleteDialog(true); }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete All
+                </Button>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
+          {/* Selection mode toolbar */}
+          {isSelecting && (
+            <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <span className="text-sm font-medium text-amber-800">
+                {selectedIds.size} selected
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedIds(new Set(filteredInvites.map((i) => i.id)))}
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                disabled={selectedIds.size === 0}
+              >
+                Deselect All
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
+                onClick={() => { setDeleteAllMode(false); setShowBulkDeleteDialog(true); }}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete Selected ({selectedIds.size})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exitSelectionMode}>
+                Cancel
+              </Button>
+            </div>
+          )}
           <div className="space-y-4">
             {filteredInvites.map((invite) => (
-              <Card key={invite.id} className={`shadow-sm border-l-4 border-l-amber-500 ${editingId === invite.id ? "border-indigo-300" : ""}`}>
+              <Card
+                key={invite.id}
+                className={`shadow-sm border-l-4 border-l-amber-500 ${editingId === invite.id ? "border-indigo-300" : ""} ${isSelecting ? "cursor-pointer" : ""} ${isSelecting && selectedIds.has(invite.id) ? "bg-amber-50 border-amber-400" : ""}`}
+                onClick={isSelecting ? () => toggleSelectInvite(invite.id) : undefined}
+              >
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {isSelecting && (
+                      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(invite.id)}
+                          onCheckedChange={() => toggleSelectInvite(invite.id)}
+                        />
+                      </div>
+                    )}
                     {editingId === invite.id ? (
                       /* ── Edit mode ── */
                       <div className="flex-1 space-y-2">
