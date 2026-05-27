@@ -127,10 +127,13 @@ func TestBuildAndStartSendJob_SkipLogic(t *testing.T) {
 	inv2, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Bob"})
 	// invite 3: no side
 	inv3, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Carol", Phone: &phone})
+	// invite 4: has phone and side but already sent — should be skipped
+	inv4, _ := repo.CreateInvite(ctx, models.InsertInvite{Name: "Dave", Phone: &phone, Side: &side})
+	_, _ = repo.MarkInviteWaSent(ctx, inv4.ID)
 	// invite 999: doesn't exist (deleted)
 
 	svc := NewWhatsAppService(repo)
-	jobID, err := svc.BuildAndStartSendJob(ctx, []int{inv1.ID, inv2.ID, inv3.ID, 999}, "https://example.com", 0, 1)
+	jobID, err := svc.BuildAndStartSendJob(ctx, []int{inv1.ID, inv2.ID, inv3.ID, inv4.ID, 999}, "https://example.com", 0, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
