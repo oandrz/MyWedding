@@ -70,6 +70,7 @@ type Repository interface {
 	GetInviteByID(ctx context.Context, id int) (*models.Invite, error)
 	GetInviteByCode(ctx context.Context, code string) (*models.Invite, error)
 	DeleteInvite(ctx context.Context, id int) (bool, error)
+	BulkDeleteInvites(ctx context.Context, ids []int) (int, error)
 	UpdateInviteRsvpID(ctx context.Context, inviteID int, rsvpID *int) error
 	CreateInvitesBulk(ctx context.Context, data []models.InsertInvite) ([]models.Invite, error)
 	UpdateInvitePhone(ctx context.Context, id int, phone *string) (*models.Invite, error)

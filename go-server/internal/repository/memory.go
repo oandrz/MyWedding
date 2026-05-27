@@ -794,6 +794,32 @@ func (m *MemoryRepository) DeleteInvite(_ context.Context, id int) (bool, error)
 	return true, nil
 }
 
+func (m *MemoryRepository) BulkDeleteInvites(_ context.Context, ids []int) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if len(ids) == 0 {
+		ids = make([]int, 0, len(m.invites))
+		for id := range m.invites {
+			ids = append(ids, id)
+		}
+	}
+
+	count := 0
+	for _, id := range ids {
+		inv, ok := m.invites[id]
+		if !ok {
+			continue
+		}
+		if inv.RsvpID != nil {
+			delete(m.rsvps, *inv.RsvpID)
+		}
+		delete(m.invites, id)
+		count++
+	}
+	return count, nil
+}
+
 func (m *MemoryRepository) UpdateInviteRsvpID(_ context.Context, inviteID int, rsvpID *int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

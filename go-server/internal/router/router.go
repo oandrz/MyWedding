@@ -179,6 +179,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 
 			r.Post("/invites", invite.Create)
 			r.Post("/invites/bulk", invite.BulkCreate)
+			r.Delete("/invites/bulk", invite.BulkDelete)
 			r.Get("/invites", invite.List)
 			r.Delete("/invites/{id}", invite.Delete)
 			r.Patch("/invites/{id}", invite.Update)
