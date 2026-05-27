@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,6 +120,7 @@ type WhatsAppServicer interface {
 	SessionStatus(side string) SessionInfo
 	Connect(ctx context.Context, side string) error
 	Disconnect(side string) error
+	BuildAndStartSendJob(ctx context.Context, inviteIDs []int, baseURL string, delayMin, delayMax int) (string, error)
 	StartSendJob(msgs []WAMessage, delayMin, delayMax int) (string, error)
 	ActiveJob() *SendJob
 	GetJob(jobID string) *SendJob
@@ -126,6 +128,49 @@ type WhatsAppServicer interface {
 	ResumeJob(jobID string) error
 	AbortJob(jobID string) error
 	SendOne(ctx context.Context, inviteID int, message string) error
+}
+
+const defaultWATemplate = "Hi {name}, you're invited to our wedding! RSVP here: {link}"
+
+// renderWATemplate substitutes {name}, {code}, and {link} in the template.
+func renderWATemplate(tmpl, name, code, baseURL string) string {
+	link := baseURL + "/?code=" + code
+	msg := strings.ReplaceAll(tmpl, "{name}", name)
+	msg = strings.ReplaceAll(msg, "{code}", code)
+	msg = strings.ReplaceAll(msg, "{link}", link)
+	return msg
+}
+
+// BuildAndStartSendJob fetches the saved template, renders a message per invite,
+// filters ineligible invites, then starts the bulk-send job.
+func (s *WhatsAppService) BuildAndStartSendJob(ctx context.Context, inviteIDs []int, baseURL string, delayMin, delayMax int) (string, error) {
+	tmpl := defaultWATemplate
+	if setting, err := s.repo.GetAppSetting(ctx, "wa_message_template"); err == nil && setting != nil && setting.SettingValue != "" {
+		tmpl = setting.SettingValue
+	}
+
+	var msgs []WAMessage
+	for _, id := range inviteIDs {
+		inv, err := s.repo.GetInviteByID(ctx, id)
+		if err != nil || inv == nil {
+			continue
+		}
+		if inv.Phone == nil || inv.Side == nil || inv.WaSentAt != nil {
+			continue
+		}
+		msgs = append(msgs, WAMessage{
+			InviteID: inv.ID,
+			Phone:    *inv.Phone,
+			Side:     *inv.Side,
+			Message:  renderWATemplate(tmpl, inv.Name, inv.Code, baseURL),
+		})
+	}
+
+	if len(msgs) == 0 {
+		return "", fmt.Errorf("no_eligible_invites")
+	}
+
+	return s.StartSendJob(msgs, delayMin, delayMax)
 }
 
 // WhatsAppService implements WhatsAppServicer.

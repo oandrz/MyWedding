@@ -38,6 +38,9 @@ func (m *mockWA) SessionStatus(side string) service.SessionInfo {
 }
 func (m *mockWA) Connect(_ context.Context, _ string) error { return m.connectErr }
 func (m *mockWA) Disconnect(_ string) error                 { return nil }
+func (m *mockWA) BuildAndStartSendJob(_ context.Context, _ []int, _ string, _, _ int) (string, error) {
+	return m.startJobID, m.startJobErr
+}
 func (m *mockWA) StartSendJob(_ []service.WAMessage, _, _ int) (string, error) {
 	return m.startJobID, m.startJobErr
 }
@@ -133,9 +136,10 @@ func TestContract_WA_SendAll_Conflict(t *testing.T) {
 	cookie, csrfToken := adminLogin(t, env)
 
 	payload := jsonBody(map[string]interface{}{
-		"messages": []interface{}{},
-		"delayMin": 5,
-		"delayMax": 10,
+		"inviteIds": []int{1, 2, 3},
+		"baseUrl":   "https://example.com",
+		"delayMin":  5,
+		"delayMax":  10,
 	})
 	req := adminRequest(http.MethodPost, "/api/admin/wa/send-all", payload, cookie, csrfToken)
 	body := contractResponse(t, env, req, http.StatusConflict)
@@ -146,6 +150,69 @@ func TestContract_WA_SendAll_Conflict(t *testing.T) {
 	if body["jobId"] != "job-123" {
 		t.Errorf("jobId = %v, want job-123", body["jobId"])
 	}
+}
+
+// TestContract_WA_SendAll_EmptyInviteIds verifies POST /api/admin/wa/send-all returns 400 for empty inviteIds.
+func TestContract_WA_SendAll_EmptyInviteIds(t *testing.T) {
+	env := newTestEnvWithWAService(&mockWA{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	payload := jsonBody(map[string]interface{}{
+		"inviteIds": []int{},
+		"baseUrl":   "https://example.com",
+		"delayMin":  5,
+		"delayMax":  10,
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/wa/send-all", payload, cookie, csrfToken)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+// TestContract_WA_SendAll_MissingBaseUrl verifies POST /api/admin/wa/send-all returns 400 when baseUrl is absent.
+func TestContract_WA_SendAll_MissingBaseUrl(t *testing.T) {
+	env := newTestEnvWithWAService(&mockWA{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	payload := jsonBody(map[string]interface{}{
+		"inviteIds": []int{1, 2},
+		"baseUrl":   "",
+		"delayMin":  5,
+		"delayMax":  10,
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/wa/send-all", payload, cookie, csrfToken)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+// TestContract_WA_SendAll_NoEligibleInvites verifies POST /api/admin/wa/send-all returns 400 when service returns no_eligible_invites.
+func TestContract_WA_SendAll_NoEligibleInvites(t *testing.T) {
+	wa := &mockWA{
+		startJobErr: fmt.Errorf("no_eligible_invites"),
+	}
+	env := newTestEnvWithWAService(wa)
+	cookie, csrfToken := adminLogin(t, env)
+
+	payload := jsonBody(map[string]interface{}{
+		"inviteIds": []int{1, 2},
+		"baseUrl":   "https://example.com",
+		"delayMin":  5,
+		"delayMax":  10,
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/wa/send-all", payload, cookie, csrfToken)
+	contractResponse(t, env, req, http.StatusBadRequest)
+}
+
+// TestContract_WA_SendAll_InvalidBaseUrl verifies POST /api/admin/wa/send-all returns 400 for non-HTTP baseUrl.
+func TestContract_WA_SendAll_InvalidBaseUrl(t *testing.T) {
+	env := newTestEnvWithWAService(&mockWA{})
+	cookie, csrfToken := adminLogin(t, env)
+
+	payload := jsonBody(map[string]interface{}{
+		"inviteIds": []int{1, 2},
+		"baseUrl":   "javascript:alert(1)",
+		"delayMin":  5,
+		"delayMax":  10,
+	})
+	req := adminRequest(http.MethodPost, "/api/admin/wa/send-all", payload, cookie, csrfToken)
+	contractResponse(t, env, req, http.StatusBadRequest)
 }
 
 // TestContract_WA_GetJob_NotFound verifies GET /api/admin/wa/job/{id} returns 404 for unknown job.
