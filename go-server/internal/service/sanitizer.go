@@ -1,6 +1,10 @@
 package service
 
-import "github.com/microcosm-cc/bluemonday"
+import (
+	"html"
+
+	"github.com/microcosm-cc/bluemonday"
+)
 
 // Sanitizer strips dangerous HTML tags from user input while allowing basic formatting.
 type Sanitizer struct {
@@ -25,5 +29,5 @@ func (s *Sanitizer) Sanitize(input string) string {
 
 // SanitizeStrict strips all HTML tags from the input string, suitable for plain-text fields like names.
 func (s *Sanitizer) SanitizeStrict(input string) string {
-	return s.strictPolicy.Sanitize(input)
+	return html.UnescapeString(s.strictPolicy.Sanitize(input))
 }
