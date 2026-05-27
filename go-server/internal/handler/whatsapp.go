@@ -83,6 +83,10 @@ func (h *WAHandler) SendAll(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "baseUrl is required")
 		return
 	}
+	if !strings.HasPrefix(body.BaseURL, "http://") && !strings.HasPrefix(body.BaseURL, "https://") {
+		writeError(w, r, http.StatusBadRequest, "baseUrl must be a valid HTTP/HTTPS URL")
+		return
+	}
 
 	jobID, err := h.WA.BuildAndStartSendJob(r.Context(), body.InviteIDs, body.BaseURL, body.DelayMin, body.DelayMax)
 	if err != nil {
