@@ -230,7 +230,7 @@ go-server/
 | Repository | `DATABASE_URL` set? | PostgresRepository | MemoryRepository |
 | Sessions | `REDIS_URL` set? | RedisSessionStore | In-memory SessionStore |
 | File storage | `GCS_BUCKET_ID` set? | GCSStorage | LocalStorage (`./storage/`) |
-| Google Drive | `GOOGLE_CLIENT_ID` + `SECRET` set? | Enabled | Disabled (routes not registered) |
+| Google Drive | `GOOGLE_SERVICE_ACCOUNT_JSON` set? | Enabled | Disabled (routes not registered) |
 
 This means you can run the server with zero external dependencies — just `go run ./cmd/server`.
 
@@ -250,9 +250,7 @@ All configuration is loaded in `internal/config/config.go`. The server reads fro
 | `SESSION_MAX_AGE` | `1800` | Session duration in seconds (30 min) |
 | `CORS_ORIGINS` | `*` (dev) | Comma-separated allowed origins (prod only) |
 | `GCS_BUCKET_ID` | _(empty)_ | GCS bucket for file uploads |
-| `GOOGLE_CLIENT_ID` | _(empty)_ | OAuth2 client ID for Google Drive |
-| `GOOGLE_CLIENT_SECRET` | _(empty)_ | OAuth2 client secret |
-| `GOOGLE_REFRESH_TOKEN` | _(empty)_ | Pre-authorized refresh token |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | _(empty)_ | Service account JSON for Google Drive |
 | `STATIC_DIR` | _(empty)_ | Path to built frontend assets. Set in production to serve SPA from Go. |
 | `VITE_API_URL` | `http://localhost:5000` | Vite dev proxy target (frontend only, not Go) |
 
@@ -353,12 +351,10 @@ Subsequent admin requests must include:
 | PATCH | `/api/admin/app-settings/{key}` | `AppSettingHandler.Update` | Update setting |
 | PATCH | `/api/admin/welcome-screen` | `WelcomeScreenHandler.Update` | Update welcome screen |
 
-### Google Drive Endpoints (only registered if credentials configured)
+### Google Drive Endpoints (only registered if GOOGLE_SERVICE_ACCOUNT_JSON is configured)
 
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
-| GET | `/api/google-auth-url` | `GoogleDriveHandler.GetAuthURL` | OAuth2 consent URL |
-| GET | `/auth/google/callback` | `GoogleDriveHandler.AuthCallback` | OAuth2 callback (HTML) |
 | POST | `/api/upload-to-drive` | `GoogleDriveHandler.UploadToDrive` | Multi-file upload |
 | GET | `/api/drive-folder-contents` | `GoogleDriveHandler.GetDriveFolderContents` | List files |
 
@@ -460,7 +456,7 @@ Admin image directories: `admin/banner`, `admin/gallery`, `admin/profiles/bride`
 - Used by `ConfigImageUpload` to generate thumbnails
 
 ### Google Drive (`service/googledrive.go`)
-- OAuth2 flow for authorization
+- Service account authentication (via `GOOGLE_SERVICE_ACCOUNT_JSON`)
 - Uploads to a hardcoded wedding folder (`1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC`)
 - Auto-sets public read permission on uploaded files
 
@@ -586,7 +582,7 @@ Before deploying, have these ready:
 - [ ] AWS account with EC2 access
 - [ ] SSH key pair (`.pem` file from AWS)
 - [ ] GCS service account JSON key (`gcs-key.json`)
-- [ ] Google OAuth credentials (client ID, secret, refresh token — copy from `.env.development`)
+- [ ] Google Drive service account JSON key (for Google Drive integration)
 - [ ] A strong admin password and DB password (`openssl rand -base64 24`)
 
 ### AWS Setup
@@ -625,12 +621,10 @@ ADMIN_PASSWORD=CHANGE_ME_strong_admin_password
 SESSION_MAX_AGE=1800
 CORS_ORIGINS=https://YOUR_CLOUDFRONT_DOMAIN.cloudfront.net
 GCS_BUCKET_ID=your-gcs-bucket-name
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REFRESH_TOKEN=your-google-refresh-token
+GOOGLE_SERVICE_ACCOUNT_JSON=
 EOF
 nano ~/weddingAws/go-server/.env.production
-# Replace all placeholder values with real credentials
+# Replace all placeholder values with real credentials (GOOGLE_SERVICE_ACCOUNT_JSON expects the full JSON service account key)
 
 # 4. Copy gcs-key.json to server (run from your local machine)
 #    scp -i your-key.pem gcs-key.json ubuntu@<elastic-ip>:~/weddingAws/gcs-key.json
