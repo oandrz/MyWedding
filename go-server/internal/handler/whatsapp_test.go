@@ -38,6 +38,9 @@ func (m *mockWA) SessionStatus(side string) service.SessionInfo {
 }
 func (m *mockWA) Connect(_ context.Context, _ string) error { return m.connectErr }
 func (m *mockWA) Disconnect(_ string) error                 { return nil }
+func (m *mockWA) BuildAndStartSendJob(_ context.Context, _ []int, _ string, _, _ int) (string, error) {
+	return m.startJobID, m.startJobErr
+}
 func (m *mockWA) StartSendJob(_ []service.WAMessage, _, _ int) (string, error) {
 	return m.startJobID, m.startJobErr
 }

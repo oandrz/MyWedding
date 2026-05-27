@@ -120,6 +120,7 @@ type WhatsAppServicer interface {
 	SessionStatus(side string) SessionInfo
 	Connect(ctx context.Context, side string) error
 	Disconnect(side string) error
+	BuildAndStartSendJob(ctx context.Context, inviteIDs []int, baseURL string, delayMin, delayMax int) (string, error)
 	StartSendJob(msgs []WAMessage, delayMin, delayMax int) (string, error)
 	ActiveJob() *SendJob
 	GetJob(jobID string) *SendJob
