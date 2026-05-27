@@ -502,6 +502,14 @@ export default function InvitesPage() {
     });
   };
 
+  const handleSideColumnChange = (newIndex: number | null) => {
+    setImportState((prev) => {
+      if (prev.step !== "preview") return prev;
+      const entries = deriveEntries(prev.rawRows, prev.nameColumnIndex, prev.phoneColumnIndex, newIndex);
+      return { ...prev, sideColumnIndex: newIndex, entries };
+    });
+  };
+
   const handleImport = () => {
     if (importState.step !== "preview") return;
     const selected = importState.entries
@@ -1038,6 +1046,27 @@ export default function InvitesPage() {
                         onValueChange={(v) => handlePhoneColumnChange(v === "none" ? null : Number(v))}
                       >
                         <SelectTrigger id="csv-phone-column" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {importState.headers.map((h, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                              {h || `Column ${i + 1}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="csv-side-column" className="text-sm text-muted-foreground whitespace-nowrap">
+                        Side column:
+                      </label>
+                      <Select
+                        value={importState.sideColumnIndex !== null ? String(importState.sideColumnIndex) : "none"}
+                        onValueChange={(v) => handleSideColumnChange(v === "none" ? null : Number(v))}
+                      >
+                        <SelectTrigger id="csv-side-column" className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
