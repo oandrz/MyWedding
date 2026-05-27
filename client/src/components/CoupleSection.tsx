@@ -5,6 +5,8 @@ import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideFromLeft, slideFromRight, fadeInScale, revealText } from "@/lib/animations";
 import type { ConfigImage } from "@shared/schema";
 import { useLanguage } from "@/contexts/LanguageContext";
+import groomDefaultImg from "@/assets/groom_default.jpg";
+import brideDefaultImg from "@/assets/bride_default.jpg";
 
 const CoupleSection = () => {
   const { t } = useLanguage();
@@ -31,11 +33,9 @@ const CoupleSection = () => {
   });
 
   // Get the active profile images or fallback to default
-  const brideImage = brideImagesData?.images?.find(img => img.isActive)?.imageUrl || 
-    "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
+  const brideImage = brideImagesData?.images?.find(img => img.isActive)?.imageUrl || brideDefaultImg;
   
-  const groomImage = groomImagesData?.images?.find(img => img.isActive)?.imageUrl || 
-    "https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
+  const groomImage = groomImagesData?.images?.find(img => img.isActive)?.imageUrl || groomDefaultImg;
   
   return (
     <section id="couple" className="py-20 bg-gradient-to-b from-white via-amber-50/20 to-white paper-texture" ref={sectionRef}>
