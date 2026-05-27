@@ -355,8 +355,8 @@ Subsequent admin requests must include:
 
 | Method | Path | Handler | Description |
 |--------|------|---------|-------------|
-| POST | `/api/upload-to-drive` | `GoogleDriveHandler.UploadToDrive` | Multi-file upload |
-| GET | `/api/drive-folder-contents` | `GoogleDriveHandler.GetDriveFolderContents` | List files |
+| GET | `/api/drive-folder-contents` | `GoogleDriveHandler.GetDriveFolderContents` | List files in wedding folder |
+| GET | `/api/drive-thumbnail` | `GoogleDriveHandler.GetThumbnail` | Proxy thumbnail image |
 
 ---
 

@@ -49,5 +49,7 @@ func (h *GoogleDriveHandler) GetThumbnail(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "public, max-age=3600")
-	io.Copy(w, body)
+	if _, err := io.Copy(w, body); err != nil {
+		slog.Error("Thumbnail stream interrupted", "fileID", fileID, "error", err)
+	}
 }
