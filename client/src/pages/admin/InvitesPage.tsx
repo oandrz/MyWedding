@@ -681,18 +681,14 @@ export default function InvitesPage() {
       if (!window.confirm(`${noSide.length} guests have no side and will be skipped. Continue?`)) return;
     }
 
-    const messages = unsent
+    const inviteIds = unsent
       .filter(i => i.side)
-      .map(i => ({
-        inviteId: i.id,
-        phone: i.phone!,
-        side: i.side!,
-        message: renderTemplate(templateText, i),
-      }));
+      .map(i => i.id);
 
     try {
       const resp = await apiRequest("POST", "/api/admin/wa/send-all", {
-        messages,
+        inviteIds,
+        baseUrl: window.location.origin,
         delayMin: 20,
         delayMax: 30,
       });
