@@ -63,19 +63,28 @@ func (h *WAHandler) DisconnectSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // SendAll handles POST /api/admin/wa/send-all.
-// Starts a bulk send job. Returns 409 if a job is already running.
+// Accepts invite IDs + baseUrl, renders messages server-side, and starts a bulk send job.
 func (h *WAHandler) SendAll(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Messages []service.WAMessage `json:"messages"`
-		DelayMin int                 `json:"delayMin"`
-		DelayMax int                 `json:"delayMax"`
+		InviteIDs []int  `json:"inviteIds"`
+		BaseURL   string `json:"baseUrl"`
+		DelayMin  int    `json:"delayMin"`
+		DelayMax  int    `json:"delayMax"`
 	}
 	if err := parseJSON(r, &body); err != nil {
 		writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
+	if len(body.InviteIDs) == 0 {
+		writeError(w, r, http.StatusBadRequest, "inviteIds must not be empty")
+		return
+	}
+	if body.BaseURL == "" {
+		writeError(w, r, http.StatusBadRequest, "baseUrl is required")
+		return
+	}
 
-	jobID, err := h.WA.StartSendJob(body.Messages, body.DelayMin, body.DelayMax)
+	jobID, err := h.WA.BuildAndStartSendJob(r.Context(), body.InviteIDs, body.BaseURL, body.DelayMin, body.DelayMax)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "job_already_running:") {
 			existingID := strings.TrimPrefix(err.Error(), "job_already_running:")
@@ -83,6 +92,10 @@ func (h *WAHandler) SendAll(w http.ResponseWriter, r *http.Request) {
 				"error": "job_already_running",
 				"jobId": existingID,
 			})
+			return
+		}
+		if err.Error() == "no_eligible_invites" {
+			writeError(w, r, http.StatusBadRequest, "no eligible invites to send")
 			return
 		}
 		writeError(w, r, http.StatusInternalServerError, "Failed to start send job")
