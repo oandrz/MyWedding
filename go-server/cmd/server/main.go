@@ -12,6 +12,7 @@ import (
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
 	"github.com/andreasronaldo/wedding-server/internal/database"
+	"github.com/andreasronaldo/wedding-server/internal/logsink"
 	"github.com/andreasronaldo/wedding-server/internal/middleware"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
 	"github.com/andreasronaldo/wedding-server/internal/router"
@@ -37,6 +38,7 @@ func main() {
 	var repo repository.Repository
 	var dbPool *pgxpool.Pool
 	var routerOpts []router.Option
+	var sink *logsink.Sink
 
 	if cfg.DatabaseURL != "" {
 		pool, err := database.Connect(ctx, cfg.DatabaseURL)
@@ -56,6 +58,37 @@ func main() {
 	} else {
 		repo = repository.NewMemoryRepository()
 		slog.Warn("No DATABASE_URL set — using in-memory repository (data will not persist)")
+	}
+
+	// Persist logs to Postgres when available (production / DB-backed dev).
+	// Re-points the default logger at a fan-out: stdout (unchanged) + DB sink.
+	if dbPool != nil {
+		sink = logsink.New(repo, logsink.Options{})
+		sink.Start()
+		slog.SetDefault(slog.New(logsink.NewFanout(logHandler, sink)))
+		slog.Info("Log persistence enabled (app_logs)")
+	}
+
+	// Retention: purge logs older than 7 days, on boot and every 6h.
+	if dbPool != nil {
+		go func() {
+			purge := func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				cutoff := time.Now().Add(-7 * 24 * time.Hour)
+				if n, err := repo.DeleteLogsOlderThan(ctx, cutoff); err != nil {
+					slog.Warn("Log retention purge failed", "error", err)
+				} else if n > 0 {
+					slog.Info("Log retention purge", "deleted", n)
+				}
+			}
+			purge()
+			ticker := time.NewTicker(6 * time.Hour)
+			defer ticker.Stop()
+			for range ticker.C {
+				purge()
+			}
+		}()
 	}
 
 	var sessions middleware.Sessions
@@ -147,6 +180,14 @@ func main() {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Server shutdown error", "error", err)
+	}
+
+	// Drain log sink before closing the DB pool (final batch insert needs pool open).
+	if sink != nil {
+		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		sink.Stop(drainCtx)
+		drainCancel()
+		slog.Info("Log sink drained")
 	}
 
 	// Close database pool
