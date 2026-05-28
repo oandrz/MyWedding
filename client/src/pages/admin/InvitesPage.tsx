@@ -617,10 +617,10 @@ export default function InvitesPage() {
 
   // Send All: unsent invites with phone
   const unsentWithPhone = useMemo(
-    () => invites
+    () => filteredInvites
       .filter((i) => i.phone && !i.waSentAt)
       .sort((a, b) => a.name.localeCompare(b.name)),
-    [invites]
+    [filteredInvites]
   );
 
   const handleCreateInvite = (e: React.FormEvent) => {
@@ -704,7 +704,15 @@ export default function InvitesPage() {
   };
 
   const handleSendAll = async () => {
-    const unsent = invites.filter(i => i.phone && !i.waSentAt);
+    if (sideFilter === "unassigned") {
+      toast({
+        title: "No unassigned guests can be sent",
+        description: "They need a side first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const unsent = filteredInvites.filter(i => i.phone && !i.waSentAt);
 
     const needsGroom = unsent.some(i => i.side === "groom");
     const needsBride = unsent.some(i => i.side === "bride");
@@ -854,7 +862,10 @@ export default function InvitesPage() {
           variant="outline"
         >
           <MessageCircle className="h-4 w-4" />
-          Send All Unsent ({unsentWithPhone.length})
+          {sideFilter === "groom" && `Send Groom Unsent (${unsentWithPhone.length})`}
+          {sideFilter === "bride" && `Send Bride Unsent (${unsentWithPhone.length})`}
+          {sideFilter === "unassigned" && `Send Unassigned Unsent (${unsentWithPhone.length})`}
+          {sideFilter === "all" && `Send All Unsent (${unsentWithPhone.length})`}
         </Button>
       )}
 
