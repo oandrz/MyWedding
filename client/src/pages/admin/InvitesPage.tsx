@@ -1800,7 +1800,11 @@ export default function InvitesPage() {
             {filteredInvites.length === 0 && invites.length > 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Search className="h-12 w-12 text-gray-300 mb-3" />
-                <p className="text-gray-500 text-lg">No invites match your search</p>
+                <p className="text-gray-500 text-lg">
+                  {sideFilter !== "all" && !debouncedSearch && `No guests on the ${sideFilter} side`}
+                  {sideFilter === "all" && debouncedSearch && "No invites match your search"}
+                  {sideFilter !== "all" && debouncedSearch && `No ${sideFilter}-side guests match your search`}
+                </p>
               </div>
             )}
 
