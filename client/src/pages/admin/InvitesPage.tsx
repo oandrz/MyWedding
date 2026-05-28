@@ -1377,7 +1377,7 @@ export default function InvitesPage() {
       {/* Side filter + Search */}
       {invites.length > 0 && (
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter by side">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Filter by side">
             {([
               { key: "all", label: `All · ${invites.length}`, show: true },
               { key: "groom", label: `🤵 Groom · ${groomCount}`, show: true },
@@ -1391,8 +1391,8 @@ export default function InvitesPage() {
                   <button
                     key={c.key}
                     type="button"
-                    role="tab"
-                    aria-selected={active}
+                    role="radio"
+                    aria-checked={active}
                     onClick={() => setSideFilter(c.key)}
                     data-testid={`side-filter-${c.key}`}
                     className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
