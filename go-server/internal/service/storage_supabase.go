@@ -73,16 +73,18 @@ func (s *SupabaseStorage) Upload(ctx context.Context, data io.Reader, size int64
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		slog.Error("Supabase upload failed", "source", "external", "service", "supabase", "path", objPath, "error", err)
 		return "", fmt.Errorf("supabase upload failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
+		slog.Error("Supabase upload non-2xx", "source", "external", "service", "supabase", "path", objPath, "status", resp.StatusCode)
 		return "", fmt.Errorf("supabase upload returned %d: %s", resp.StatusCode, string(body))
 	}
 
-	slog.Debug("File uploaded to Supabase", "path", objPath)
+	slog.Info("Supabase upload complete", "source", "external", "service", "supabase", "path", objPath, "status", resp.StatusCode)
 	return "/storage/" + logicalPath, nil
 }
 
@@ -203,6 +205,7 @@ func (s *SupabaseStorage) Delete(ctx context.Context, objectPath string) error {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		slog.Error("Supabase delete failed", "source", "external", "service", "supabase", "path", objPath, "error", err)
 		return fmt.Errorf("supabase delete failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -213,9 +216,11 @@ func (s *SupabaseStorage) Delete(ctx context.Context, objectPath string) error {
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
+		slog.Error("Supabase delete non-2xx", "source", "external", "service", "supabase", "path", objPath, "status", resp.StatusCode)
 		return fmt.Errorf("supabase delete returned %d: %s", resp.StatusCode, string(body))
 	}
 
+	slog.Info("Supabase delete complete", "source", "external", "service", "supabase", "path", objPath, "status", resp.StatusCode)
 	return nil
 }
 
