@@ -1237,7 +1237,7 @@ func (r *PostgresRepository) ReorderScheduleEvents(ctx context.Context, items []
 // App Logs
 // ---------------------------------------------------------------------------
 
-func (r *PostgresRepository) InsertLogs(ctx context.Context, logs []models.AppLog) error {
+func (r *PostgresRepository) InsertLogs(ctx context.Context, logs []models.AppLog) (retErr error) {
 	if len(logs) == 0 {
 		return nil
 	}
@@ -1251,7 +1251,11 @@ func (r *PostgresRepository) InsertLogs(ctx context.Context, logs []models.AppLo
 		)
 	}
 	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() {
+		if err := br.Close(); err != nil && retErr == nil {
+			retErr = err
+		}
+	}()
 	for range logs {
 		if _, err := br.Exec(); err != nil {
 			return err
@@ -1302,11 +1306,11 @@ func (r *PostgresRepository) QueryLogs(ctx context.Context, q models.LogQuery) (
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	sql := fmt.Sprintf(
+	query := fmt.Sprintf(
 		`SELECT id, created_at, level, source, message, request_id, method, path, status, duration_ms, attrs
 		 FROM app_logs %s ORDER BY id DESC LIMIT %d`, where, limit)
 
-	rows, err := r.pool.Query(ctx, sql, args...)
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
