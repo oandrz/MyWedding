@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/andreasronaldo/wedding-server/internal/models"
 )
@@ -85,4 +86,9 @@ type Repository interface {
 	UpdateScheduleEvent(ctx context.Context, id int, data models.UpdateScheduleEvent) (*models.ScheduleEvent, error)
 	DeleteScheduleEvent(ctx context.Context, id int) (bool, error)
 	ReorderScheduleEvents(ctx context.Context, items []models.ScheduleOrderItem) error
+
+	// App Logs
+	InsertLogs(ctx context.Context, logs []models.AppLog) error
+	QueryLogs(ctx context.Context, q models.LogQuery) ([]models.AppLog, error)
+	DeleteLogsOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
 }
