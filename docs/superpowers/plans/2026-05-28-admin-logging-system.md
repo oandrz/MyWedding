@@ -110,7 +110,7 @@ git commit -m "feat(logs): add app_logs migration and models"
 
 - [ ] **Step 1: Add methods to the Repository interface**
 
-In `go-server/internal/repository/repository.go`, add to the `Repository` interface (place near the end, before the closing brace). Note `time` is already imported indirectly — add `"time"` to the import block if not present:
+In `go-server/internal/repository/repository.go`, add to the `Repository` interface (place near the end, before the closing brace). The file currently imports only `context` and `models` — add `"time"` to the import block:
 
 ```go
 	// App Logs
@@ -238,8 +238,10 @@ func (r *PostgresRepository) QueryLogs(ctx context.Context, q models.LogQuery) (
 		add("request_id = $%d", q.RequestID)
 	}
 	if q.Search != "" {
-		add("(message ILIKE $%d OR path ILIKE $%d)", "%"+q.Search+"%")
-		// note: two placeholders, one arg — handled specially below
+		// Two placeholders bound to the same value — not expressible via add().
+		conds = append(conds, fmt.Sprintf("(message ILIKE $%d OR path ILIKE $%d)", i, i+1))
+		args = append(args, "%"+q.Search+"%", "%"+q.Search+"%")
+		i += 2
 	}
 	if q.Before != nil {
 		add("created_at < $%d", *q.Before)
@@ -325,17 +327,7 @@ func nullInt(n int) any {
 }
 ```
 
-**Important fix for the `Search` case:** the `add` helper above assumes one placeholder per arg. The ILIKE-on-two-columns case needs two placeholders bound to the same arg. Replace the `if q.Search != ""` block with this explicit handling (do NOT use `add`):
-
-```go
-	if q.Search != "" {
-		conds = append(conds, fmt.Sprintf("(message ILIKE $%d OR path ILIKE $%d)", i, i+1))
-		args = append(args, "%"+q.Search+"%", "%"+q.Search+"%")
-		i += 2
-	}
-```
-
-Check whether `pgx` is already imported in `postgres.go` (it is, as `github.com/jackc/pgx/v5`). If `nullStr`/`nullInt` names already exist in the file, reuse them instead of redefining.
+Note: `pgx` is already imported in `postgres.go` (as `github.com/jackc/pgx/v5`). If `nullStr`/`nullInt` names already exist in the file, reuse them instead of redefining.
 
 - [ ] **Step 5: Run the memory test to verify it passes**
 
@@ -490,6 +482,7 @@ package logsink
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -547,6 +540,33 @@ func TestSink_DropsWhenFull(t *testing.T) {
 		t.Fatalf("expected some dropped entries, got 0")
 	}
 }
+
+func TestSink_WithAttrs_CarriesAttrs(t *testing.T) {
+	f := &fakeInserter{}
+	s := New(f, Options{BufferSize: 100, BatchSize: 10, FlushInterval: 20 * time.Millisecond})
+	s.Start()
+	defer s.Stop(context.Background())
+
+	logger := slog.New(s).With("source", "external", "service", "whatsapp")
+	logger.Info("sent")
+
+	deadline := time.Now().Add(time.Second)
+	for f.count() == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.logs) == 0 {
+		t.Fatal("expected a record")
+	}
+	got := f.logs[0]
+	if got.Source != "external" {
+		t.Errorf("expected source from WithAttrs to be 'external', got %q", got.Source)
+	}
+	if got.Attrs["service"] != "whatsapp" {
+		t.Errorf("expected service attr 'whatsapp', got %v", got.Attrs["service"])
+	}
+}
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -586,13 +606,16 @@ type Options struct {
 }
 
 // Sink is a slog.Handler that persists records to the DB via a background worker.
+// The worker-owning fields are shared via pointers so that handlers derived through
+// WithAttrs/WithGroup feed the same channel while carrying their own accumulated attrs.
 type Sink struct {
 	inserter Inserter
 	opts     Options
 	ch       chan models.AppLog
-	dropped  atomic.Int64
+	dropped  *atomic.Int64
 	done     chan struct{}
-	wg       sync.WaitGroup
+	wg       *sync.WaitGroup
+	preAttrs []slog.Attr // attrs accumulated via WithAttrs
 }
 
 // New creates a sink. Call Start to launch the worker.
@@ -610,7 +633,9 @@ func New(inserter Inserter, opts Options) *Sink {
 		inserter: inserter,
 		opts:     opts,
 		ch:       make(chan models.AppLog, opts.BufferSize),
+		dropped:  &atomic.Int64{},
 		done:     make(chan struct{}),
+		wg:       &sync.WaitGroup{},
 	}
 }
 
@@ -702,7 +727,7 @@ func (s *Sink) Handle(_ context.Context, r slog.Record) error {
 		Source:  "app",
 	}
 	attrs := make(map[string]any)
-	r.Attrs(func(a slog.Attr) bool {
+	apply := func(a slog.Attr) {
 		switch a.Key {
 		case "source":
 			l.Source = a.Value.String()
@@ -719,6 +744,13 @@ func (s *Sink) Handle(_ context.Context, r slog.Record) error {
 		default:
 			attrs[a.Key] = a.Value.Any()
 		}
+	}
+	// Attrs accumulated via WithAttrs come first; record attrs may override them.
+	for _, a := range s.preAttrs {
+		apply(a)
+	}
+	r.Attrs(func(a slog.Attr) bool {
+		apply(a)
 		return true
 	})
 	l.Attrs = SanitizeAttrs(attrs)
@@ -726,11 +758,26 @@ func (s *Sink) Handle(_ context.Context, r slog.Record) error {
 	return nil
 }
 
-// WithAttrs implements slog.Handler. Group/attr chaining is not needed for the sink;
-// returning the same sink keeps records flowing with their inline attrs.
-func (s *Sink) WithAttrs(_ []slog.Attr) slog.Handler { return s }
+// clone returns a shallow copy that shares the worker-owning fields (channel, counter,
+// done, waitgroup) but carries its own preAttrs slice.
+func (s *Sink) clone() *Sink {
+	c := *s
+	return &c
+}
 
-// WithGroup implements slog.Handler.
+// WithAttrs implements slog.Handler, accumulating attrs onto a derived sink that feeds
+// the same worker channel.
+func (s *Sink) WithAttrs(attrs []slog.Attr) slog.Handler {
+	if len(attrs) == 0 {
+		return s
+	}
+	c := s.clone()
+	c.preAttrs = append(append([]slog.Attr{}, s.preAttrs...), attrs...)
+	return c
+}
+
+// WithGroup implements slog.Handler. Grouping is not modeled in the flat app_logs table,
+// so the derived sink shares the same worker and attrs.
 func (s *Sink) WithGroup(_ string) slog.Handler { return s }
 ```
 
@@ -1553,7 +1600,29 @@ test("shows dropped banner when droppedCount > 0", async () => {
     expect(screen.getByText(/5 .*dropped/i)).toBeInTheDocument()
   );
 });
+
+test("clicking a request ID loads the request trace", async () => {
+  const user = userEvent.setup();
+  renderPage();
+  // Expand the row, then click "view trace".
+  await waitFor(() => expect(screen.getByText("boom")).toBeInTheDocument());
+  await user.click(screen.getByText("boom"));
+  const traceBtn = await screen.findByText(/view trace/i);
+  await user.click(traceBtn);
+
+  // The trace endpoint should have been requested.
+  await waitFor(() =>
+    expect(
+      (global.fetch as any).mock.calls.some((c: any[]) =>
+        String(c[0]).includes("/api/admin/logs/abc")
+      )
+    ).toBe(true)
+  );
+  expect(screen.getByText(/back to all logs/i)).toBeInTheDocument();
+});
 ```
+
+This test uses `userEvent` — add `import userEvent from "@testing-library/user-event";` to the test file's imports (it ships with the testing-library setup the repo already uses; confirm against `AdminLayout.test.tsx`).
 
 Match the actual test runner (the repo uses Vitest if `vi` is available; if it uses Jest, swap `vi` → `jest`). Confirm by checking `AdminLayout.test.tsx` imports.
 
@@ -1567,7 +1636,7 @@ Expected: FAIL — page renders only the stub heading.
 Replace `client/src/pages/admin/LogsPage.tsx` with a full implementation. Key requirements (adapt fetch wrapper to match sibling pages):
 
 ```tsx
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 interface AppLog {
@@ -1615,6 +1684,7 @@ export default function LogsPage() {
   const [search, setSearch] = useState("");
   const [rangeHours, setRangeHours] = useState(24);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [traceId, setTraceId] = useState<string | null>(null);
 
   const after = new Date(Date.now() - rangeHours * 3600 * 1000).toISOString();
 
@@ -1625,14 +1695,20 @@ export default function LogsPage() {
   params.set("after", after);
   params.set("limit", "100");
 
+  // When a request ID is selected, query the trace endpoint instead of the filtered list.
   const { data, isLoading, refetch } = useQuery<LogsResponse>({
-    queryKey: ["admin-logs", level, source, search, rangeHours],
+    queryKey: traceId
+      ? ["admin-logs-trace", traceId]
+      : ["admin-logs", level, source, search, rangeHours],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/logs?${params.toString()}`, {
-        credentials: "include",
-      });
+      const url = traceId
+        ? `/api/admin/logs/${encodeURIComponent(traceId)}`
+        : `/api/admin/logs?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error(`${res.status}`);
-      return res.json();
+      const json = await res.json();
+      // The trace endpoint returns only { logs }; normalize to LogsResponse.
+      return { logs: json.logs ?? [], nextCursor: json.nextCursor ?? null, droppedCount: json.droppedCount ?? 0 };
     },
   });
 
@@ -1656,7 +1732,22 @@ export default function LogsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      {traceId && (
+        <div className="flex items-center justify-between rounded-md bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-800">
+          <span>Showing trace for request <code className="font-mono">{traceId}</code></span>
+          <button
+            onClick={() => {
+              setTraceId(null);
+              setExpandedId(null);
+            }}
+            className="px-2 py-1 rounded border bg-white hover:bg-gray-50"
+          >
+            Back to all logs
+          </button>
+        </div>
+      )}
+
+      <div className={`flex flex-wrap gap-2 ${traceId ? "hidden" : ""}`}>
         <select value={level} onChange={(e) => setLevel(e.target.value)} className="border rounded-md px-2 py-1 text-sm">
           {LEVELS.map((l) => (
             <option key={l} value={l}>{l || "All levels"}</option>
@@ -1702,9 +1793,8 @@ export default function LogsPage() {
             </thead>
             <tbody>
               {logs.map((log) => (
-                <>
+                <Fragment key={log.id}>
                   <tr
-                    key={log.id}
                     onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                     className="border-t cursor-pointer hover:bg-gray-50"
                   >
@@ -1730,7 +1820,27 @@ export default function LogsPage() {
                           {log.method && (<><dt className="text-gray-400">Method</dt><dd>{log.method}</dd></>)}
                           {log.path && (<><dt className="text-gray-400">Path</dt><dd>{log.path}</dd></>)}
                           {typeof log.durationMs === "number" && (<><dt className="text-gray-400">Duration</dt><dd>{log.durationMs} ms</dd></>)}
-                          {log.requestId && (<><dt className="text-gray-400">Request ID</dt><dd>{log.requestId}</dd></>)}
+                          {log.requestId && (
+                            <>
+                              <dt className="text-gray-400">Request ID</dt>
+                              <dd>
+                                {traceId ? (
+                                  <span className="font-mono">{log.requestId}</span>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTraceId(log.requestId!);
+                                      setExpandedId(null);
+                                    }}
+                                    className="font-mono text-rose-600 hover:underline"
+                                  >
+                                    {log.requestId} — view trace
+                                  </button>
+                                )}
+                              </dd>
+                            </>
+                          )}
                         </dl>
                         {log.attrs && (
                           <pre className="mt-2 bg-white border rounded p-2 overflow-x-auto text-xs">
@@ -1740,7 +1850,7 @@ export default function LogsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -1751,7 +1861,7 @@ export default function LogsPage() {
 }
 ```
 
-Note on the `key` warning: the `<>...</>` fragment inside `.map` needs a key. Replace `<>` with `<React.Fragment key={log.id}>` and import React, or restructure to a keyed wrapper. Fix this so `npm run check` and lint are clean.
+Note: the per-row wrapper uses `<Fragment key={log.id}>` (imported from `react`) so the keyed-list lint/check passes. The "view trace" button calls `e.stopPropagation()` so clicking it doesn't also toggle row expansion.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -1799,8 +1909,9 @@ Run the migration against a dev DB, then start the server with `DATABASE_URL` se
 - `npm run dev` (project root)
 - Log into admin, trigger an RSVP create and an error (e.g. bad request), open **Development > Logs**.
 - Verify: the HTTP request rows appear, level/source filters work, row expands to show attrs, no `cookie`/`authorization` values are present in any row, `/api/health` does NOT appear.
+- Click a row's request ID "view trace" link; verify the page switches to a request-scoped view (calls `/api/admin/logs/{requestId}`) and "Back to all logs" returns to the filtered list.
 
-Expected: logs are captured and visible; secrets absent; health/static excluded.
+Expected: logs are captured and visible; secrets absent; health/static excluded; trace view works.
 
 - [ ] **Step 5: Update issuesResolution.md if any bugs were found and fixed**
 
@@ -1817,7 +1928,7 @@ git commit -m "chore(logs): verification fixes"
 
 ## Self-Review Notes
 
-- **Spec coverage:** schema (T1), repo+retention method (T2), buffered sink+backpressure+recursion guard (T4), fan-out (T5), HTTP capture with health/static exclusion + INFO promotion (T6), external API tagging (T7), main wiring + retention ticker + drain (T8), query/trace endpoints + dropped counter (T9), contract test (T10), Development nav + viewer with filters/expansion/empty-state/dropped-banner (T11-12), full verification incl. secret-absence + health-exclusion check (T13). All spec sections mapped.
+- **Spec coverage:** schema (T1), repo+retention method (T2), buffered sink+backpressure+recursion guard+attr-carrying WithAttrs (T4), fan-out (T5), HTTP capture with health/static exclusion + INFO promotion (T6), external API tagging (T7), main wiring + retention ticker + drain (T8), query/trace endpoints + dropped counter (T9), contract test (T10), Development nav + viewer with filters/expansion/empty-state/dropped-banner + request-ID trace view (T11-12), full verification incl. secret-absence + health-exclusion + trace-view check (T13). All spec sections mapped.
 - **PII/secret protection:** enforced in sink (`SanitizeAttrs`, `SanitizePath`) with a denylist, verified in T3 tests and T13 manual check.
 - **No-DB behavior:** sink not installed (T8), repo methods no-op (T2), viewer shows empty state (T12) — logging unchanged in dev, per spec.
 - **Type consistency:** `LogQuery`/`AppLog` fields used identically across repo, sink, handler; slog attr keys (`source`, `requestId`, `method`, `path`, `status`, `durationMs`) emitted in T6 match exactly what the sink reads in T4.
