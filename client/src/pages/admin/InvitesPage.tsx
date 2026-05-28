@@ -1453,9 +1453,12 @@ export default function InvitesPage() {
           <DialogHeader>
             <DialogTitle>Delete invites?</DialogTitle>
             <DialogDescription>
-              {deleteAllMode
-                ? "This will permanently delete all invites and their linked RSVPs. This cannot be undone."
-                : `This will permanently delete ${selectedIds.size} invite(s) and their linked RSVPs. This cannot be undone.`}
+              {deleteAllMode && sideFilter === "all" &&
+                "This will permanently delete all invites and their linked RSVPs. This cannot be undone."}
+              {deleteAllMode && sideFilter !== "all" &&
+                `This will permanently delete ${filteredInvites.length} invite(s) on the ${sideFilter} side (and their linked RSVPs). This cannot be undone.`}
+              {!deleteAllMode &&
+                `This will permanently delete ${selectedIds.size} invite(s) and their linked RSVPs. This cannot be undone.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1465,7 +1468,17 @@ export default function InvitesPage() {
             <Button
               variant="destructive"
               disabled={bulkDeleteMutation.isPending}
-              onClick={() => bulkDeleteMutation.mutate({ ids: [...selectedIds], deleteAll: deleteAllMode })}
+              onClick={() => {
+                if (deleteAllMode && sideFilter !== "all") {
+                  // Filtered "delete all" — send explicit IDs to avoid wiping the other side.
+                  bulkDeleteMutation.mutate({
+                    ids: filteredInvites.map((i) => i.id),
+                    deleteAll: false,
+                  });
+                } else {
+                  bulkDeleteMutation.mutate({ ids: [...selectedIds], deleteAll: deleteAllMode });
+                }
+              }}
             >
               {bulkDeleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Delete
@@ -1501,7 +1514,7 @@ export default function InvitesPage() {
                   onClick={() => { setDeleteAllMode(true); setShowBulkDeleteDialog(true); }}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Delete All
+                  {sideFilter === "all" ? "Delete All" : `Delete All Filtered (${filteredInvites.length})`}
                 </Button>
               </div>
             )}
