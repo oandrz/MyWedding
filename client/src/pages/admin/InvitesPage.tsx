@@ -615,10 +615,6 @@ export default function InvitesPage() {
     );
   }, [invites, debouncedSearch, sideFilter]);
 
-  // WA stats
-  const sentCount = invites.filter((i) => i.waSentAt).length;
-  const withPhone = invites.filter((i) => i.phone).length;
-
   // Send All: unsent invites with phone
   const unsentWithPhone = useMemo(
     () => invites
@@ -785,19 +781,27 @@ export default function InvitesPage() {
     );
   }
 
-  const rsvpCount = invites.filter((i) => i.rsvp).length;
-  const groomCount = invites.filter(i => i.side === "groom").length;
-  const brideCount = invites.filter(i => i.side === "bride").length;
+  // Chip counts use the unfiltered list so the admin always sees totals.
+  const groomCount = invites.filter((i) => i.side === "groom").length;
+  const brideCount = invites.filter((i) => i.side === "bride").length;
   const unassignedCount = invites.filter((i) => !i.side).length;
+
+  // Stats cards reflect the active filter scope.
+  const statsScope = filteredInvites;
+  const rsvpCount = statsScope.filter((i) => i.rsvp).length;
+  const statsSentCount = statsScope.filter((i) => i.waSentAt).length;
+  const statsWithPhone = statsScope.filter((i) => i.phone).length;
 
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
+      <div className={`grid gap-4 md:grid-cols-3 ${sideFilter === "all" ? "lg:grid-cols-7" : "lg:grid-cols-5"}`}>
         <Card className="bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{invites.length}</CardTitle>
-            <CardDescription className="text-amber-100">Total Invites</CardDescription>
+            <CardTitle className="text-2xl font-bold text-white">{filteredInvites.length}</CardTitle>
+            <CardDescription className="text-amber-100">
+              {sideFilter === "all" ? "Total Invites" : `Invites (${sideFilter})`}
+            </CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-emerald-400 to-green-500 text-white shadow-lg">
@@ -808,34 +812,38 @@ export default function InvitesPage() {
         </Card>
         <Card className="bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{invites.length - rsvpCount}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{filteredInvites.length - rsvpCount}</CardTitle>
             <CardDescription className="text-sky-100">Pending RSVPs</CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{sentCount}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{statsSentCount}</CardTitle>
             <CardDescription className="text-green-100">WA Sent</CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{withPhone - sentCount}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{statsWithPhone - statsSentCount}</CardTitle>
             <CardDescription className="text-gray-200">WA Unsent</CardDescription>
           </CardHeader>
         </Card>
-        <Card className="bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{groomCount}</CardTitle>
-            <CardDescription className="text-blue-100">Groom Guests</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card className="bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{brideCount}</CardTitle>
-            <CardDescription className="text-pink-100">Bride Guests</CardDescription>
-          </CardHeader>
-        </Card>
+        {sideFilter === "all" && (
+          <>
+            <Card className="bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl font-bold text-white">{groomCount}</CardTitle>
+                <CardDescription className="text-blue-100">Groom Guests</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl font-bold text-white">{brideCount}</CardTitle>
+                <CardDescription className="text-pink-100">Bride Guests</CardDescription>
+              </CardHeader>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Send All button */}
