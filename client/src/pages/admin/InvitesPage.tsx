@@ -788,6 +788,7 @@ export default function InvitesPage() {
   const rsvpCount = invites.filter((i) => i.rsvp).length;
   const groomCount = invites.filter(i => i.side === "groom").length;
   const brideCount = invites.filter(i => i.side === "bride").length;
+  const unassignedCount = invites.filter((i) => !i.side).length;
 
   return (
     <div className="space-y-6">
@@ -1373,26 +1374,57 @@ export default function InvitesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Search */}
+      {/* Side filter + Search */}
       {invites.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search by name, code, or phone..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="pl-10 pr-10"
-            data-testid="invite-search-input"
-          />
-          {searchText && (
-            <button
-              onClick={() => setSearchText("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter by side">
+            {([
+              { key: "all", label: `All · ${invites.length}`, show: true },
+              { key: "groom", label: `🤵 Groom · ${groomCount}`, show: true },
+              { key: "bride", label: `👰 Bride · ${brideCount}`, show: true },
+              { key: "unassigned", label: `⚠ Unassigned · ${unassignedCount}`, show: unassignedCount > 0 },
+            ] as { key: SideFilter; label: string; show: boolean }[])
+              .filter((c) => c.show)
+              .map((c) => {
+                const active = sideFilter === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSideFilter(c.key)}
+                    data-testid={`side-filter-${c.key}`}
+                    className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                      active
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-amber-300 hover:bg-amber-50"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by name, code, or phone..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="pl-10 pr-10"
+              data-testid="invite-search-input"
+            />
+            {searchText && (
+              <button
+                onClick={() => setSearchText("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
