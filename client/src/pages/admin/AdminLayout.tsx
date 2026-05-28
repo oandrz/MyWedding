@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Switch, Route, Redirect, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3, TicketCheck, Palette, CalendarClock, Calendar } from "lucide-react";
+import { Loader2, LogOut, Users, MessageSquare, Settings, Mail, Flag, BarChart3, TicketCheck, Palette, CalendarClock, Calendar, ScrollText } from "lucide-react";
 import { AdminContext } from "./AdminContext";
 import RsvpPage from "./RsvpPage";
 import MessagesPage from "./MessagesPage";
@@ -14,6 +14,7 @@ import InvitesPage from "./InvitesPage";
 import DressCodePage from "./DressCodePage";
 import RsvpSettingsPage from "./RsvpSettingsPage";
 import SchedulePage from "./SchedulePage";
+import LogsPage from "./LogsPage";
 
 const NAV_ITEMS = [
   { path: "/rsvps", label: "RSVP", icon: Users },
@@ -26,6 +27,10 @@ const NAV_ITEMS = [
   { path: "/rsvp-deadline", label: "RSVP Settings", icon: CalendarClock },
   { path: "/schedule", label: "Schedule", icon: Calendar },
   { path: "/stats", label: "Statistics", icon: BarChart3 },
+];
+
+const DEV_NAV_ITEMS = [
+  { path: "/dev/logs", label: "Logs", icon: ScrollText },
 ];
 
 export function AdminLayout() {
@@ -141,6 +146,29 @@ export function AdminLayout() {
                   </Link>
                 );
               })}
+              <div className="pt-2 mt-2 border-t">
+                <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Development
+                </p>
+                {DEV_NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+                  const isActive = location === path;
+                  return (
+                    <Link
+                      key={path}
+                      href={path}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-rose-50 text-rose-700"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </nav>
 
@@ -160,6 +188,7 @@ export function AdminLayout() {
               <Route path="/rsvp-deadline" component={RsvpSettingsPage} />
               <Route path="/schedule" component={SchedulePage} />
               <Route path="/stats" component={StatsPage} />
+              <Route path="/dev/logs" component={LogsPage} />
             </Switch>
           </main>
         </div>
