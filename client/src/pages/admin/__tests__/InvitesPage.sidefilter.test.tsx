@@ -165,4 +165,21 @@ describe("InvitesPage — side filter chips", () => {
     expect(screen.queryByText("Groom Guests")).not.toBeInTheDocument();
     expect(screen.queryByText("Bride Guests")).not.toBeInTheDocument();
   });
+
+  it("disables Delete All Filtered when the filtered scope is empty (data-loss guard)", () => {
+    const groomOnly = { invites: invitesFixture.invites.filter((i) => i.side === "groom") };
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    qc.setQueryData(["/api/admin/invites"], groomOnly);
+    window.history.replaceState(null, "", "/admin/invites?side=bride");
+    render(
+      <QueryClientProvider client={qc}>
+        <Router><InvitesPage /></Router>
+      </QueryClientProvider>
+    );
+
+    const deleteAllBtn = screen.getByRole("button", { name: /delete all filtered \(0\)/i });
+    expect(deleteAllBtn).toBeDisabled();
+  });
 });

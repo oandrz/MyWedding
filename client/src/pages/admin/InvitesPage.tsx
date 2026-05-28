@@ -151,6 +151,7 @@ export default function InvitesPage() {
   }, [location]);
 
   const setSideFilter = useCallback((next: SideFilter) => {
+    setSelectedIds(new Set());
     setSideFilterState(next);
     const params = new URLSearchParams(window.location.search);
     if (next === "all") {
@@ -604,6 +605,7 @@ export default function InvitesPage() {
         case "groom": return invite.side === "groom";
         case "bride": return invite.side === "bride";
         case "unassigned": return !invite.side;
+        default: return true;
       }
     });
     if (!debouncedSearch) return bySide;
@@ -1470,6 +1472,12 @@ export default function InvitesPage() {
               disabled={bulkDeleteMutation.isPending}
               onClick={() => {
                 if (deleteAllMode && sideFilter !== "all") {
+                  if (filteredInvites.length === 0) {
+                    // Empty filtered set — bail. An empty ids array would be treated as delete-all by the server.
+                    setShowBulkDeleteDialog(false);
+                    setDeleteAllMode(false);
+                    return;
+                  }
                   // Filtered "delete all" — send explicit IDs to avoid wiping the other side.
                   bulkDeleteMutation.mutate({
                     ids: filteredInvites.map((i) => i.id),
@@ -1511,6 +1519,7 @@ export default function InvitesPage() {
                   variant="outline"
                   size="sm"
                   className="text-red-600 border-red-200 hover:bg-red-50"
+                  disabled={sideFilter !== "all" && filteredInvites.length === 0}
                   onClick={() => { setDeleteAllMode(true); setShowBulkDeleteDialog(true); }}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
