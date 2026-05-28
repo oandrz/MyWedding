@@ -68,7 +68,7 @@ func (s *LocalStorage) Download(_ context.Context, objectPath string, w http.Res
 	ct := http.DetectContentType(data)
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Header().Set("Cache-Control", "public, max-age=604800")
 	_, err = w.Write(data)
 	return err
 }

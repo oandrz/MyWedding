@@ -121,7 +121,7 @@ func TestSupabaseDownload(t *testing.T) {
 	if rec.Header().Get("Content-Type") != "image/jpeg" {
 		t.Errorf("unexpected content-type: %s", rec.Header().Get("Content-Type"))
 	}
-	if rec.Header().Get("Cache-Control") != "public, max-age=3600" {
+	if rec.Header().Get("Cache-Control") != "public, max-age=604800" {
 		t.Errorf("unexpected cache-control: %s", rec.Header().Get("Cache-Control"))
 	}
 	if rec.Body.String() != "image" {

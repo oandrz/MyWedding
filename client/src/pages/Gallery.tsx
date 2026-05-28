@@ -30,7 +30,7 @@ const Gallery = () => {
 
   const { data, isLoading, isError, refetch } = useQuery<{ files: DriveFile[] }>({
     queryKey: ["/api/drive-folder-contents"],
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   const files = data?.files ?? [];
