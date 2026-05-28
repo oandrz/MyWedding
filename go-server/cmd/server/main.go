@@ -65,6 +65,7 @@ func main() {
 	if dbPool != nil {
 		sink = logsink.New(repo, logsink.Options{})
 		sink.Start()
+		routerOpts = append(routerOpts, router.WithLogDropped(sink.Dropped))
 		slog.SetDefault(slog.New(logsink.NewFanout(logHandler, sink)))
 		slog.Info("Log persistence enabled (app_logs)")
 	}

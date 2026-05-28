@@ -182,6 +182,10 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Put("/invites/{id}/wa-sent", invite.MarkWaSent)
 			r.Delete("/invites/{id}/wa-sent", invite.UnmarkWaSent)
 
+			logHandler := &handler.LogHandler{Repo: repo, Dropped: o.logDropped}
+			r.Get("/logs", logHandler.List)
+			r.Get("/logs/{requestId}", logHandler.ByRequestID)
+
 			// WhatsApp automation routes (only registered when WA service is configured)
 			if o.whatsapp != nil {
 				wa := &handler.WAHandler{WA: o.whatsapp}
@@ -227,6 +231,7 @@ type options struct {
 	drive      *service.GoogleDriveService
 	dbPool     interface{ Ping(context.Context) error }
 	whatsapp   service.WhatsAppServicer
+	logDropped func() int64
 }
 
 // WithStorage sets the object storage for file upload routes.
@@ -254,5 +259,12 @@ func WithDBPool(pool interface{ Ping(context.Context) error }) Option {
 func WithWhatsApp(wa service.WhatsAppServicer) Option {
 	return func(o *options) {
 		o.whatsapp = wa
+	}
+}
+
+// WithLogDropped sets the dropped-log counter accessor for the logs endpoint.
+func WithLogDropped(f func() int64) Option {
+	return func(o *options) {
+		o.logDropped = f
 	}
 }
