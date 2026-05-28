@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,9 +124,46 @@ function buildWaLink(phone: string, message: string): string {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+type SideFilter = "all" | "groom" | "bride" | "unassigned";
+
+const VALID_SIDE_FILTERS: SideFilter[] = ["all", "groom", "bride", "unassigned"];
+
+function parseSideFilter(search: string): SideFilter {
+  const param = new URLSearchParams(search).get("side");
+  return (VALID_SIDE_FILTERS as string[]).includes(param ?? "")
+    ? (param as SideFilter)
+    : "all";
+}
+
 export default function InvitesPage() {
   const { toast } = useToast();
   const { handleAutoLogout } = useAdminContext();
+
+  const [location] = useLocation();
+
+  const [sideFilter, setSideFilterState] = useState<SideFilter>(() =>
+    parseSideFilter(window.location.search)
+  );
+
+  // Keep state in sync if the URL changes (back/forward, deep link).
+  useEffect(() => {
+    setSideFilterState(parseSideFilter(window.location.search));
+  }, [location]);
+
+  const setSideFilter = useCallback((next: SideFilter) => {
+    setSelectedIds(new Set());
+    setSideFilterState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "all") {
+      params.delete("side");
+    } else {
+      params.set("side", next);
+    }
+    const qs = params.toString();
+    const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+    window.history.replaceState(null, "", newUrl);
+  }, []);
+
   const [newInviteName, setNewInviteName] = useState("");
   const [newInvitePhone, setNewInvitePhone] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -561,25 +599,30 @@ export default function InvitesPage() {
   const debouncedSearch = useDebounce(searchText, 300);
 
   const filteredInvites = useMemo(() => {
-    if (!debouncedSearch) return invites;
+    const bySide = invites.filter((invite) => {
+      switch (sideFilter) {
+        case "all": return true;
+        case "groom": return invite.side === "groom";
+        case "bride": return invite.side === "bride";
+        case "unassigned": return !invite.side;
+        default: return true;
+      }
+    });
+    if (!debouncedSearch) return bySide;
     const q = debouncedSearch.toLowerCase();
-    return invites.filter((invite) =>
+    return bySide.filter((invite) =>
       invite.name.toLowerCase().includes(q) ||
       invite.code.toLowerCase().includes(q) ||
       (invite.phone && invite.phone.includes(q))
     );
-  }, [invites, debouncedSearch]);
-
-  // WA stats
-  const sentCount = invites.filter((i) => i.waSentAt).length;
-  const withPhone = invites.filter((i) => i.phone).length;
+  }, [invites, debouncedSearch, sideFilter]);
 
   // Send All: unsent invites with phone
   const unsentWithPhone = useMemo(
-    () => invites
+    () => filteredInvites
       .filter((i) => i.phone && !i.waSentAt)
       .sort((a, b) => a.name.localeCompare(b.name)),
-    [invites]
+    [filteredInvites]
   );
 
   const handleCreateInvite = (e: React.FormEvent) => {
@@ -663,7 +706,15 @@ export default function InvitesPage() {
   };
 
   const handleSendAll = async () => {
-    const unsent = invites.filter(i => i.phone && !i.waSentAt);
+    if (sideFilter === "unassigned") {
+      toast({
+        title: "No unassigned guests can be sent",
+        description: "They need a side first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const unsent = filteredInvites.filter(i => i.phone && !i.waSentAt);
 
     const needsGroom = unsent.some(i => i.side === "groom");
     const needsBride = unsent.some(i => i.side === "bride");
@@ -740,18 +791,27 @@ export default function InvitesPage() {
     );
   }
 
-  const rsvpCount = invites.filter((i) => i.rsvp).length;
-  const groomCount = invites.filter(i => i.side === "groom").length;
-  const brideCount = invites.filter(i => i.side === "bride").length;
+  // Chip counts use the unfiltered list so the admin always sees totals.
+  const groomCount = invites.filter((i) => i.side === "groom").length;
+  const brideCount = invites.filter((i) => i.side === "bride").length;
+  const unassignedCount = invites.filter((i) => !i.side).length;
+
+  // Stats cards reflect the active filter scope.
+  const statsScope = filteredInvites;
+  const rsvpCount = statsScope.filter((i) => i.rsvp).length;
+  const statsSentCount = statsScope.filter((i) => i.waSentAt).length;
+  const statsWithPhone = statsScope.filter((i) => i.phone).length;
 
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
+      <div className={`grid gap-4 md:grid-cols-3 ${sideFilter === "all" ? "lg:grid-cols-7" : "lg:grid-cols-5"}`}>
         <Card className="bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{invites.length}</CardTitle>
-            <CardDescription className="text-amber-100">Total Invites</CardDescription>
+            <CardTitle className="text-2xl font-bold text-white">{filteredInvites.length}</CardTitle>
+            <CardDescription className="text-amber-100">
+              {sideFilter === "all" ? "Total Invites" : `Invites (${sideFilter})`}
+            </CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-emerald-400 to-green-500 text-white shadow-lg">
@@ -762,34 +822,38 @@ export default function InvitesPage() {
         </Card>
         <Card className="bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{invites.length - rsvpCount}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{filteredInvites.length - rsvpCount}</CardTitle>
             <CardDescription className="text-sky-100">Pending RSVPs</CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{sentCount}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{statsSentCount}</CardTitle>
             <CardDescription className="text-green-100">WA Sent</CardDescription>
           </CardHeader>
         </Card>
         <Card className="bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{withPhone - sentCount}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">{statsWithPhone - statsSentCount}</CardTitle>
             <CardDescription className="text-gray-200">WA Unsent</CardDescription>
           </CardHeader>
         </Card>
-        <Card className="bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{groomCount}</CardTitle>
-            <CardDescription className="text-blue-100">Groom Guests</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card className="bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">{brideCount}</CardTitle>
-            <CardDescription className="text-pink-100">Bride Guests</CardDescription>
-          </CardHeader>
-        </Card>
+        {sideFilter === "all" && (
+          <>
+            <Card className="bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl font-bold text-white">{groomCount}</CardTitle>
+                <CardDescription className="text-blue-100">Groom Guests</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-2xl font-bold text-white">{brideCount}</CardTitle>
+                <CardDescription className="text-pink-100">Bride Guests</CardDescription>
+              </CardHeader>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Send All button */}
@@ -800,7 +864,10 @@ export default function InvitesPage() {
           variant="outline"
         >
           <MessageCircle className="h-4 w-4" />
-          Send All Unsent ({unsentWithPhone.length})
+          {sideFilter === "groom" && `Send Groom Unsent (${unsentWithPhone.length})`}
+          {sideFilter === "bride" && `Send Bride Unsent (${unsentWithPhone.length})`}
+          {sideFilter === "unassigned" && `Send Unassigned Unsent (${unsentWithPhone.length})`}
+          {sideFilter === "all" && `Send All Unsent (${unsentWithPhone.length})`}
         </Button>
       )}
 
@@ -1328,26 +1395,57 @@ export default function InvitesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Search */}
+      {/* Side filter + Search */}
       {invites.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search by name, code, or phone..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="pl-10 pr-10"
-            data-testid="invite-search-input"
-          />
-          {searchText && (
-            <button
-              onClick={() => setSearchText("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Filter by side">
+            {([
+              { key: "all", label: `All · ${invites.length}`, show: true },
+              { key: "groom", label: `🤵 Groom · ${groomCount}`, show: true },
+              { key: "bride", label: `👰 Bride · ${brideCount}`, show: true },
+              { key: "unassigned", label: `⚠ Unassigned · ${unassignedCount}`, show: unassignedCount > 0 },
+            ] as { key: SideFilter; label: string; show: boolean }[])
+              .filter((c) => c.show)
+              .map((c) => {
+                const active = sideFilter === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setSideFilter(c.key)}
+                    data-testid={`side-filter-${c.key}`}
+                    className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                      active
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-amber-300 hover:bg-amber-50"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by name, code, or phone..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="pl-10 pr-10"
+              data-testid="invite-search-input"
+            />
+            {searchText && (
+              <button
+                onClick={() => setSearchText("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1357,9 +1455,12 @@ export default function InvitesPage() {
           <DialogHeader>
             <DialogTitle>Delete invites?</DialogTitle>
             <DialogDescription>
-              {deleteAllMode
-                ? "This will permanently delete all invites and their linked RSVPs. This cannot be undone."
-                : `This will permanently delete ${selectedIds.size} invite(s) and their linked RSVPs. This cannot be undone.`}
+              {deleteAllMode && sideFilter === "all" &&
+                "This will permanently delete all invites and their linked RSVPs. This cannot be undone."}
+              {deleteAllMode && sideFilter !== "all" &&
+                `This will permanently delete ${filteredInvites.length} invite(s) on the ${sideFilter} side (and their linked RSVPs). This cannot be undone.`}
+              {!deleteAllMode &&
+                `This will permanently delete ${selectedIds.size} invite(s) and their linked RSVPs. This cannot be undone.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1369,7 +1470,23 @@ export default function InvitesPage() {
             <Button
               variant="destructive"
               disabled={bulkDeleteMutation.isPending}
-              onClick={() => bulkDeleteMutation.mutate({ ids: [...selectedIds], deleteAll: deleteAllMode })}
+              onClick={() => {
+                if (deleteAllMode && sideFilter !== "all") {
+                  if (filteredInvites.length === 0) {
+                    // Empty filtered set — bail. An empty ids array would be treated as delete-all by the server.
+                    setShowBulkDeleteDialog(false);
+                    setDeleteAllMode(false);
+                    return;
+                  }
+                  // Filtered "delete all" — send explicit IDs to avoid wiping the other side.
+                  bulkDeleteMutation.mutate({
+                    ids: filteredInvites.map((i) => i.id),
+                    deleteAll: false,
+                  });
+                } else {
+                  bulkDeleteMutation.mutate({ ids: [...selectedIds], deleteAll: deleteAllMode });
+                }
+              }}
             >
               {bulkDeleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Delete
@@ -1402,10 +1519,11 @@ export default function InvitesPage() {
                   variant="outline"
                   size="sm"
                   className="text-red-600 border-red-200 hover:bg-red-50"
+                  disabled={sideFilter !== "all" && filteredInvites.length === 0}
                   onClick={() => { setDeleteAllMode(true); setShowBulkDeleteDialog(true); }}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Delete All
+                  {sideFilter === "all" ? "Delete All" : `Delete All Filtered (${filteredInvites.length})`}
                 </Button>
               </div>
             )}
@@ -1691,7 +1809,11 @@ export default function InvitesPage() {
             {filteredInvites.length === 0 && invites.length > 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Search className="h-12 w-12 text-gray-300 mb-3" />
-                <p className="text-gray-500 text-lg">No invites match your search</p>
+                <p className="text-gray-500 text-lg">
+                  {sideFilter !== "all" && !debouncedSearch && `No guests on the ${sideFilter} side`}
+                  {sideFilter === "all" && debouncedSearch && "No invites match your search"}
+                  {sideFilter !== "all" && debouncedSearch && `No ${sideFilter}-side guests match your search`}
+                </p>
               </div>
             )}
 
