@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,9 +124,45 @@ function buildWaLink(phone: string, message: string): string {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+type SideFilter = "all" | "groom" | "bride" | "unassigned";
+
+const VALID_SIDE_FILTERS: SideFilter[] = ["all", "groom", "bride", "unassigned"];
+
+function parseSideFilter(search: string): SideFilter {
+  const param = new URLSearchParams(search).get("side");
+  return (VALID_SIDE_FILTERS as string[]).includes(param ?? "")
+    ? (param as SideFilter)
+    : "all";
+}
+
 export default function InvitesPage() {
   const { toast } = useToast();
   const { handleAutoLogout } = useAdminContext();
+
+  const [location] = useLocation();
+
+  const [sideFilter, setSideFilterState] = useState<SideFilter>(() =>
+    parseSideFilter(window.location.search)
+  );
+
+  // Keep state in sync if the URL changes (back/forward, deep link).
+  useEffect(() => {
+    setSideFilterState(parseSideFilter(window.location.search));
+  }, [location]);
+
+  const setSideFilter = useCallback((next: SideFilter) => {
+    setSideFilterState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "all") {
+      params.delete("side");
+    } else {
+      params.set("side", next);
+    }
+    const qs = params.toString();
+    const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+    window.history.replaceState(null, "", newUrl);
+  }, []);
+
   const [newInviteName, setNewInviteName] = useState("");
   const [newInvitePhone, setNewInvitePhone] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
