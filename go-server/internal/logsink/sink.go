@@ -34,6 +34,7 @@ type Sink struct {
 	dropped  *atomic.Int64
 	done     chan struct{}
 	wg       *sync.WaitGroup
+	stopOnce *sync.Once
 	preAttrs []slog.Attr // attrs accumulated via WithAttrs
 }
 
@@ -55,6 +56,7 @@ func New(inserter Inserter, opts Options) *Sink {
 		dropped:  &atomic.Int64{},
 		done:     make(chan struct{}),
 		wg:       &sync.WaitGroup{},
+		stopOnce: &sync.Once{},
 	}
 }
 
@@ -92,6 +94,7 @@ func (s *Sink) run() {
 			fmt.Fprintf(os.Stderr, "logsink: insert failed: %v\n", err)
 		}
 		cancel()
+		// InsertLogs must finish before the batch backing array is reused below.
 		batch = batch[:0]
 	}
 
@@ -124,7 +127,7 @@ func (s *Sink) run() {
 
 // Stop signals the worker to drain and waits for it (bounded by ctx).
 func (s *Sink) Stop(ctx context.Context) {
-	close(s.done)
+	s.stopOnce.Do(func() { close(s.done) })
 	finished := make(chan struct{})
 	go func() { s.wg.Wait(); close(finished) }()
 	select {
