@@ -57,7 +57,7 @@ export default function LogsPage() {
   params.set("after", after);
   params.set("limit", "100");
 
-  const { data, isLoading, refetch } = useQuery<LogsResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<LogsResponse>({
     queryKey: traceId
       ? ["admin-logs-trace", traceId]
       : ["admin-logs", level, source, search, rangeHours],
@@ -158,6 +158,8 @@ export default function LogsPage() {
 
       {isLoading ? (
         <p className="text-sm text-gray-500">Loading…</p>
+      ) : isError ? (
+        <p className="text-sm text-red-600">Failed to load logs.</p>
       ) : logs.length === 0 ? (
         <p className="text-sm text-gray-500">No logs captured.</p>
       ) : (
@@ -195,11 +197,13 @@ export default function LogsPage() {
                     <td className="px-3 py-2 text-gray-600">
                       {log.status ?? ""}
                     </td>
-                    <td className="px-3 py-2 text-gray-900 truncate max-w-[320px]">
-                      {log.message}
-                      {log.path ? (
-                        <span className="text-gray-400"> {log.path}</span>
-                      ) : null}
+                    <td className="px-3 py-2 text-gray-900">
+                      <div className="truncate max-w-[320px]">
+                        {log.message}
+                        {log.path ? (
+                          <span className="text-gray-400"> {log.path}</span>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                   {expandedId === log.id && (
