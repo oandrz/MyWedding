@@ -598,14 +598,22 @@ export default function InvitesPage() {
   const debouncedSearch = useDebounce(searchText, 300);
 
   const filteredInvites = useMemo(() => {
-    if (!debouncedSearch) return invites;
+    const bySide = invites.filter((invite) => {
+      switch (sideFilter) {
+        case "all": return true;
+        case "groom": return invite.side === "groom";
+        case "bride": return invite.side === "bride";
+        case "unassigned": return !invite.side;
+      }
+    });
+    if (!debouncedSearch) return bySide;
     const q = debouncedSearch.toLowerCase();
-    return invites.filter((invite) =>
+    return bySide.filter((invite) =>
       invite.name.toLowerCase().includes(q) ||
       invite.code.toLowerCase().includes(q) ||
       (invite.phone && invite.phone.includes(q))
     );
-  }, [invites, debouncedSearch]);
+  }, [invites, debouncedSearch, sideFilter]);
 
   // WA stats
   const sentCount = invites.filter((i) => i.waSentAt).length;
