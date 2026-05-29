@@ -160,7 +160,7 @@ func (s *SupabaseStorage) Download(ctx context.Context, objectPath string, w htt
 	if cl := resp.Header.Get("Content-Length"); cl != "" {
 		w.Header().Set("Content-Length", cl)
 	}
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Header().Set("Cache-Control", "public, max-age=604800")
 
 	_, err = io.Copy(w, resp.Body)
 	return err

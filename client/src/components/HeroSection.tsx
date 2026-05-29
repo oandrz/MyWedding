@@ -108,11 +108,10 @@ const HeroSection = () => {
     return time.toString().padStart(2, '0');
   };
 
-  // Fetch banner image from API - force fresh data
+  // Fetch banner image from API
   const { data: bannerData } = useQuery<{ images: ConfigImage[] }>({
     queryKey: ["/api/config-images/banner"],
-    staleTime: 0, // No cache - always fetch fresh data
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // 5 min - banner changes rarely; avoids constant refetch/egress
   });
 
   // Extract API image URL (null if no custom banner uploaded)

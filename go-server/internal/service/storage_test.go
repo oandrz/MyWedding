@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,6 +58,28 @@ func TestLocalStorageAdminImage(t *testing.T) {
 		if url != expected {
 			t.Errorf("%s: expected %s, got %s", tc.imageType, expected, url)
 		}
+	}
+}
+
+func TestLocalStorageDownloadCacheControl(t *testing.T) {
+	dir := t.TempDir()
+	s := NewLocalStorage(dir)
+
+	content := []byte("image-bytes")
+	s.Upload(context.Background(), bytes.NewReader(content), int64(len(content)), "photo.jpg", "image/jpeg", "uploads")
+
+	rec := httptest.NewRecorder()
+	if err := s.Download(context.Background(), "uploads/photo.jpg", rec); err != nil {
+		t.Fatalf("download failed: %v", err)
+	}
+
+	// Long-lived cache header is the egress-reduction lever; uploaded URLs are
+	// immutable (unique filenames), so a 7-day TTL is safe. Lock it in.
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=604800" {
+		t.Errorf("unexpected cache-control: %q", got)
+	}
+	if rec.Body.String() != "image-bytes" {
+		t.Errorf("unexpected body: %s", rec.Body.String())
 	}
 }
 
