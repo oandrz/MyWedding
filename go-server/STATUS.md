@@ -10,8 +10,8 @@
 - [x] External calls (whatsapp/googledrive/supabase) tagged `source=external`, `service=<name>`
 - [x] `main.go`: sink + fan-out installed only when DATABASE_URL present; 7-day retention ticker (boot + every 6h); drains sink before pool close
 - [x] Admin endpoints `GET /api/admin/logs` (filter/paginate, droppedCount) + `GET /api/admin/logs/{requestId}` (trace), inside authed+CSRF group (CSRF skips GET)
-- [x] Frontend: "Development" nav group + `LogsPage` (filters, row expansion, request-trace view, dropped banner, empty/error states)
-- [x] Tests: Go `make test` passes with -race (logsink, middleware, repository no-op, handler, contract); frontend LogsPage (4) + AdminLayout (5) pass
+- [x] Frontend: "Development" nav group + `LogsPage` (filters, row expansion showing full untruncated message + metadata + attrs, request-trace view, dropped banner, empty/error states)
+- [x] Tests: Go `make test` passes with -race (logsink, middleware, repository no-op, handler, contract); frontend LogsPage (5) + AdminLayout (5) pass
 - [x] golangci-lint NOT installed in this env — used `go vet` (clean) as fallback
 - [ ] **REMAINING: manual full-stack DB smoke test** — the Postgres `InsertLogs`/`QueryLogs` JSONB path is reviewed but unexecuted (unit tests use the in-memory no-op repo). Run `make docker-dev` (or set DATABASE_URL), trigger requests + an error, open admin **Development > Logs**, and confirm: rows persist & display, filters/trace work, NO cookie/token values appear, `/api/health` is absent.
 
