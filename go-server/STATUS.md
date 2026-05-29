@@ -1,4 +1,28 @@
-## Current Phase: Phase 8 — Frontend Switch to Go Backend
+## Current Phase: Phase 9 — Admin Logging System
+## Status: CODE COMPLETE — pending one manual full-stack DB smoke test
+## Last Updated: 2026-05-29
+
+### Phase 9: Admin Logging System — CODE COMPLETE
+- [x] Migration `014_add_app_logs.sql` (app_logs table + 3 indexes) + `models.AppLog`/`LogQuery`
+- [x] Repository: `InsertLogs` (pgx batch), `QueryLogs` (filter/keyset paginate), `DeleteLogsOlderThan`; memory impl is no-op (dev has no sink)
+- [x] `internal/logsink/`: `SanitizeAttrs`/`SanitizePath` (secret denylist + query-string strip), buffered `Sink` (slog.Handler, non-blocking enqueue, drop-counter, recursion guard, WithAttrs carries attrs, sync.Once-guarded Stop), `Fanout` handler (stdout + sink)
+- [x] HTTP middleware promoted Debug→Info with source/method/path/status/durationMs/requestId; excludes `/api/health` + `/storage/*`
+- [x] External calls (whatsapp/googledrive/supabase) tagged `source=external`, `service=<name>`
+- [x] `main.go`: sink + fan-out installed only when DATABASE_URL present; 7-day retention ticker (boot + every 6h); drains sink before pool close
+- [x] Admin endpoints `GET /api/admin/logs` (filter/paginate, droppedCount) + `GET /api/admin/logs/{requestId}` (trace), inside authed+CSRF group (CSRF skips GET)
+- [x] Frontend: "Development" nav group + `LogsPage` (filters, row expansion showing full untruncated message + metadata + attrs, request-trace view, dropped banner, empty/error states)
+- [x] Tests: Go `make test` passes with -race (logsink, middleware, repository no-op, handler, contract); frontend LogsPage (5) + AdminLayout (5) pass
+- [x] golangci-lint NOT installed in this env — used `go vet` (clean) as fallback
+- [ ] **REMAINING: manual full-stack DB smoke test** — the Postgres `InsertLogs`/`QueryLogs` JSONB path is reviewed but unexecuted (unit tests use the in-memory no-op repo). Run `make docker-dev` (or set DATABASE_URL), trigger requests + an error, open admin **Development > Logs**, and confirm: rows persist & display, filters/trace work, NO cookie/token values appear, `/api/health` is absent.
+
+### Notes for Next Agent (Logging)
+- Spec: `docs/superpowers/specs/2026-05-28-admin-logging-system-design.md`; Plan: `docs/superpowers/plans/2026-05-28-admin-logging-system.md`
+- Branch: `feature/logging` (15 commits on top of 9a08be9). Not yet merged/PR'd.
+- Pre-existing unrelated failures in this repo (NOT from this work): 2 TS errors (InvitesPage `Set` iteration, untracked `server/config.ts` dotenv) and 10 `InvitesPage.sendall.test.tsx` failures.
+
+---
+
+## Prior Phase: Phase 8 — Frontend Switch to Go Backend
 ## Status: COMPLETED
 ## Last Updated: 2026-03-16
 

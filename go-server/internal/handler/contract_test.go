@@ -2046,3 +2046,21 @@ func TestContract_InviteGetByCode_NoPII(t *testing.T) {
 		t.Fatalf("public endpoint should not expose waSentAt, got %v", invite["waSentAt"])
 	}
 }
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/logs
+// Contract: { "logs": [...], "nextCursor": <int64|null>, "droppedCount": <int> }
+// ---------------------------------------------------------------------------
+func TestContract_LogsListShape(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrf := adminLogin(t, env)
+
+	req := adminRequest(http.MethodGet, "/api/admin/logs", nil, cookie, csrf)
+	result := contractResponse(t, env, req, http.StatusOK)
+
+	for _, key := range []string{"logs", "nextCursor", "droppedCount"} {
+		if _, ok := result[key]; !ok {
+			t.Errorf("expected camelCase key %q in response", key)
+		}
+	}
+}

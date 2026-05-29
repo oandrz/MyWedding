@@ -568,19 +568,20 @@ func (s *WhatsAppService) runJob(job *SendJob, msgs []WAMessage, delayMin, delay
 
 		results, err := client.IsOnWhatsApp(job.ctx, []string{jidStr})
 		if err != nil {
-			slog.Warn("IsOnWhatsApp error, attempting send anyway", "jid", jidStr, "err", err)
+			slog.Warn("IsOnWhatsApp error, attempting send anyway", "source", "external", "service", "whatsapp", "jid", jidStr, "err", err)
 		} else if len(results) == 0 || !results[0].IsIn {
 			returnedJID := ""
 			if len(results) > 0 {
 				returnedJID = results[0].JID.String()
 			}
-			slog.Warn("IsOnWhatsApp not registered, attempting send anyway", "jid", jidStr, "returnedJID", returnedJID)
+			slog.Warn("IsOnWhatsApp not registered, attempting send anyway", "source", "external", "service", "whatsapp", "jid", jidStr, "returnedJID", returnedJID)
 		}
 
 		_, err = client.SendMessage(job.ctx, jid, &waProto.Message{
 			Conversation: proto.String(msg.Message),
 		})
 		if err != nil {
+			slog.Error("WhatsApp send failed", "source", "external", "service", "whatsapp", "inviteID", msg.InviteID, "side", msg.Side, "error", err)
 			// Likely a disconnect — pause the job so admin can reconnect.
 			job.setStatus("paused")
 			job.mu.Lock()
@@ -595,6 +596,7 @@ func (s *WhatsAppService) runJob(job *SendJob, msgs []WAMessage, delayMin, delay
 			}
 			continue
 		}
+		slog.Info("WhatsApp message sent", "source", "external", "service", "whatsapp", "inviteID", msg.InviteID, "side", msg.Side)
 
 		s.repo.MarkInviteWaSent(job.ctx, msg.InviteID) //nolint:errcheck
 
@@ -730,21 +732,23 @@ func (s *WhatsAppService) SendOne(ctx context.Context, inviteID int, message str
 
 	results, err := client.IsOnWhatsApp(ctx, []string{jidStr})
 	if err != nil {
-		slog.Warn("IsOnWhatsApp error, attempting send anyway", "jid", jidStr, "err", err)
+		slog.Warn("IsOnWhatsApp error, attempting send anyway", "source", "external", "service", "whatsapp", "jid", jidStr, "err", err)
 	} else if len(results) == 0 || !results[0].IsIn {
 		returnedJID := ""
 		if len(results) > 0 {
 			returnedJID = results[0].JID.String()
 		}
-		slog.Warn("IsOnWhatsApp not registered, attempting send anyway", "jid", jidStr, "returnedJID", returnedJID)
+		slog.Warn("IsOnWhatsApp not registered, attempting send anyway", "source", "external", "service", "whatsapp", "jid", jidStr, "returnedJID", returnedJID)
 	}
 
 	_, err = client.SendMessage(ctx, jid, &waProto.Message{
 		Conversation: proto.String(message),
 	})
 	if err != nil {
+		slog.Error("WhatsApp send failed", "source", "external", "service", "whatsapp", "inviteID", inviteID, "error", err)
 		return fmt.Errorf("send failed: %w", err)
 	}
+	slog.Info("WhatsApp message sent", "source", "external", "service", "whatsapp", "inviteID", inviteID)
 
 	_, err = s.repo.MarkInviteWaSent(ctx, inviteID)
 	return err

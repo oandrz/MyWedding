@@ -1232,3 +1232,141 @@ func (r *PostgresRepository) ReorderScheduleEvents(ctx context.Context, items []
 	}
 	return tx.Commit(ctx)
 }
+
+// ---------------------------------------------------------------------------
+// App Logs
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) InsertLogs(ctx context.Context, logs []models.AppLog) (retErr error) {
+	if len(logs) == 0 {
+		return nil
+	}
+	batch := &pgx.Batch{}
+	for _, l := range logs {
+		batch.Queue(
+			`INSERT INTO app_logs (level, source, message, request_id, method, path, status, duration_ms, attrs)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			l.Level, l.Source, l.Message, nullStr(l.RequestID), nullStr(l.Method),
+			nullStr(l.Path), nullInt(l.Status), nullInt(l.DurationMs), l.Attrs,
+		)
+	}
+	br := r.pool.SendBatch(ctx, batch)
+	defer func() {
+		if err := br.Close(); err != nil && retErr == nil {
+			retErr = err
+		}
+	}()
+	for range logs {
+		if _, err := br.Exec(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *PostgresRepository) QueryLogs(ctx context.Context, q models.LogQuery) ([]models.AppLog, error) {
+	var conds []string
+	var args []any
+	i := 1
+	add := func(cond string, val any) {
+		conds = append(conds, fmt.Sprintf(cond, i))
+		args = append(args, val)
+		i++
+	}
+	if q.Level != "" {
+		add("level = $%d", q.Level)
+	}
+	if q.Source != "" {
+		add("source = $%d", q.Source)
+	}
+	if q.RequestID != "" {
+		add("request_id = $%d", q.RequestID)
+	}
+	if q.Search != "" {
+		// Two placeholders bound to the same value — not expressible via add().
+		conds = append(conds, fmt.Sprintf("(message ILIKE $%d OR path ILIKE $%d)", i, i+1))
+		args = append(args, "%"+q.Search+"%", "%"+q.Search+"%")
+		i += 2
+	}
+	if q.Before != nil {
+		add("created_at < $%d", *q.Before)
+	}
+	if q.After != nil {
+		add("created_at > $%d", *q.After)
+	}
+	if q.Cursor > 0 {
+		add("id < $%d", q.Cursor)
+	}
+
+	where := ""
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
+	limit := q.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	query := fmt.Sprintf(
+		`SELECT id, created_at, level, source, message, request_id, method, path, status, duration_ms, attrs
+		 FROM app_logs %s ORDER BY id DESC LIMIT %d`, where, limit)
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.AppLog, 0)
+	for rows.Next() {
+		var l models.AppLog
+		var createdAt time.Time
+		var reqID, method, path *string
+		var status, durationMs *int
+		if err := rows.Scan(&l.ID, &createdAt, &l.Level, &l.Source, &l.Message,
+			&reqID, &method, &path, &status, &durationMs, &l.Attrs); err != nil {
+			return nil, err
+		}
+		l.CreatedAt = createdAt.Format(time.RFC3339)
+		if reqID != nil {
+			l.RequestID = *reqID
+		}
+		if method != nil {
+			l.Method = *method
+		}
+		if path != nil {
+			l.Path = *path
+		}
+		if status != nil {
+			l.Status = *status
+		}
+		if durationMs != nil {
+			l.DurationMs = *durationMs
+		}
+		result = append(result, l)
+	}
+	return result, rows.Err()
+}
+
+func (r *PostgresRepository) DeleteLogsOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM app_logs WHERE created_at < $1`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+// nullStr returns nil for empty strings so NULL is stored instead of "".
+func nullStr(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+// nullInt returns nil for zero ints so NULL is stored instead of 0.
+func nullInt(n int) any {
+	if n == 0 {
+		return nil
+	}
+	return n
+}

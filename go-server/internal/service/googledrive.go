@@ -67,8 +67,10 @@ func (s *GoogleDriveService) GetFolderContents(ctx context.Context) ([]*drive.Fi
 		OrderBy("createdTime desc").
 		Do()
 	if err != nil {
+		slog.Error("Google Drive list failed", "source", "external", "service", "googledrive", "error", err)
 		return nil, fmt.Errorf("drive list failed: %w", err)
 	}
+	slog.Info("Google Drive list complete", "source", "external", "service", "googledrive", "count", len(res.Files))
 
 	current := make(map[string]struct{}, len(res.Files))
 	for _, f := range res.Files {
@@ -116,10 +118,12 @@ func (s *GoogleDriveService) GetThumbnailReader(ctx context.Context, fileID, siz
 
 	resp, err := s.httpClient.Get(url)
 	if err != nil {
+		slog.Error("Google Drive thumbnail fetch failed", "source", "external", "service", "googledrive", "fileID", fileID, "error", err)
 		return nil, "", fmt.Errorf("thumbnail fetch failed: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
+		slog.Error("Google Drive thumbnail fetch non-200", "source", "external", "service", "googledrive", "fileID", fileID, "status", resp.StatusCode)
 		return nil, "", fmt.Errorf("thumbnail fetch returned %d", resp.StatusCode)
 	}
 

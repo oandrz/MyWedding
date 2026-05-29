@@ -1010,3 +1010,19 @@ func (m *MemoryRepository) ReorderScheduleEvents(_ context.Context, items []mode
 	}
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+// App Logs (no-op: dev/in-memory has no log sink installed)
+// ---------------------------------------------------------------------------
+
+func (r *MemoryRepository) InsertLogs(_ context.Context, logs []models.AppLog) error {
+	return nil
+}
+
+func (r *MemoryRepository) QueryLogs(_ context.Context, q models.LogQuery) ([]models.AppLog, error) {
+	return []models.AppLog{}, nil
+}
+
+func (r *MemoryRepository) DeleteLogsOlderThan(_ context.Context, cutoff time.Time) (int64, error) {
+	return 0, nil
+}
