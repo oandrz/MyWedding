@@ -84,4 +84,40 @@ describe("LogsPage", () => {
     );
     expect(screen.getByText(/back to all logs/i)).toBeInTheDocument();
   });
+
+  it("shows the full message in the expanded panel", async () => {
+    const longMessage =
+      "failed to connect to upstream payment gateway: dial tcp 10.0.3.2:443: i/o timeout after 3 retries while processing order 8842";
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        logs: [
+          {
+            id: 1,
+            createdAt: "2026-05-28T10:00:00Z",
+            level: "ERROR",
+            source: "http",
+            message: longMessage,
+            requestId: "abc",
+            method: "POST",
+            path: "/api/pay",
+            status: 500,
+            durationMs: 12,
+            attrs: { error: "db down" },
+          },
+        ],
+        nextCursor: null,
+        droppedCount: 0,
+      }),
+    });
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const row = await screen.findByText(longMessage);
+    await user.click(row);
+
+    const fullMessage = await screen.findByTestId("log-full-message");
+    expect(fullMessage).toHaveTextContent(longMessage);
+  });
 });

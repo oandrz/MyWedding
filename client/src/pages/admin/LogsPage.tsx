@@ -209,6 +209,15 @@ export default function LogsPage() {
                   {expandedId === log.id && (
                     <tr className="border-t bg-gray-50">
                       <td colSpan={5} className="px-3 py-2">
+                        <div className="mb-2">
+                          <div className="text-gray-400 text-xs">Message</div>
+                          <div
+                            data-testid="log-full-message"
+                            className="text-sm text-gray-900 whitespace-pre-wrap break-words"
+                          >
+                            {log.message}
+                          </div>
+                        </div>
                         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                           {log.method && (
                             <>
