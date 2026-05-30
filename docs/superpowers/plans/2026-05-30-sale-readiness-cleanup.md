@@ -623,6 +623,19 @@ Then verify the new repo on GitHub: confirm it has exactly one commit, no `sellP
 
 ---
 
+## Execution Status (2026-05-30) — COMPLETE
+
+All tasks executed and committed on `task/refactor_update` (commits `9d45851`..`fe363f9`). Verification at completion:
+- **Personal-data sweep:** clean across all shipped file types (only match is the release script's own safety-scan pattern list, which is excluded from the snapshot).
+- **Replit residue:** none.
+- **`npm run check`** (tsc): passes (required the Task 0 `target: ES2020` fix).
+- **`npm run build`:** passes.
+- **`cd go-server && make build && make test`:** pass with the new module path.
+- **`make lint`:** could NOT run — `golangci-lint` is not installed in this environment. gofmt is clean and `go build ./...` (which vets) passes; the buyer/CI should run `make lint` once the tool is available.
+- **Snapshot dry-run:** the `make-release.sh` exclude-list was dry-run verified — every seller-internal/dev artifact is absent, all buyer files present, personal-token guard passes.
+
+Added beyond the original plan during execution: Task 0 (tsc fix), Task 2 additions (constants.ts, venue, `.gitignore` bug), Task 6b (Google Drive folder ID → config, backend + frontend), ADR decider + bank placeholders, and a minimal `README.md` (non-marketing; the screenshots/demo README remains deferred per scope).
+
 ## Self-Review Notes
 
 - **Spec coverage:** WP1 (personal data)→Tasks 1-4 + index.html in Task 2 + docs in Task 8; WP2 (Replit)→Task 5; WP3 (docs/license)→Task 6; WP4 (module rename)→Task 7; WP5 (dev-internal exclude-list)→Task 10 (exclude-list lives in `make-release.sh`); WP6 (snapshot)→Task 10; WP7 (verification gate)→Task 9. All work packages mapped.
