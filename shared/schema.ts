@@ -108,7 +108,7 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).pick({
 
 export const welcomeScreen = pgTable("welcome_screen", {
   id: serial("id").primaryKey(),
-  headingText: text("heading_text").notNull().default("The Wedding of Andreas & Christine"),
+  headingText: text("heading_text").notNull().default("The Wedding of James & Olivia"),
   headingTextId: text("heading_text_id").notNull().default(""),
   deliveryLabel: text("delivery_label").notNull().default("Kindly Delivered to"),
   deliveryLabelId: text("delivery_label_id").notNull().default(""),

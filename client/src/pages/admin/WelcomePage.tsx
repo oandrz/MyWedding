@@ -112,7 +112,7 @@ export default function WelcomePage() {
                     headingText: e.target.value,
                   })
                 }
-                placeholder="e.g., The Wedding of Andreas & Christine"
+                placeholder="e.g., The Wedding of James & Olivia"
                 className="w-full"
                 data-testid="input-heading-text"
               />
@@ -129,7 +129,7 @@ export default function WelcomePage() {
                 type="text"
                 value={welcomeForm.headingTextId}
                 onChange={(e) => setWelcomeForm({ ...welcomeForm, headingTextId: e.target.value })}
-                placeholder="e.g., Pernikahan Andreas & Christine"
+                placeholder="e.g., Pernikahan James & Olivia"
                 className="w-full"
                 data-testid="input-heading-text-id"
               />
@@ -241,11 +241,11 @@ export default function WelcomePage() {
                 When sharing your invitation, add the guest's name to the URL:
               </p>
               <code className="block bg-white p-2 rounded text-xs text-blue-800 border border-blue-300">
-                https://your-site.com/?to=Christine
+                https://your-site.com/?to=Olivia
               </code>
               <p className="text-xs text-blue-600 mt-2">
                 The welcome screen will display "
-                {welcomeForm.deliveryLabel}" followed by "Christine" in an
+                {welcomeForm.deliveryLabel}" followed by "Olivia" in an
                 elegant overlay.
               </p>
             </div>

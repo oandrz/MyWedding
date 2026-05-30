@@ -110,7 +110,7 @@ export function AdminLayout() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Wedding Admin</h1>
-                <p className="text-sm text-gray-600">Andreas &amp; Christine's Wedding Dashboard</p>
+                <p className="text-sm text-gray-600">James &amp; Olivia's Wedding Dashboard</p>
               </div>
             </div>
             <Button variant="outline" onClick={handleLogout} className="gap-2">

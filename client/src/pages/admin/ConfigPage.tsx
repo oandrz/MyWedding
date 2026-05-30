@@ -324,7 +324,7 @@ export default function ConfigPage() {
                         groomName: e.target.value,
                       })
                     }
-                    placeholder="Andreas"
+                    placeholder="James"
                     data-testid="input-egift-groom-name"
                   />
                 </div>
@@ -378,7 +378,7 @@ export default function ConfigPage() {
                         brideName: e.target.value,
                       })
                     }
-                    placeholder="Christine"
+                    placeholder="Olivia"
                     data-testid="input-egift-bride-name"
                   />
                 </div>

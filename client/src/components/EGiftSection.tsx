@@ -85,15 +85,15 @@ const EGiftSection = () => {
   };
 
   const groomAccount: BankAccount = {
-    accountHolder: getSettingValue("egift_groom_name", "Andreas"),
-    bankName: getSettingValue("egift_groom_bank", "Bank BCA"),
-    accountNumber: getSettingValue("egift_groom_account", "1234567890"),
+    accountHolder: getSettingValue("egift_groom_name", "James"),
+    bankName: getSettingValue("egift_groom_bank", "Example Bank"),
+    accountNumber: getSettingValue("egift_groom_account", "0000000000"),
   };
 
   const brideAccount: BankAccount = {
-    accountHolder: getSettingValue("egift_bride_name", "Christine"),
-    bankName: getSettingValue("egift_bride_bank", "Bank BCA"),
-    accountNumber: getSettingValue("egift_bride_account", "0987654321"),
+    accountHolder: getSettingValue("egift_bride_name", "Olivia"),
+    bankName: getSettingValue("egift_bride_bank", "Example Bank"),
+    accountNumber: getSettingValue("egift_bride_account", "0000000000"),
   };
 
   const handleCopyAccount = async (accountNumber: string, accountHolder: string) => {
