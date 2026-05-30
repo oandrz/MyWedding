@@ -60,11 +60,11 @@ describe("ConfigPage", () => {
 
   it("loads e-gift settings into form", () => {
     const settings = [
-      { settingKey: "egift_groom_name", settingValue: "Andreas" },
+      { settingKey: "egift_groom_name", settingValue: "James" },
       { settingKey: "egift_groom_bank", settingValue: "BCA" },
     ];
     renderConfigPage(settings);
-    expect(screen.getByDisplayValue("Andreas")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("James")).toBeInTheDocument();
     expect(screen.getByDisplayValue("BCA")).toBeInTheDocument();
   });
 });

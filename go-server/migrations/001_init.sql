@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
 
 CREATE TABLE IF NOT EXISTS welcome_screen (
     id SERIAL PRIMARY KEY,
-    heading_text TEXT NOT NULL DEFAULT 'The Wedding of Andreas & Christine',
+    heading_text TEXT NOT NULL DEFAULT 'The Wedding of James & Olivia',
     delivery_label TEXT NOT NULL DEFAULT 'Kindly Delivered to',
     fallback_name TEXT NOT NULL DEFAULT 'Our Dearest Guest',
     enabled BOOLEAN DEFAULT TRUE,
@@ -88,15 +88,15 @@ ON CONFLICT (feature_key) DO NOTHING;
 -- Seed default app settings
 INSERT INTO app_settings (setting_key, setting_value, setting_type, description) VALUES
     ('background_music_url', '/music/wedding-piano.mp3', 'audio', 'Background music URL'),
-    ('egift_groom_name', 'Andreas', 'text', 'Groom name for e-gift'),
-    ('egift_groom_bank', 'Bank BCA', 'text', 'Groom bank for e-gift'),
-    ('egift_groom_account', '1234567890', 'text', 'Groom account number'),
-    ('egift_bride_name', 'Christine', 'text', 'Bride name for e-gift'),
-    ('egift_bride_bank', 'Bank BCA', 'text', 'Bride bank for e-gift'),
-    ('egift_bride_account', '0987654321', 'text', 'Bride account number')
+    ('egift_groom_name', 'James', 'text', 'Groom name for e-gift'),
+    ('egift_groom_bank', 'Example Bank', 'text', 'Groom bank for e-gift'),
+    ('egift_groom_account', '0000000000', 'text', 'Groom account number'),
+    ('egift_bride_name', 'Olivia', 'text', 'Bride name for e-gift'),
+    ('egift_bride_bank', 'Example Bank', 'text', 'Bride bank for e-gift'),
+    ('egift_bride_account', '0000000000', 'text', 'Bride account number')
 ON CONFLICT (setting_key) DO NOTHING;
 
 -- Seed default welcome screen
 INSERT INTO welcome_screen (id, heading_text, delivery_label, fallback_name, enabled) VALUES
-    (1, 'The Wedding of Andreas & Christine', 'Kindly Delivered to', 'Our Dearest Guest', TRUE)
+    (1, 'The Wedding of James & Olivia', 'Kindly Delivered to', 'Our Dearest Guest', TRUE)
 ON CONFLICT (id) DO NOTHING;
