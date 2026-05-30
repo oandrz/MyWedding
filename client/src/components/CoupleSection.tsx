@@ -5,8 +5,8 @@ import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideFromLeft, slideFromRight, fadeInScale, revealText } from "@/lib/animations";
 import type { ConfigImage } from "@shared/schema";
 import { useLanguage } from "@/contexts/LanguageContext";
-import groomDefaultImg from "@/assets/groom_default.jpg";
-import brideDefaultImg from "@/assets/bride_default.jpg";
+import groomDefaultImg from "@/assets/groom_default.svg";
+import brideDefaultImg from "@/assets/bride_default.svg";
 
 const CoupleSection = () => {
   const { t } = useLanguage();
