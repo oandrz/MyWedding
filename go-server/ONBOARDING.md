@@ -605,9 +605,8 @@ sudo usermod -aG docker $USER
 # Log out and back in for group changes to take effect
 
 # 2. Clone the repo (SSH — requires GitHub SSH key, see note below)
-git clone git@github.com:oandrz/MyWedding.git ~/weddingAws
-cd ~/weddingAws
-git checkout phase/0-scaffold
+git clone <your-repo-url> mywedding
+cd mywedding
 # Note: HTTPS clone won't work with password auth. Set up an SSH key on the
 # EC2 instance (ssh-keygen -t ed25519) and add the public key to GitHub.
 
