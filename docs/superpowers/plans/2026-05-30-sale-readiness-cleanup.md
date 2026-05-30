@@ -14,6 +14,12 @@
 
 ---
 
+## Task 0: Fix pre-existing tsc failure (DONE — discovered during execution)
+
+A pre-existing `TS2802` (Set iteration) error in `client/src/pages/admin/InvitesPage.tsx:1487` made `npm run check` fail. Root cause: `tsconfig.json` had no `target`, so `tsc` defaulted to ES3. Fix: added `"target": "ES2020"` (Vite handles real transpilation via esbuild; this only affects type-checking). Committed in `1da801e`. Recorded here so the verification gates in Tasks 1/9 can expect a clean `npm run check`.
+
+---
+
 ## Task 1: Replace personal love story (locales)
 
 **Files:**
@@ -149,6 +155,12 @@ Expected: completes with no errors.
 git add shared/schema.ts client/src/components/EGiftSection.tsx client/src/pages/admin/AdminLayout.tsx client/src/pages/admin/WelcomePage.tsx client/src/pages/admin/ConfigPage.tsx client/index.html
 git commit -m "chore: replace personal names with generic demo couple in UI, schema, and page title"
 ```
+
+**Discovered during execution (additional leaks beyond the originally-listed files — all fixed in commits `aec7b12` and `b830fd6`):**
+- `client/src/lib/constants.ts` — `BRIDE_NAME` held the bride's full legal name ("Christine Natasya Serena"); `GROOM_NAME`, gallery alt text, and the real venue (`Casakhasa Kemang` + full Jakarta address) genericized to James/Olivia + "Grand Ballroom" placeholder.
+- `client/src/components/DetailsSection.tsx` — real Google Maps place URL + embed (hardcoded coordinates `-6.2594469,106.8204341`) replaced with generic `VENUES`-driven map links; iframe title degenericized.
+- `client/src/locales/en.ts` / `id.ts` — `valetBody` referenced "Casakhasa" by name; genericized to "the venue" / "tempat acara".
+- `.gitignore` — stale Python block contained a bare `lib/` pattern that was **ignoring application code under `client/src/lib`**; removed the dead Python section.
 
 ---
 

@@ -103,3 +103,17 @@ Migrate: `make migrate` (requires `DATABASE_URL` env var).
 - **Vite proxy**: Dev frontend on :5173 proxies `/api`, `/storage`, `/auth` to the Go server. Both must be running for full-stack dev.
 - **JSON field casing**: All Go model JSON tags use camelCase. Contract tests enforce this.
 - **CSRF tokens**: Admin mutations require CSRF tokens from the session. Tests must set up sessions properly.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `github.com/oandrz/MyWedding`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the default five-role label vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo — one `CONTEXT.md` + `docs/adr/` at the root. See `docs/agents/domain.md`.
