@@ -15,8 +15,8 @@ const formatWeddingDate = (): string => {
 export const FORMATTED_WEDDING_DATE = formatWeddingDate();
 
 // Couple Info
-export const BRIDE_NAME = "Christine Natasya Serena";
-export const GROOM_NAME = "Andreas";
+export const BRIDE_NAME = "Olivia";
+export const GROOM_NAME = "James";
 
 // Venue Information
 export const VENUES = [
@@ -24,16 +24,16 @@ export const VENUES = [
     title: "Holy Matrimony",
     date: FORMATTED_WEDDING_DATE,
     time: "2:00 PM - 8:00 PM",
-    location: "Casakhasa Kemang",
-    address: "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia",
+    location: "Grand Ballroom",
+    address: "123 Example Street, Jakarta, Indonesia",
     icon: "fas fa-rings-wedding"
   },
   {
     title: "Reception",
     date: FORMATTED_WEDDING_DATE,
     time: "4:30 PM - 10:00 PM",
-    location: "Casakhasa Kemang",
-    address: "Jl. Bungur No.20 1, RT.1/RW.5, Bangka, Kec. Mampang Prpt., Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12730, Indonesia",
+    location: "Grand Ballroom",
+    address: "123 Example Street, Jakarta, Indonesia",
     icon: "fas fa-glass-cheers"
   }
 ];
@@ -42,7 +42,7 @@ export const VENUES = [
 export const GALLERY_PHOTOS = [
   {
     src: "https://images.unsplash.com/photo-1522673607200-164d1b3ce475?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    alt: "Andreas and Christine laughing together"
+    alt: "The couple laughing together"
   },
   {
     src: "https://images.unsplash.com/photo-1494774157365-9e04c6720e47?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
