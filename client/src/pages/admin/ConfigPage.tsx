@@ -339,7 +339,7 @@ export default function ConfigPage() {
                         groomBank: e.target.value,
                       })
                     }
-                    placeholder="Bank BCA"
+                    placeholder="Example Bank"
                     data-testid="input-egift-groom-bank"
                   />
                 </div>
@@ -354,7 +354,7 @@ export default function ConfigPage() {
                         groomAccount: e.target.value,
                       })
                     }
-                    placeholder="1234567890"
+                    placeholder="0000000000"
                     data-testid="input-egift-groom-account"
                   />
                 </div>
@@ -393,7 +393,7 @@ export default function ConfigPage() {
                         brideBank: e.target.value,
                       })
                     }
-                    placeholder="Bank BCA"
+                    placeholder="Example Bank"
                     data-testid="input-egift-bride-bank"
                   />
                 </div>
@@ -408,7 +408,7 @@ export default function ConfigPage() {
                         brideAccount: e.target.value,
                       })
                     }
-                    placeholder="0987654321"
+                    placeholder="0000000000"
                     data-testid="input-egift-bride-account"
                   />
                 </div>
