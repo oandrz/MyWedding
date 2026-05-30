@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 // Compile-time check that PostgresRepository implements Repository.

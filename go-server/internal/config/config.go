@@ -11,14 +11,14 @@ import (
 )
 
 type Config struct {
-	Env                string
-	Port               int
-	DatabaseURL        string
-	RedisURL           string
-	AdminPassword     string
-	AdminPasswordHash string // bcrypt hash — preferred over AdminPassword
-	SessionMaxAge     int    // seconds
-	CORSOrigins        []string
+	Env                      string
+	Port                     int
+	DatabaseURL              string
+	RedisURL                 string
+	AdminPassword            string
+	AdminPasswordHash        string // bcrypt hash — preferred over AdminPassword
+	SessionMaxAge            int    // seconds
+	CORSOrigins              []string
 	SupabaseURL              string
 	SupabaseServiceKey       string
 	SupabaseBucketID         string

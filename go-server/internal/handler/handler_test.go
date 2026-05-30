@@ -12,11 +12,11 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
-	"github.com/andreasronaldo/wedding-server/internal/middleware"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
-	"github.com/andreasronaldo/wedding-server/internal/router"
-	"github.com/andreasronaldo/wedding-server/internal/service"
+	"github.com/mywedding/platform/internal/config"
+	"github.com/mywedding/platform/internal/middleware"
+	"github.com/mywedding/platform/internal/repository"
+	"github.com/mywedding/platform/internal/router"
+	"github.com/mywedding/platform/internal/service"
 )
 
 type testEnv struct {

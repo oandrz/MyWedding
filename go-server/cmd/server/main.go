@@ -10,14 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
-	"github.com/andreasronaldo/wedding-server/internal/database"
-	"github.com/andreasronaldo/wedding-server/internal/logsink"
-	"github.com/andreasronaldo/wedding-server/internal/middleware"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
-	"github.com/andreasronaldo/wedding-server/internal/router"
-	"github.com/andreasronaldo/wedding-server/internal/service"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mywedding/platform/internal/config"
+	"github.com/mywedding/platform/internal/database"
+	"github.com/mywedding/platform/internal/logsink"
+	"github.com/mywedding/platform/internal/middleware"
+	"github.com/mywedding/platform/internal/repository"
+	"github.com/mywedding/platform/internal/router"
+	"github.com/mywedding/platform/internal/service"
 )
 
 func main() {

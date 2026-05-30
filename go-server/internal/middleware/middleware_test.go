@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
+	"github.com/mywedding/platform/internal/config"
 )
 
 // --- Auth Middleware Tests ---

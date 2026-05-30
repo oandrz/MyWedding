@@ -21,14 +21,14 @@ func validServiceAccountJSON(t *testing.T) string {
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
 	raw, marshalErr := json.Marshal(map[string]string{
-		"type":              "service_account",
-		"project_id":        "test-project",
-		"private_key_id":    "key-id",
-		"private_key":       string(keyPEM),
-		"client_email":      "test@test-project.iam.gserviceaccount.com",
-		"client_id":         "123456789",
-		"auth_uri":          "https://accounts.google.com/o/oauth2/auth",
-		"token_uri":         "https://oauth2.googleapis.com/token",
+		"type":           "service_account",
+		"project_id":     "test-project",
+		"private_key_id": "key-id",
+		"private_key":    string(keyPEM),
+		"client_email":   "test@test-project.iam.gserviceaccount.com",
+		"client_id":      "123456789",
+		"auth_uri":       "https://accounts.google.com/o/oauth2/auth",
+		"token_uri":      "https://oauth2.googleapis.com/token",
 	})
 	if marshalErr != nil {
 		t.Fatalf("marshal service account JSON: %v", marshalErr)

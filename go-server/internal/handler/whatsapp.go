@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/andreasronaldo/wedding-server/internal/service"
 	"github.com/go-chi/chi/v5"
+	"github.com/mywedding/platform/internal/service"
 )
 
 // WAHandler handles WhatsApp automation endpoints.

@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
 	"github.com/go-chi/chi/v5"
+	"github.com/mywedding/platform/internal/models"
+	"github.com/mywedding/platform/internal/repository"
 )
 
 // LogHandler serves the admin log viewer endpoints.

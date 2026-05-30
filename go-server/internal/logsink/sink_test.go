@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 // fakeInserter captures inserted logs.

@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
+	"github.com/mywedding/platform/internal/config"
 )
 
 func CORS(cfg *config.Config) func(http.Handler) http.Handler {

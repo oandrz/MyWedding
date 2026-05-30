@@ -21,8 +21,8 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/mywedding/platform/internal/models"
+	"github.com/mywedding/platform/internal/repository"
 )
 
 // waLogAdapter bridges slog to the whatsmeow Logger interface.

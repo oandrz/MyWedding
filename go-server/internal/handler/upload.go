@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
-	"github.com/andreasronaldo/wedding-server/internal/service"
+	"github.com/mywedding/platform/internal/models"
+	"github.com/mywedding/platform/internal/repository"
+	"github.com/mywedding/platform/internal/service"
 )
 
 const (

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 // Inserter is the subset of the repository the sink needs.

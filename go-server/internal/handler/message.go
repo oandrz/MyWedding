@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
-	"github.com/andreasronaldo/wedding-server/internal/service"
 	"github.com/go-chi/chi/v5"
+	"github.com/mywedding/platform/internal/models"
+	"github.com/mywedding/platform/internal/repository"
+	"github.com/mywedding/platform/internal/service"
 )
 
 // MessageHandler handles message-related endpoints.

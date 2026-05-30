@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 // Repository defines the storage interface for all wedding application data.

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/mywedding/platform/internal/repository"
 )
 
 func TestLogHandler_List_ReturnsShape(t *testing.T) {

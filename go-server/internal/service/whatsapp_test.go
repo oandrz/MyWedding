@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
+	"github.com/mywedding/platform/internal/models"
+	"github.com/mywedding/platform/internal/repository"
 )
 
 func TestPhoneToJID(t *testing.T) {

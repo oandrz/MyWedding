@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 func TestMemoryRepository_AppLogs_NoOp(t *testing.T) {

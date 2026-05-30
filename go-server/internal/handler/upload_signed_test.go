@@ -14,11 +14,11 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
-	"github.com/andreasronaldo/wedding-server/internal/middleware"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
-	"github.com/andreasronaldo/wedding-server/internal/router"
-	"github.com/andreasronaldo/wedding-server/internal/service"
+	"github.com/mywedding/platform/internal/config"
+	"github.com/mywedding/platform/internal/middleware"
+	"github.com/mywedding/platform/internal/repository"
+	"github.com/mywedding/platform/internal/router"
+	"github.com/mywedding/platform/internal/service"
 )
 
 // mockStorage is a controllable test double for service.ObjectStorage.
@@ -234,8 +234,8 @@ func TestCompleteConfigImageUpload_MissingFields(t *testing.T) {
 	cookie, csrfToken := adminLogin(t, env)
 
 	cases := []map[string]interface{}{
-		{"imageKey": "gallery_123", "imageType": "gallery"},             // missing storagePath
-		{"storagePath": "admin/gallery/x.jpg", "imageType": "gallery"},  // missing imageKey
+		{"imageKey": "gallery_123", "imageType": "gallery"},               // missing storagePath
+		{"storagePath": "admin/gallery/x.jpg", "imageType": "gallery"},    // missing imageKey
 		{"storagePath": "admin/gallery/x.jpg", "imageKey": "gallery_123"}, // missing imageType
 	}
 	for _, body := range cases {

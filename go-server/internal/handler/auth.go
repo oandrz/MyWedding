@@ -6,8 +6,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
-	"github.com/andreasronaldo/wedding-server/internal/middleware"
+	"github.com/mywedding/platform/internal/config"
+	"github.com/mywedding/platform/internal/middleware"
 )
 
 // AuthHandler handles authentication-related endpoints.

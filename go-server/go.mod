@@ -1,4 +1,4 @@
-module github.com/andreasronaldo/wedding-server
+module github.com/mywedding/platform
 
 go 1.25.0
 

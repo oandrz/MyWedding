@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/config"
-	"github.com/andreasronaldo/wedding-server/internal/handler"
-	"github.com/andreasronaldo/wedding-server/internal/middleware"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
-	"github.com/andreasronaldo/wedding-server/internal/service"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/mywedding/platform/internal/config"
+	"github.com/mywedding/platform/internal/handler"
+	"github.com/mywedding/platform/internal/middleware"
+	"github.com/mywedding/platform/internal/repository"
+	"github.com/mywedding/platform/internal/service"
 )
 
 // New creates and configures the application router with all routes.

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 // MemoryRepository implements the Repository interface using in-memory maps.
@@ -15,21 +15,21 @@ import (
 type MemoryRepository struct {
 	mu sync.Mutex
 
-	users         map[int]models.User
-	userIDSeq     int
-	rsvps         map[int]models.Rsvp
-	rsvpIDSeq     int
-	media         map[int]models.Media
-	mediaIDSeq    int
-	configImages  map[int]models.ConfigImage
-	configIDSeq   int
-	featureFlags  map[int]models.FeatureFlag
-	flagIDSeq     int
-	appSettings   map[int]models.AppSetting
-	settingIDSeq  int
-	welcomeScreen *models.WelcomeScreen
-	messages      map[int]models.Message
-	messageIDSeq  int
+	users          map[int]models.User
+	userIDSeq      int
+	rsvps          map[int]models.Rsvp
+	rsvpIDSeq      int
+	media          map[int]models.Media
+	mediaIDSeq     int
+	configImages   map[int]models.ConfigImage
+	configIDSeq    int
+	featureFlags   map[int]models.FeatureFlag
+	flagIDSeq      int
+	appSettings    map[int]models.AppSetting
+	settingIDSeq   int
+	welcomeScreen  *models.WelcomeScreen
+	messages       map[int]models.Message
+	messageIDSeq   int
 	invites        map[int]models.Invite
 	inviteIDSeq    int
 	scheduleEvents map[int]models.ScheduleEvent

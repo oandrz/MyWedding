@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
+	"github.com/mywedding/platform/internal/models"
 )
 
 func newCtx() context.Context {

@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/andreasronaldo/wedding-server/internal/models"
-	"github.com/andreasronaldo/wedding-server/internal/repository"
 	"github.com/go-chi/chi/v5"
+	"github.com/mywedding/platform/internal/models"
+	"github.com/mywedding/platform/internal/repository"
 )
 
 // AppSettingHandler handles app setting endpoints.

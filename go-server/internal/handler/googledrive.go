@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/andreasronaldo/wedding-server/internal/service"
+	"github.com/mywedding/platform/internal/service"
 )
 
 // GoogleDriveHandler handles Google Drive integration endpoints.
