@@ -1,0 +1,60 @@
+MyWedding Platform — Source Code License
+
+Copyright (c) 2025 Andreas Oentoro. All rights reserved.
+
+GRANT OF LICENSE
+
+The purchaser of this software ("Buyer") is granted a non-exclusive,
+non-transferable, worldwide license to:
+
+  - Deploy, run, and operate the software for their own wedding events and for
+    wedding events belonging to their direct clients.
+  - Modify the source code to adapt branding, content, and functionality for
+    each deployment.
+  - Use the software commercially as part of a service offering to individual
+    end clients (couples planning a wedding event).
+
+RESTRICTIONS
+
+The Buyer may NOT:
+
+  - Resell, sublicense, or redistribute the source code, in whole or in
+    substantial part, to any third party as a product, template, or competing
+    software offering.
+  - Make the source code publicly available (e.g. in a public repository) in a
+    form that allows others to download and use it independently.
+  - Remove or alter this license notice from any copy or derivative of the
+    software.
+
+WHATSAPP DISCLAIMER
+
+The software includes a WhatsApp messaging feature powered by the
+reverse-engineered go.mau.fi/whatsmeow library. Use of this feature violates
+WhatsApp's Terms of Service. The Buyer assumes full responsibility for any
+consequences, including account suspension or banning, arising from the use of
+any WhatsApp account with this software. The licensor accepts no liability for
+WhatsApp account actions of any kind.
+
+NO WARRANTY
+
+The software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to warranties of merchantability, fitness for
+a particular purpose, or non-infringement of third-party rights. The licensor
+makes no warranty of title beyond the rights granted herein.
+
+LIMITATION OF LIABILITY
+
+To the maximum extent permitted by applicable law, in no event shall the licensor
+be liable for any direct, indirect, incidental, special, consequential, or
+exemplary damages (including but not limited to loss of data, loss of revenue, or
+business interruption) arising out of or in connection with the use or inability
+to use this software, even if advised of the possibility of such damages.
+
+CUSTOMIZATION AND CONSULTING
+
+Paid customization, setup assistance, and consulting services are available
+separately at rates agreed at the point of sale or in a separate written agreement.
+
+This license constitutes the entire agreement between the licensor and the Buyer
+with respect to the subject matter hereof and supersedes all prior discussions and
+representations.
