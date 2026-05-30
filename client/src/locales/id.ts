@@ -39,9 +39,9 @@ export const id: Record<TranslationKey, string> = {
   secondSonOf: "putra kedua dari",
   secondDaughterOf: "putri kedua dari",
   howWeMet: "Bagaimana Kami Bertemu",
-  ourStoryParagraph1: "Pada tahun 2019, Andreas melamar pekerjaan. Christine, yang saat itu menjadi rekruter, sedang mencari Software Engineer. Ia meninjau CV-nya, menjadwalkan wawancara, dan berhasil menutup posisi tersebut. Namun ternyata, Andreas punya target yang berbeda. Tidak lama setelah bergabung dengan perusahaan, ia memulai apa yang kami sebut “Personal Outreach.” Dengan alasan yang sangat profesional — melakukan riset pengguna untuk proyek sampingannya — ia mengundang Christine menjadi narasumber.",
-  ourStoryParagraph2: "Satu sesi riset entah bagaimana berubah menjadi undangan escape room. Sangat halus. Sangat strategis. Tapi Christine tidak terkesan. Ia menolak undangan itu, dan ada sesuatu yang terasa mencurigakan.",
-  ourStoryParagraph3: "Alih-alih menyerah, Andreas meminta satu percakapan terakhir setelah memutuskan untuk mengundurkan diri dan pindah ke luar negeri. Kali ini, bukan soal pekerjaan. Ia memanfaatkan kesempatan itu untuk mengungkapkan sesuatu. Kejujuran itu ternyata mengubah segalanya. Apa yang bermula dari proses rekrutmen berubah menjadi panggilan Google Meet panjang, banyak tawa, dan sebuah kisah yang tidak direncanakan oleh keduanya. Rekruter dan kandidat itu akhirnya sepakat untuk menandatangani kontrak seumur hidup. Maka inilah kami, meresmikannya dan mengundang Anda untuk menjadi bagian dari hari-hari penting kami! 😊",
+  ourStoryParagraph1: "James dan Olivia pertama kali bertemu di acara ulang tahun seorang teman. Obrolan singkat tentang tempat-tempat favorit untuk berlibur dengan cepat berubah menjadi percakapan panjang, jauh setelah para tamu lain pulang.",
+  ourStoryParagraph2: "Secangkir kopi santai berubah menjadi kencan mingguan. Tidak ada yang merencanakannya, tetapi di antara daftar putar bersama dan panggilan telepon larut malam, persahabatan sederhana tumbuh menjadi sesuatu yang jauh lebih berarti.",
+  ourStoryParagraph3: "Setelah beberapa tahun indah bersama, James mengajukan pertanyaan yang akan mengubah segalanya — dan Olivia menjawab ya. Maka inilah kami, meresmikannya dan mengundang Anda untuk menjadi bagian dari hari terpenting kami! 😊",
   ourStoryQuote: "“Kisah cinta sejati tidak pernah berakhir.” — Richard Bach",
 
   // DressCodeSection

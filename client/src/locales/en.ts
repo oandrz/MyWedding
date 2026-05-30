@@ -37,9 +37,9 @@ export const en = {
   secondSonOf: "the second son of",
   secondDaughterOf: "the second daughter of",
   howWeMet: "How We Met",
-  ourStoryParagraph1: "In 2019, Andreas applied for a job. Christine, the recruiter at the time, was hiring a Software Engineer. She reviewed his CV, scheduled the interviews, and successfully closed the role. But apparently, Andreas had a different target. Shortly after joining the company, he began what we call “Personal Outreach.” Under the very professional excuse of conducting user research for his side project, he invited her to be an interviewee.",
-  ourStoryParagraph2: "One research session somehow turned into an escape room invite. Very subtle. Very strategic. But Christine not impressed. She declined the invite and something felt suspicious.",
-  ourStoryParagraph3: "Instead of giving up, Andreas asked for one last call after deciding to resign and move overseas. This time, it wasn’t about work. He used the opportunity to confess something. Surprisingly, that honesty changed everything. What started as a recruitment process turned into long Google Meet calls, lots of laughter, and a story neither of them planned for. The recruiter and the candidate eventually agreed to a lifetime contract. So here we are, making it official and inviting you to be part of our important days! 😊",
+  ourStoryParagraph1: "James and Olivia first crossed paths at a friend's birthday dinner. What began as a passing conversation about favorite places to travel quickly turned into hours of talking, long after everyone else had gone home.",
+  ourStoryParagraph2: "A casual coffee became a standing weekly date. Neither of them planned for it, but somewhere between shared playlists and late-night calls, a simple friendship grew into something far more meaningful.",
+  ourStoryParagraph3: "After several wonderful years together, James asked the question that would change everything — and Olivia said yes. So here we are, making it official and inviting you to be part of our most important day! 😊",
   ourStoryQuote: "“True love stories never have endings.” — Richard Bach",
 
   // DressCodeSection
