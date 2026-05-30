@@ -25,7 +25,7 @@ export const id: Record<TranslationKey, string> = {
   rideHailingTitle: "Direkomendasikan Menggunakan Ojek Online",
   rideHailingBody: "Karena keterbatasan tempat parkir di venue, kami dengan hormat menyarankan untuk menggunakan layanan ojek online seperti Grab atau Gojek untuk pengalaman kedatangan yang lebih nyaman.",
   valetTitle: "Layanan Valet Parkir Gratis Tersedia",
-  valetBody: "Bagi tamu yang lebih memilih membawa kendaraan sendiri, harap diperhatikan bahwa karena keterbatasan tempat parkir, kendaraan Anda akan dikelola oleh layanan valet parkir Casakhasa (Gratis).",
+  valetBody: "Bagi tamu yang lebih memilih membawa kendaraan sendiri, harap diperhatikan bahwa karena keterbatasan tempat parkir, kendaraan Anda akan dikelola oleh layanan valet parkir tempat acara (Gratis).",
   weddingDaySchedule: "Jadwal Hari Pernikahan",
 
   // BibleVerseSection

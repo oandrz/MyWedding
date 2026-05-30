@@ -136,7 +136,7 @@ const DetailsSection = () => {
               </div>
               
               <motion.a 
-                href="https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__" 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(VENUES[0].location + " " + VENUES[0].address)}`}
                 target="_blank" 
                 rel="noreferrer"
                 className="inline-block px-8 py-4 bg-primary text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300"
@@ -165,10 +165,10 @@ const DetailsSection = () => {
               width="100%"
               height="450"
               className="w-full h-96 border-0"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.0!2d106.8204341!3d-6.2594469!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f22adf2c9a27%3A0x118d6eaa20e4454b!2sCasakhasa!5e0!3m2!1sen!2sus!4v1628664477739!5m2!1sen!2sus"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(VENUES[0].location + " " + VENUES[0].address)}&output=embed`}
               allowFullScreen
               loading="lazy"
-              title="Wedding venue location - Casakhasa Kemang"
+              title="Wedding venue location"
             ></iframe>
           </motion.div>
         </motion.div>

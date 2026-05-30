@@ -23,7 +23,7 @@ export const en = {
   rideHailingTitle: "Ride-Hailing Recommended",
   rideHailingBody: "Due to limited parking space at the venue, we kindly recommend using online ride-hailing services such as Grab or Gojek for a more convenient arrival experience.",
   valetTitle: "Free Valet Parking Service Available",
-  valetBody: "For guests who prefer to bring their own car, please be advised that due to the limited parking space, your vehicle will be managed by Casakhasa's valet parking service (Free).",
+  valetBody: "For guests who prefer to bring their own car, please be advised that due to the limited parking space, your vehicle will be managed by the venue's valet parking service (Free).",
   weddingDaySchedule: "Wedding Day Schedule",
 
   // BibleVerseSection

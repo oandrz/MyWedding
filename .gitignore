@@ -8,26 +8,3 @@ vite.config.ts.*
 .env.*
 !.env.example
 .claude
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-.Python
-build/
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
