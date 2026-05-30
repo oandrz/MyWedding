@@ -100,6 +100,7 @@ All configuration is supplied via environment variables (or `.env` files loaded 
 | `SUPABASE_SERVICE_KEY` | No | _(empty)_ | Supabase service-role API key. |
 | `SUPABASE_BUCKET_ID` | No | _(empty)_ | Supabase storage bucket name. |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | No | _(empty)_ | Base64-encoded service account JSON. Required for the Google Drive photo gallery feature. |
+| `GOOGLE_DRIVE_FOLDER_ID` | No | _(empty)_ | ID of the Google Drive folder served as the photo gallery. Required when `GOOGLE_SERVICE_ACCOUNT_JSON` is set. |
 
 ---
 
@@ -147,11 +148,12 @@ a **service account** (not OAuth user credentials).
    ```
 
 5. Set `GOOGLE_SERVICE_ACCOUNT_JSON` to the encoded string.
+6. Set `GOOGLE_DRIVE_FOLDER_ID` to the ID of the folder you shared in step 3 (the
+   long string in the folder's URL: `drive.google.com/drive/folders/<FOLDER_ID>`).
 
-> **Note:** The Google Drive folder ID is currently hardcoded in
-> `go-server/internal/service/googledrive.go` (`weddingFolderID`). When deploying
-> for a new client, update this constant to point to their folder, or share the
-> folder used during development. This is a known white-label customization point.
+> **Note:** Both `GOOGLE_SERVICE_ACCOUNT_JSON` and `GOOGLE_DRIVE_FOLDER_ID` must be
+> set for the gallery to initialize; the server logs an error and disables the
+> feature if the folder ID is missing.
 
 ---
 

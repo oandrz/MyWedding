@@ -457,7 +457,7 @@ Admin image directories: `admin/banner`, `admin/gallery`, `admin/profiles/bride`
 
 ### Google Drive (`service/googledrive.go`)
 - Service account authentication (via `GOOGLE_SERVICE_ACCOUNT_JSON`)
-- Uploads to a hardcoded wedding folder (`1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC`)
+- Serves a configurable Drive folder (via `GOOGLE_DRIVE_FOLDER_ID`)
 - Auto-sets public read permission on uploaded files
 
 ---

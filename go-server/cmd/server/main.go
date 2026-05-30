@@ -131,7 +131,7 @@ func main() {
 
 	// Google Drive integration (service account)
 	if cfg.GoogleServiceAccountJSON != "" {
-		gdrive, err := service.NewGoogleDriveServiceFromServiceAccount(cfg.GoogleServiceAccountJSON)
+		gdrive, err := service.NewGoogleDriveServiceFromServiceAccount(cfg.GoogleServiceAccountJSON, cfg.GoogleDriveFolderID)
 		if err != nil {
 			slog.Error("Failed to initialize Google Drive service account", "error", err)
 		} else {

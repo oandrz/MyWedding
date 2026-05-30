@@ -38,35 +38,46 @@ func validServiceAccountJSON(t *testing.T) string {
 
 func TestNewGoogleDriveServiceFromServiceAccount(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
+		name     string
+		input    string
+		folderID string
+		wantErr  bool
 	}{
 		{
-			name:    "empty input returns error",
-			input:   "",
-			wantErr: true,
+			name:     "empty input returns error",
+			input:    "",
+			folderID: "test-folder-id",
+			wantErr:  true,
 		},
 		{
-			name:    "invalid base64 returns error",
-			input:   "not-valid-base64!!!",
-			wantErr: true,
+			name:     "empty folder ID returns error",
+			input:    validServiceAccountJSON(t),
+			folderID: "",
+			wantErr:  true,
 		},
 		{
-			name:    "valid base64 but invalid JSON returns error",
-			input:   base64.StdEncoding.EncodeToString([]byte("not json")),
-			wantErr: true,
+			name:     "invalid base64 returns error",
+			input:    "not-valid-base64!!!",
+			folderID: "test-folder-id",
+			wantErr:  true,
 		},
 		{
-			name:    "valid service account JSON returns service",
-			input:   validServiceAccountJSON(t),
-			wantErr: false,
+			name:     "valid base64 but invalid JSON returns error",
+			input:    base64.StdEncoding.EncodeToString([]byte("not json")),
+			folderID: "test-folder-id",
+			wantErr:  true,
+		},
+		{
+			name:     "valid service account JSON returns service",
+			input:    validServiceAccountJSON(t),
+			folderID: "test-folder-id",
+			wantErr:  false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, err := NewGoogleDriveServiceFromServiceAccount(tt.input)
+			svc, err := NewGoogleDriveServiceFromServiceAccount(tt.input, tt.folderID)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")

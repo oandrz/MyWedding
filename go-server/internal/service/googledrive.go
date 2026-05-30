@@ -17,8 +17,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-const weddingFolderID = "1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC"
-
 var sizePattern = regexp.MustCompile(`=s\d+$`)
 
 // GoogleDriveService handles Google Drive read operations.
@@ -29,9 +27,13 @@ type GoogleDriveService struct {
 }
 
 // NewGoogleDriveServiceFromServiceAccount creates a Drive service from a base64-encoded service account JSON key.
-func NewGoogleDriveServiceFromServiceAccount(saJSONBase64 string) (*GoogleDriveService, error) {
+// folderID is the Google Drive folder whose contents are served as the photo gallery.
+func NewGoogleDriveServiceFromServiceAccount(saJSONBase64, folderID string) (*GoogleDriveService, error) {
 	if saJSONBase64 == "" {
 		return nil, fmt.Errorf("service account JSON is empty")
+	}
+	if folderID == "" {
+		return nil, fmt.Errorf("google drive folder ID is empty")
 	}
 	saJSON, err := base64.StdEncoding.DecodeString(saJSONBase64)
 	if err != nil {
@@ -45,7 +47,7 @@ func NewGoogleDriveServiceFromServiceAccount(saJSONBase64 string) (*GoogleDriveS
 	// context.Background() intentionally used — this client is a long-lived singleton and token refreshes must not be tied to any request context.
 	return &GoogleDriveService{
 		httpClient: oauth2.NewClient(context.Background(), creds.TokenSource),
-		folderID:   weddingFolderID,
+		folderID:   folderID,
 	}, nil
 }
 

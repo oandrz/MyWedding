@@ -23,6 +23,7 @@ type Config struct {
 	SupabaseServiceKey       string
 	SupabaseBucketID         string
 	GoogleServiceAccountJSON string
+	GoogleDriveFolderID      string
 	StaticDir                string
 }
 
@@ -54,6 +55,7 @@ func Load() *Config {
 		SupabaseServiceKey:       getEnv("SUPABASE_SERVICE_KEY", ""),
 		SupabaseBucketID:         getEnv("SUPABASE_BUCKET_ID", ""),
 		GoogleServiceAccountJSON: getEnv("GOOGLE_SERVICE_ACCOUNT_JSON", ""),
+		GoogleDriveFolderID:      getEnv("GOOGLE_DRIVE_FOLDER_ID", ""),
 		StaticDir:                getEnv("STATIC_DIR", ""),
 	}
 
