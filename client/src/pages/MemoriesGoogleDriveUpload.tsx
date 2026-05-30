@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, Cloud, Check, AlertCircle, Image as ImageIcon, Video, FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fadeIn, staggerContainer } from '@/lib/animations';
+import { GOOGLE_DRIVE_FOLDER_SHARE_URL, GOOGLE_DRIVE_FOLDER_EMBED_URL } from '@/lib/constants';
 import { Link } from 'wouter';
 
 const MemoriesGoogleDriveUpload = () => {
@@ -45,8 +46,8 @@ const MemoriesGoogleDriveUpload = () => {
   };
 
   // Google Drive folder URL for wedding memories
-  const googleDriveUrl = "https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC?usp=sharing";
-  const embedUrl = "https://drive.google.com/embeddedfolderview?id=1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC#grid";
+  const googleDriveUrl = GOOGLE_DRIVE_FOLDER_SHARE_URL;
+  const embedUrl = GOOGLE_DRIVE_FOLDER_EMBED_URL;
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();

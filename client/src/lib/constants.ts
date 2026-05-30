@@ -73,3 +73,10 @@ export const GALLERY_PHOTOS = [
     alt: "Proposal moment"
   }
 ];
+
+// Google Drive "memories" folder for the guest photo gallery / upload pages.
+// Set VITE_GOOGLE_DRIVE_FOLDER_ID at build time (see .env.example / DEPLOYMENT.md).
+export const GOOGLE_DRIVE_FOLDER_ID = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID ?? "";
+export const GOOGLE_DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/${GOOGLE_DRIVE_FOLDER_ID}`;
+export const GOOGLE_DRIVE_FOLDER_SHARE_URL = `${GOOGLE_DRIVE_FOLDER_URL}?usp=sharing`;
+export const GOOGLE_DRIVE_FOLDER_EMBED_URL = `https://drive.google.com/embeddedfolderview?id=${GOOGLE_DRIVE_FOLDER_ID}#grid`;

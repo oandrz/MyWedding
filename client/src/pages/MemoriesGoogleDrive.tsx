@@ -8,14 +8,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
+import { GOOGLE_DRIVE_FOLDER_SHARE_URL, GOOGLE_DRIVE_FOLDER_EMBED_URL } from "@/lib/constants";
 
 const MemoriesGoogleDrive = () => {
   const sectionRef = useRef(null);
 
-  
+
   // Google Drive folder URL for wedding memories
-  const googleDriveUrl = "https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC?usp=sharing";
-  const embedUrl = "https://drive.google.com/embeddedfolderview?id=1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC#grid";
+  const googleDriveUrl = GOOGLE_DRIVE_FOLDER_SHARE_URL;
+  const embedUrl = GOOGLE_DRIVE_FOLDER_EMBED_URL;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 to-pink-50">

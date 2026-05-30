@@ -2,8 +2,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import NavBar from "@/components/NavBar";
 import { Camera } from "lucide-react";
+import { GOOGLE_DRIVE_FOLDER_URL } from "@/lib/constants";
 
-const DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1InY5WMWJ4OOQZFv3SXEljD0JnSP5eEQC";
+const DRIVE_FOLDER_URL = GOOGLE_DRIVE_FOLDER_URL;
 
 interface DriveFile {
   id: string;
