@@ -389,6 +389,21 @@ git commit -m "docs: consolidate setup docs into DEPLOYMENT.md, add LICENSE, fix
 
 ---
 
+## Task 6b: Make the hardcoded Google Drive folder ID configurable (discovered during Task 6)
+
+`go-server/internal/service/googledrive.go` hardcoded the seller's personal Drive folder ID (`weddingFolderID = "1InY5...EQC"`) — a buyer's app would point at the seller's folder by default. Also found referenced in `go-server/ONBOARDING.md:460`. Migrations `002`–`014` were swept and are clean (only `001` had personal data).
+
+Fix (config-driven):
+- `internal/service/googledrive.go` — removed the const; `NewGoogleDriveServiceFromServiceAccount(saJSONBase64, folderID string)` now takes the folder ID and errors if it is empty.
+- `internal/config/config.go` — added `GoogleDriveFolderID` field, `getEnv("GOOGLE_DRIVE_FOLDER_ID", "")`.
+- `cmd/server/main.go` — passes `cfg.GoogleDriveFolderID` into the constructor.
+- `internal/service/googledrive_test.go` — updated to the new signature + added an "empty folder ID returns error" case.
+- `.env.example`, `DEPLOYMENT.md`, `go-server/ONBOARDING.md` — documented `GOOGLE_DRIVE_FOLDER_ID`.
+
+Verify: `cd go-server && make build && make test`.
+
+---
+
 ## Task 7: Rename the Go module
 
 **Files:**
