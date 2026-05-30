@@ -8,3 +8,10 @@ vite.config.ts.*
 .env.*
 !.env.example
 .claude
+
+# Seller-internal — never ship to buyers
+sellProposal.md
+.agent/
+.agents/
+.remember/
+skills-lock.json
