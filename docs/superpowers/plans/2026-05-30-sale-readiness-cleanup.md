@@ -636,6 +636,13 @@ All tasks executed and committed on `task/refactor_update` (commits `9d45851`..`
 
 Added beyond the original plan during execution: Task 0 (tsc fix), Task 2 additions (constants.ts, venue, `.gitignore` bug), Task 6b (Google Drive folder ID → config, backend + frontend), ADR decider + bank placeholders, and a minimal `README.md` (non-marketing; the screenshots/demo README remains deferred per scope).
 
+## Final-Review Findings (post-execution)
+
+- **Real couple photographs (commit `474dc77`):** `client/src/assets/groom_default.jpg` and `bride_default.jpg` were actual photos of the real couple, imported by `CoupleSection.tsx` as profile fallbacks (per ADR 0001). A text grep cannot see image contents, so they survived every earlier sweep. Replaced with neutral labeled SVG placeholders; imports updated; build passes. `public/images/couple1.svg` and `client/src/assets/batik.jpg` were checked and are generic (illustration / textile pattern). No other raster assets in the tree besides the excluded `hero_*.png`.
+- **Pre-existing frontend test failures (NOT caused by cleanup):** `npm test` shows 21 failed / 197 passed across 6 files (`storage`, `LanguageContext` [`en-GB` vs `en-US` locale], `DressCodeSection`, `MessagesSection`, `Gallery` [thumbnail URL], `InvitesPage.sendall`). Verified identical (21/197) at the pre-cleanup commit `0db1087`, so the cleanup is test-neutral. These are a **pre-existing product-quality issue**, out of scope for the personal-data/vendor cleanup — flagged to the owner for a separate decision before sale.
+- **`make lint`:** `golangci-lint` not installed in this environment; gofmt clean + `go build ./...` pass. Seller/CI should run it once available.
+- **Snapshot validated:** rsync exclude-list + the snapshot's own `git add -A`/`.gitignore` both verified — 288 files, all build inputs + new assets/docs tracked, all seller-internal files absent.
+
 ## Self-Review Notes
 
 - **Spec coverage:** WP1 (personal data)→Tasks 1-4 + index.html in Task 2 + docs in Task 8; WP2 (Replit)→Task 5; WP3 (docs/license)→Task 6; WP4 (module rename)→Task 7; WP5 (dev-internal exclude-list)→Task 10 (exclude-list lives in `make-release.sh`); WP6 (snapshot)→Task 10; WP7 (verification gate)→Task 9. All work packages mapped.
