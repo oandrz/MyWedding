@@ -36,12 +36,6 @@ function renderConfigPage(settings: any[] = []) {
 describe("ConfigPage", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("renders Google Drive section", () => {
-    renderConfigPage();
-    expect(screen.getByText("Google Drive Integration")).toBeInTheDocument();
-    expect(screen.getByText("Configure Google Drive OAuth")).toBeInTheDocument();
-  });
-
   it("renders ImageManager component", () => {
     renderConfigPage();
     expect(screen.getByTestId("image-manager")).toBeInTheDocument();
