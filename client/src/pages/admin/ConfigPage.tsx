@@ -163,51 +163,6 @@ export default function ConfigPage() {
 
   return (
     <div className="space-y-6">
-      {/* Google Drive Configuration */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <Settings className="h-6 w-6 text-blue-600" />
-            <div>
-              <CardTitle className="text-xl">
-                Google Drive Integration
-              </CardTitle>
-              <CardDescription>
-                Configure Google Drive for guest photo uploads
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Enable guests to upload photos directly to your Google Drive
-              folder. Requires one-time OAuth setup.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button asChild className="flex-1">
-                <a
-                  href="/google-drive-setup"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Configure Google Drive OAuth
-                </a>
-              </Button>
-              <Button asChild variant="outline" className="flex-1">
-                <a
-                  href="/google-drive-instructions"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Setup Instructions
-                </a>
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Image Configuration */}
       <Card>
         <CardHeader className="pb-4">
