@@ -308,7 +308,6 @@ const GallerySection = () => {
                             thumbnail={photo.thumbnail}
                             alt={photo.alt}
                             index={index}
-                            onLoad={() => preloadImage(photo.src)}
                           />
                         </div>
                       </CarouselItem>

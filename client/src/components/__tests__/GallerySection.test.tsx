@@ -158,7 +158,7 @@ describe("GallerySection — Preloading", () => {
     vi.unstubAllGlobals();
   });
 
-  it("preloads full-size image when carousel thumbnail loads", () => {
+  it("does NOT preload full-size images when a carousel thumbnail loads", () => {
     const preloadedSrcs: string[] = [];
     class MockImage {
       set src(val: string) { preloadedSrcs.push(val); }
@@ -168,14 +168,17 @@ describe("GallerySection — Preloading", () => {
 
     renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
 
-    // Find the thumbnail img for the first carousel item and fire onLoad
+    // Find the first carousel thumbnail and fire its load event.
     const thumbnailImg = document.querySelector<HTMLImageElement>(
       'img[src="/storage/gallery/thumbnails/thumb1.jpg"]'
     );
     expect(thumbnailImg).not.toBeNull();
     fireEvent.load(thumbnailImg!);
 
-    expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
+    // No full-resolution original should have been preloaded by rendering /
+    // loading carousel thumbnails. Full images load only when the lightbox opens.
+    expect(preloadedSrcs).not.toContain("/storage/gallery/img1.jpg");
+    expect(preloadedSrcs).toHaveLength(0);
   });
 
   it("preloads ±2 neighbor full-size images when fullscreen opens", () => {
