@@ -74,8 +74,8 @@ func TestLocalStorageDownloadCacheControl(t *testing.T) {
 	}
 
 	// Long-lived cache header is the egress-reduction lever; uploaded URLs are
-	// immutable (unique filenames), so a 7-day TTL is safe. Lock it in.
-	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=604800" {
+	// immutable (unique filenames), so a 1-year TTL is safe. Lock it in.
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
 		t.Errorf("unexpected cache-control: %q", got)
 	}
 	if rec.Body.String() != "image-bytes" {
