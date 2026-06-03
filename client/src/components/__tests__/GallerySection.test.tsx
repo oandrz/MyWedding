@@ -59,11 +59,11 @@ const MOCK_GALLERY_IMAGES = [
 ];
 
 const MOCK_GALLERY_IMAGES_WITH_THUMBS = [
-  { id: 1, imageUrl: "/storage/gallery/img1.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb1.jpg", title: "Photo 1", description: "", category: "gallery", displayOrder: 1 },
-  { id: 2, imageUrl: "/storage/gallery/img2.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb2.jpg", title: "Photo 2", description: "", category: "gallery", displayOrder: 2 },
-  { id: 3, imageUrl: "/storage/gallery/img3.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb3.jpg", title: "Photo 3", description: "", category: "gallery", displayOrder: 3 },
-  { id: 4, imageUrl: "/storage/gallery/img4.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb4.jpg", title: "Photo 4", description: "", category: "gallery", displayOrder: 4 },
-  { id: 5, imageUrl: "/storage/gallery/img5.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb5.jpg", title: "Photo 5", description: "", category: "gallery", displayOrder: 5 },
+  { id: 1, imageUrl: "/storage/gallery/img1.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb1.jpg", displayUrl: "/storage/gallery/display/disp1.jpg", title: "Photo 1", description: "", category: "gallery", displayOrder: 1 },
+  { id: 2, imageUrl: "/storage/gallery/img2.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb2.jpg", displayUrl: "/storage/gallery/display/disp2.jpg", title: "Photo 2", description: "", category: "gallery", displayOrder: 2 },
+  { id: 3, imageUrl: "/storage/gallery/img3.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb3.jpg", displayUrl: "/storage/gallery/display/disp3.jpg", title: "Photo 3", description: "", category: "gallery", displayOrder: 3 },
+  { id: 4, imageUrl: "/storage/gallery/img4.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb4.jpg", displayUrl: "/storage/gallery/display/disp4.jpg", title: "Photo 4", description: "", category: "gallery", displayOrder: 4 },
+  { id: 5, imageUrl: "/storage/gallery/img5.jpg", thumbnailUrl: "/storage/gallery/thumbnails/thumb5.jpg", displayUrl: "/storage/gallery/display/disp5.jpg", title: "Photo 5", description: "", category: "gallery", displayOrder: 5 },
 ];
 
 function renderGallerySection(
@@ -181,7 +181,7 @@ describe("GallerySection — Preloading", () => {
     expect(preloadedSrcs).toHaveLength(0);
   });
 
-  it("preloads ±2 neighbor full-size images when fullscreen opens", () => {
+  it("preloads only ±1 neighbor display images when fullscreen opens", () => {
     const preloadedSrcs: string[] = [];
     class MockImage {
       set src(val: string) { preloadedSrcs.push(val); }
@@ -193,17 +193,19 @@ describe("GallerySection — Preloading", () => {
 
     // Open fullscreen at index 2 (middle)
     const carouselItem = screen.getByTestId("gallery-image-2");
-    const clickableCard = carouselItem.querySelector(".cursor-pointer");
-    fireEvent.click(clickableCard!);
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
 
-    // Neighbors of index 2: indices 0, 1, 3, 4
-    expect(preloadedSrcs).toContain("/storage/gallery/img1.jpg");
-    expect(preloadedSrcs).toContain("/storage/gallery/img2.jpg");
-    expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
-    expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
+    // Only immediate neighbors (indices 1 and 3) and only their DISPLAY images.
+    expect(preloadedSrcs).toContain("/storage/gallery/display/disp2.jpg"); // index 1
+    expect(preloadedSrcs).toContain("/storage/gallery/display/disp4.jpg"); // index 3
+    // ±2 neighbors must NOT be preloaded:
+    expect(preloadedSrcs).not.toContain("/storage/gallery/display/disp1.jpg"); // index 0
+    expect(preloadedSrcs).not.toContain("/storage/gallery/display/disp5.jpg"); // index 4
+    // Originals must NOT be preloaded:
+    expect(preloadedSrcs).not.toContain("/storage/gallery/img2.jpg");
   });
 
-  it("wraps correctly when fullscreen opens at index 0", () => {
+  it("preloads ±1 display images with wraparound at index 0", () => {
     const preloadedSrcs: string[] = [];
     class MockImage {
       set src(val: string) { preloadedSrcs.push(val); }
@@ -213,18 +215,14 @@ describe("GallerySection — Preloading", () => {
 
     renderGallerySection(MOCK_GALLERY_IMAGES_WITH_THUMBS);
 
-    // Open fullscreen at index 0 (first image)
     const carouselItem = screen.getByTestId("gallery-image-0");
-    const clickableCard = carouselItem.querySelector(".cursor-pointer");
-    fireEvent.click(clickableCard!);
+    fireEvent.click(carouselItem.querySelector(".cursor-pointer")!);
 
-    // Neighbors of index 0 with wraparound:
-    // offset -2 → index 3 (img4), offset -1 → index 4 (img5)
-    // offset +1 → index 1 (img2), offset +2 → index 2 (img3)
-    expect(preloadedSrcs).toContain("/storage/gallery/img2.jpg");
-    expect(preloadedSrcs).toContain("/storage/gallery/img3.jpg");
-    expect(preloadedSrcs).toContain("/storage/gallery/img4.jpg");
-    expect(preloadedSrcs).toContain("/storage/gallery/img5.jpg");
+    // Neighbors of index 0: -1 → index 4 (disp5), +1 → index 1 (disp2)
+    expect(preloadedSrcs).toContain("/storage/gallery/display/disp5.jpg");
+    expect(preloadedSrcs).toContain("/storage/gallery/display/disp2.jpg");
+    expect(preloadedSrcs).not.toContain("/storage/gallery/display/disp3.jpg"); // index 2 (±2)
+    expect(preloadedSrcs).not.toContain("/storage/gallery/display/disp4.jpg"); // index 3 (±2)
   });
 });
 

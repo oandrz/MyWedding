@@ -155,9 +155,10 @@ const GallerySection = () => {
     ? galleryData.images.map(img => ({
       src: img.imageUrl,
       thumbnail: (img as any).thumbnailUrl || img.imageUrl,
+      display: (img as any).displayUrl || img.imageUrl,
       alt: img.title || img.description || "Gallery image"
     }))
-    : GALLERY_PHOTOS.map(p => ({ ...p, thumbnail: p.src }));
+    : GALLERY_PHOTOS.map(p => ({ ...p, thumbnail: p.src, display: p.src }));
 
   const shouldShowGallery = galleryImages.length > 0;
 
@@ -186,13 +187,13 @@ const GallerySection = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedImageIndex, galleryImages.length]);
 
-  // Preload ±2 neighbor full-size images when fullscreen opens or navigates
+  // Preload ±1 neighbor DISPLAY images when fullscreen opens or navigates.
   useEffect(() => {
     if (selectedImageIndex === null || galleryImages.length === 0) return;
     const neighborIndices = new Set(
-      [-2, -1, 1, 2].map((offset) => (selectedImageIndex + offset + galleryImages.length) % galleryImages.length)
+      [-1, 1].map((offset) => (selectedImageIndex + offset + galleryImages.length) % galleryImages.length)
     );
-    neighborIndices.forEach((idx) => preloadImage(galleryImages[idx].src));
+    neighborIndices.forEach((idx) => preloadImage(galleryImages[idx].display));
   }, [selectedImageIndex, galleryImages, preloadImage]);
 
   // Reset full-size loaded state whenever the selected image changes.
@@ -353,7 +354,7 @@ const GallerySection = () => {
                   </button>
                 )}
                 <div className="relative flex items-center justify-center w-full h-full">
-                  {galleryImages[selectedImageIndex].thumbnail !== galleryImages[selectedImageIndex].src && (
+                  {galleryImages[selectedImageIndex].thumbnail !== galleryImages[selectedImageIndex].display && (
                     <img
                       src={galleryImages[selectedImageIndex].thumbnail}
                       alt=""
@@ -365,7 +366,7 @@ const GallerySection = () => {
                   )}
                   <img
                     key={selectedImageIndex}
-                    src={galleryImages[selectedImageIndex].src}
+                    src={galleryImages[selectedImageIndex].display}
                     alt={galleryImages[selectedImageIndex].alt}
                     className="relative max-w-[calc(100vw-80px)] max-h-[calc(100vh-80px)] md:max-w-[calc(100vw-120px)] md:max-h-[calc(100vh-120px)] w-auto h-auto object-contain transition-opacity duration-300"
                     style={{ opacity: isFullSizeLoaded ? 1 : 0 }}
