@@ -32,11 +32,10 @@ const getResponsiveImageUrl = (baseUrl: string, width: number, quality: number =
 };
 
 // Optimized Image Component
-const OptimizedImage = ({ thumbnail, alt, index, onLoad }: {
+const OptimizedImage = ({ thumbnail, alt, index }: {
   thumbnail: string;
   alt: string;
   index: number;
-  onLoad?: () => void;
 }) => {
   const safeThumb = thumbnail || '';
   const optimizedSrc = safeThumb.includes('unsplash.com')
@@ -51,7 +50,6 @@ const OptimizedImage = ({ thumbnail, alt, index, onLoad }: {
         className="w-full h-full object-cover"
         loading={index < 4 ? "eager" : "lazy"}
         decoding="async"
-        onLoad={onLoad}
       />
     </div>
   );
