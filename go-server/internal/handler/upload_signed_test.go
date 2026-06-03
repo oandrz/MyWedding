@@ -204,6 +204,10 @@ func TestCompleteConfigImageUpload_GalleryWithThumbnail(t *testing.T) {
 	if img["thumbnailUrl"] == nil {
 		t.Fatal("expected thumbnailUrl for gallery image with valid JPEG")
 	}
+	// displayUrl should also be set (Path 2 display image generation)
+	if img["displayUrl"] == nil {
+		t.Fatal("expected displayUrl for gallery image with valid JPEG")
+	}
 }
 
 func TestCompleteConfigImageUpload_NonGallery_NoThumbnail(t *testing.T) {

@@ -221,11 +221,30 @@ func (h *UploadHandler) ConfigImageUpload(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Generate display-size image (~1600px) for gallery detail view
+	var displayURL *string
+	if imageType == "gallery" {
+		opt, err := service.OptimizeImage(data, 1600, 80)
+		if err == nil {
+			displayName := service.GenerateDisplayFilename(uniqueName)
+			dispURL, err := h.Storage.Upload(r.Context(), bytes.NewReader(opt.ThumbnailBuffer), int64(len(opt.ThumbnailBuffer)), displayName, opt.ThumbnailContentType, "admin/gallery/display")
+			if err == nil {
+				displayURL = &dispURL
+				slog.Debug("Generated display image", "url", dispURL)
+			} else {
+				slog.Warn("Display image upload failed, proceeding without it", "error", err)
+			}
+		} else {
+			slog.Warn("Display image generation failed, proceeding without it", "error", err)
+		}
+	}
+
 	isActive := true
 	insertData := models.InsertConfigImage{
 		ImageKey:     imageKey,
 		ImageURL:     imageURL,
 		ThumbnailURL: thumbnailURL,
+		DisplayURL:   displayURL,
 		ImageType:    imageType,
 		IsActive:     &isActive,
 	}
@@ -349,6 +368,7 @@ func (h *UploadHandler) CompleteConfigImageUpload(w http.ResponseWriter, r *http
 	imageURL := "/storage/" + req.StoragePath
 
 	var thumbnailURL *string
+	var displayURL *string
 	if req.ImageType == "gallery" {
 		data, err := h.Storage.DownloadBuffer(r.Context(), req.StoragePath)
 		if err != nil {
@@ -368,6 +388,20 @@ func (h *UploadHandler) CompleteConfigImageUpload(w http.ResponseWriter, r *http
 			} else {
 				slog.Warn("Thumbnail generation failed, proceeding without thumbnail", "error", err)
 			}
+			opt2, err := service.OptimizeImage(data, 1600, 80)
+			if err == nil {
+				base := req.StoragePath[strings.LastIndex(req.StoragePath, "/")+1:]
+				displayName := service.GenerateDisplayFilename(base)
+				dispURL, err := h.Storage.Upload(r.Context(), bytes.NewReader(opt2.ThumbnailBuffer), int64(len(opt2.ThumbnailBuffer)), displayName, opt2.ThumbnailContentType, "admin/gallery/display")
+				if err == nil {
+					displayURL = &dispURL
+					slog.Debug("Generated display image", "url", dispURL)
+				} else {
+					slog.Warn("Display image upload failed, proceeding without it", "error", err)
+				}
+			} else {
+				slog.Warn("Display image generation failed, proceeding without it", "error", err)
+			}
 		}
 	}
 
@@ -376,6 +410,7 @@ func (h *UploadHandler) CompleteConfigImageUpload(w http.ResponseWriter, r *http
 		ImageKey:     req.ImageKey,
 		ImageURL:     imageURL,
 		ThumbnailURL: thumbnailURL,
+		DisplayURL:   displayURL,
 		ImageType:    req.ImageType,
 		IsActive:     &isActive,
 	}
