@@ -322,11 +322,11 @@ func (r *PostgresRepository) CreateConfigImage(ctx context.Context, data models.
 	var ci models.ConfigImage
 	var updatedAt time.Time
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO config_images (image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		 RETURNING id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at`,
-		data.ImageKey, data.ImageURL, data.ThumbnailURL, data.ImageType, data.Title, data.Description, isActive, displayOrder,
-	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
+		`INSERT INTO config_images (image_key, image_url, thumbnail_url, display_url, image_type, title, description, is_active, display_order)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		 RETURNING id, image_key, image_url, thumbnail_url, display_url, image_type, title, description, is_active, display_order, updated_at`,
+		data.ImageKey, data.ImageURL, data.ThumbnailURL, data.DisplayURL, data.ImageType, data.Title, data.Description, isActive, displayOrder,
+	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.DisplayURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -339,13 +339,13 @@ func (r *PostgresRepository) UpdateConfigImage(ctx context.Context, imageKey str
 	var updatedAt time.Time
 	err := r.pool.QueryRow(ctx,
 		`UPDATE config_images
-		 SET image_url = $1, thumbnail_url = $2, image_type = $3, title = $4, description = $5,
-		     is_active = COALESCE($6, is_active), display_order = COALESCE($7, display_order),
+		 SET image_url = $1, thumbnail_url = $2, display_url = $3, image_type = $4, title = $5, description = $6,
+		     is_active = COALESCE($7, is_active), display_order = COALESCE($8, display_order),
 		     updated_at = NOW()
-		 WHERE image_key = $8
-		 RETURNING id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at`,
-		data.ImageURL, data.ThumbnailURL, data.ImageType, data.Title, data.Description, data.IsActive, data.DisplayOrder, imageKey,
-	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
+		 WHERE image_key = $9
+		 RETURNING id, image_key, image_url, thumbnail_url, display_url, image_type, title, description, is_active, display_order, updated_at`,
+		data.ImageURL, data.ThumbnailURL, data.DisplayURL, data.ImageType, data.Title, data.Description, data.IsActive, data.DisplayOrder, imageKey,
+	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.DisplayURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -368,9 +368,9 @@ func (r *PostgresRepository) GetConfigImage(ctx context.Context, imageKey string
 	var ci models.ConfigImage
 	var updatedAt time.Time
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at
+		`SELECT id, image_key, image_url, thumbnail_url, display_url, image_type, title, description, is_active, display_order, updated_at
 		 FROM config_images WHERE image_key = $1`, imageKey,
-	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
+	).Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.DisplayURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -383,7 +383,7 @@ func (r *PostgresRepository) GetConfigImage(ctx context.Context, imageKey string
 
 func (r *PostgresRepository) GetConfigImagesByType(ctx context.Context, imageType string) ([]models.ConfigImage, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at
+		`SELECT id, image_key, image_url, thumbnail_url, display_url, image_type, title, description, is_active, display_order, updated_at
 		 FROM config_images WHERE image_type = $1 ORDER BY display_order`, imageType)
 	if err != nil {
 		return nil, err
@@ -394,7 +394,7 @@ func (r *PostgresRepository) GetConfigImagesByType(ctx context.Context, imageTyp
 	for rows.Next() {
 		var ci models.ConfigImage
 		var updatedAt time.Time
-		if err := rows.Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt); err != nil {
+		if err := rows.Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.DisplayURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt); err != nil {
 			return nil, err
 		}
 		ci.UpdatedAt = updatedAt.Format(time.RFC3339)
@@ -405,7 +405,7 @@ func (r *PostgresRepository) GetConfigImagesByType(ctx context.Context, imageTyp
 
 func (r *PostgresRepository) GetAllConfigImages(ctx context.Context) ([]models.ConfigImage, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, image_key, image_url, thumbnail_url, image_type, title, description, is_active, display_order, updated_at
+		`SELECT id, image_key, image_url, thumbnail_url, display_url, image_type, title, description, is_active, display_order, updated_at
 		 FROM config_images ORDER BY display_order`)
 	if err != nil {
 		return nil, err
@@ -416,7 +416,7 @@ func (r *PostgresRepository) GetAllConfigImages(ctx context.Context) ([]models.C
 	for rows.Next() {
 		var ci models.ConfigImage
 		var updatedAt time.Time
-		if err := rows.Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt); err != nil {
+		if err := rows.Scan(&ci.ID, &ci.ImageKey, &ci.ImageURL, &ci.ThumbnailURL, &ci.DisplayURL, &ci.ImageType, &ci.Title, &ci.Description, &ci.IsActive, &ci.DisplayOrder, &updatedAt); err != nil {
 			return nil, err
 		}
 		ci.UpdatedAt = updatedAt.Format(time.RFC3339)

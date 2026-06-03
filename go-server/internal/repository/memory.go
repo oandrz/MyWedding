@@ -315,6 +315,7 @@ func (m *MemoryRepository) CreateConfigImage(_ context.Context, data models.Inse
 		ImageKey:     data.ImageKey,
 		ImageURL:     data.ImageURL,
 		ThumbnailURL: data.ThumbnailURL,
+		DisplayURL:   data.DisplayURL,
 		ImageType:    data.ImageType,
 		Title:        data.Title,
 		Description:  data.Description,
@@ -334,6 +335,7 @@ func (m *MemoryRepository) UpdateConfigImage(_ context.Context, imageKey string,
 		if ci.ImageKey == imageKey {
 			ci.ImageURL = data.ImageURL
 			ci.ThumbnailURL = data.ThumbnailURL
+			ci.DisplayURL = data.DisplayURL
 			ci.ImageType = data.ImageType
 			ci.Title = data.Title
 			ci.Description = data.Description
