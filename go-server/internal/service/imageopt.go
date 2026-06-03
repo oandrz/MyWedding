@@ -61,3 +61,12 @@ func GenerateThumbnailFilename(original string) string {
 	}
 	return original + "-thumb.jpg"
 }
+
+// GenerateDisplayFilename creates a display-size filename from the original.
+func GenerateDisplayFilename(original string) string {
+	lastDot := strings.LastIndex(original, ".")
+	if lastDot > 0 {
+		return original[:lastDot] + "-display.jpg"
+	}
+	return original + "-display.jpg"
+}
