@@ -35,8 +35,10 @@ func main() {
 	var storage service.ObjectStorage
 	if cfg.SupabaseURL != "" && cfg.SupabaseServiceKey != "" && cfg.SupabaseBucketID != "" {
 		storage = service.NewSupabaseStorage(cfg.SupabaseURL, cfg.SupabaseServiceKey, cfg.SupabaseBucketID, cfg.Env)
-	} else {
+	} else if !cfg.IsProduction() {
 		storage = service.NewLocalStorage("./storage")
+	} else {
+		log.Fatal("no storage configured: set SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_BUCKET_ID")
 	}
 
 	rows, err := pool.Query(ctx,
