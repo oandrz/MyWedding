@@ -346,6 +346,7 @@ func assertConfigImageObject(t *testing.T, obj map[string]interface{}) {
 	assertKeyType(t, obj, "imageKey", "string")
 	assertKeyType(t, obj, "imageUrl", "string")
 	assertNullableType(t, obj, "thumbnailUrl", "string")
+	assertNullableType(t, obj, "displayUrl", "string")
 	assertKeyType(t, obj, "imageType", "string")
 	assertNullableType(t, obj, "title", "string")
 	assertNullableType(t, obj, "description", "string")
