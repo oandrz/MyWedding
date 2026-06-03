@@ -63,6 +63,9 @@ func main() {
 		jobs = append(jobs, j)
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		log.Fatalf("rows: %v", err)
+	}
 
 	log.Printf("found %d gallery images needing a display image", len(jobs))
 
