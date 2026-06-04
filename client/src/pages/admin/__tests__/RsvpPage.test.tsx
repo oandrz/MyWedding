@@ -62,6 +62,20 @@ describe("RsvpPage", () => {
     expect(screen.queryByText("Total Expected Guests")).not.toBeInTheDocument();
   });
 
+  it("renders stat cards in event-paired order", () => {
+    renderRsvpPage();
+    const order = screen
+      .getAllByTestId(/^stat-/)
+      .map((c) => c.getAttribute("data-testid"));
+    expect(order).toEqual([
+      "stat-holy-matrimony",
+      "stat-holy-matrimony-guests",
+      "stat-reception",
+      "stat-reception-guests",
+      "stat-declined",
+    ]);
+  });
+
   it("renders correct stat values", () => {
     renderRsvpPage();
     expect(screen.getByTestId("stat-holy-matrimony")).toHaveTextContent("2");
