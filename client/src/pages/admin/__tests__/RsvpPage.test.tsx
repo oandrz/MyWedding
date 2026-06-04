@@ -27,6 +27,7 @@ const mockRsvpData = {
   stats: {
     total: 4, attending: 3, notAttending: 1, guestCount: 6,
     holyMatrimonyCount: 2, receptionCount: 2,
+    holyMatrimonyGuestCount: 3, receptionGuestCount: 5,
   },
 };
 
@@ -48,14 +49,17 @@ function renderRsvpPage(queryClient?: QueryClient) {
 describe("RsvpPage", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("renders 4 stat cards", () => {
+  it("renders 5 stat cards", () => {
     renderRsvpPage();
     expect(screen.getByText("Holy Matrimony RSVPs")).toBeInTheDocument();
     expect(screen.getByText("Reception RSVPs")).toBeInTheDocument();
+    expect(screen.getByText("Matrimony Guests")).toBeInTheDocument();
+    expect(screen.getByText("Reception Guests")).toBeInTheDocument();
     // "Declined" appears in stat card, filter tab, and badge — use getAllByText
     expect(screen.getAllByText("Declined").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId("stat-declined")).toBeInTheDocument();
-    expect(screen.getByText("Total Expected Guests")).toBeInTheDocument();
+    // Combined total card is gone
+    expect(screen.queryByText("Total Expected Guests")).not.toBeInTheDocument();
   });
 
   it("renders correct stat values", () => {
@@ -63,7 +67,8 @@ describe("RsvpPage", () => {
     expect(screen.getByTestId("stat-holy-matrimony")).toHaveTextContent("2");
     expect(screen.getByTestId("stat-reception")).toHaveTextContent("2");
     expect(screen.getByTestId("stat-declined")).toHaveTextContent("1");
-    expect(screen.getByTestId("stat-total-guests")).toHaveTextContent("6");
+    expect(screen.getByTestId("stat-holy-matrimony-guests")).toHaveTextContent("3");
+    expect(screen.getByTestId("stat-reception-guests")).toHaveTextContent("5");
   });
 
   it("renders 5 filter tabs", () => {
@@ -122,7 +127,7 @@ describe("RsvpPage", () => {
     });
     qc.setQueryData(["/api/rsvp"], {
       rsvps: [],
-      stats: { total: 0, attending: 0, notAttending: 0, guestCount: 0, holyMatrimonyCount: 0, receptionCount: 0 },
+      stats: { total: 0, attending: 0, notAttending: 0, guestCount: 0, holyMatrimonyCount: 0, receptionCount: 0, holyMatrimonyGuestCount: 0, receptionGuestCount: 0 },
     });
     renderRsvpPage(qc);
     expect(screen.getByText("No RSVP responses yet")).toBeInTheDocument();
