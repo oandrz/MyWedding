@@ -6,6 +6,7 @@ type ConfigImage struct {
 	ImageKey     string  `json:"imageKey"`
 	ImageURL     string  `json:"imageUrl"`
 	ThumbnailURL *string `json:"thumbnailUrl"`
+	DisplayURL   *string `json:"displayUrl"`
 	ImageType    string  `json:"imageType"`
 	Title        *string `json:"title"`
 	Description  *string `json:"description"`
@@ -19,6 +20,7 @@ type InsertConfigImage struct {
 	ImageKey     string  `json:"imageKey"`
 	ImageURL     string  `json:"imageUrl"`
 	ThumbnailURL *string `json:"thumbnailUrl"`
+	DisplayURL   *string `json:"displayUrl"`
 	ImageType    string  `json:"imageType"`
 	Title        *string `json:"title"`
 	Description  *string `json:"description"`

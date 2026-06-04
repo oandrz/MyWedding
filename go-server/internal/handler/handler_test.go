@@ -14,6 +14,7 @@ import (
 
 	"github.com/andreasronaldo/wedding-server/internal/config"
 	"github.com/andreasronaldo/wedding-server/internal/middleware"
+	"github.com/andreasronaldo/wedding-server/internal/models"
 	"github.com/andreasronaldo/wedding-server/internal/repository"
 	"github.com/andreasronaldo/wedding-server/internal/router"
 	"github.com/andreasronaldo/wedding-server/internal/service"
@@ -1461,6 +1462,73 @@ func TestConfigImageDeleteNotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+}
+
+// TestUpdateConfigImage_PreservesThumbnailAndDisplayURLs verifies that a
+// metadata-only PUT (title update, no thumbnailUrl/displayUrl in body) does
+// NOT overwrite the existing thumbnail_url and display_url with NULL.
+func TestUpdateConfigImage_PreservesThumbnailAndDisplayURLs(t *testing.T) {
+	env := newTestEnv()
+	cookie, csrfToken := adminLogin(t, env)
+
+	// Insert a config image directly via the repo with non-nil thumbnail/display URLs.
+	thumbURL := "https://example.com/gallery-1-thumb.jpg"
+	displayURL := "https://example.com/gallery-1-display.jpg"
+	title := "Original Title"
+	_, err := env.repo.CreateConfigImage(nil, models.InsertConfigImage{
+		ImageKey:     "gallery-1",
+		ImageURL:     "https://example.com/gallery-1.jpg",
+		ThumbnailURL: &thumbURL,
+		DisplayURL:   &displayURL,
+		ImageType:    "gallery",
+		Title:        &title,
+	})
+	if err != nil {
+		t.Fatalf("failed to seed config image: %v", err)
+	}
+
+	// Send a metadata-only PUT that omits thumbnailUrl and displayUrl,
+	// exactly as the real frontend does when editing a title.
+	newTitle := "Updated Title"
+	updateBody := jsonBody(map[string]interface{}{
+		"imageKey":  "gallery-1",
+		"imageUrl":  "https://example.com/gallery-1.jpg",
+		"imageType": "gallery",
+		"title":     newTitle,
+		"isActive":  true,
+	})
+	req := adminRequest(http.MethodPut, "/api/admin/config-images/gallery-1", updateBody, cookie, csrfToken)
+	rec := httptest.NewRecorder()
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	result := parseResponse(t, rec)
+	image, ok := result["image"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected image object in response, got keys: %v", mapKeys(result))
+	}
+
+	// Title must be updated.
+	if image["title"] != newTitle {
+		t.Fatalf("expected title %q, got %v", newTitle, image["title"])
+	}
+
+	// thumbnailUrl and displayUrl must still be the original values (not nil).
+	if image["thumbnailUrl"] == nil {
+		t.Fatal("thumbnailUrl was wiped to nil by metadata-only PUT; expected it to be preserved")
+	}
+	if image["thumbnailUrl"] != thumbURL {
+		t.Fatalf("thumbnailUrl changed: got %v, want %q", image["thumbnailUrl"], thumbURL)
+	}
+	if image["displayUrl"] == nil {
+		t.Fatal("displayUrl was wiped to nil by metadata-only PUT; expected it to be preserved")
+	}
+	if image["displayUrl"] != displayURL {
+		t.Fatalf("displayUrl changed: got %v, want %q", image["displayUrl"], displayURL)
 	}
 }
 
