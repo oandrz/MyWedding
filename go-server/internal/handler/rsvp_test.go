@@ -391,3 +391,43 @@ func TestRsvp_Create_DeadlineEnforcement(t *testing.T) {
 		})
 	}
 }
+
+func TestRsvp_ListStats_IncludesEventGuestCounts(t *testing.T) {
+	env := newTestEnv()
+
+	// name, phone, attendanceType, guestCount (nil pointer = omit field)
+	four, two, three := 4, 2, 3
+	for _, tc := range []struct {
+		name, phone, attendanceType string
+		guestCount                  *int
+	}{
+		{"Alice", "+6281234567890", "both", &four},         // HM +4, Rec +4
+		{"Bob", "+6281234567891", "holy_matrimony", &two},  // HM +2
+		{"Charlie", "+6281234567892", "reception", &three}, // Rec +3
+		{"Dave", "+6281234567893", "holy_matrimony", nil},  // HM +1 (fallback)
+		{"Diana", "+6281234567894", "decline", nil},        // excluded
+	} {
+		payload := map[string]interface{}{
+			"name": tc.name, "phone": tc.phone, "attendanceType": tc.attendanceType,
+		}
+		if tc.guestCount != nil {
+			payload["guestCount"] = *tc.guestCount
+		}
+		req := httptest.NewRequest(http.MethodPost, "/api/rsvp", jsonBody(payload))
+		req.Header.Set("Content-Type", "application/json")
+		contractResponse(t, env, req, http.StatusCreated)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/rsvp", nil)
+	result := contractResponse(t, env, req, http.StatusOK)
+	stats := result["stats"].(map[string]interface{})
+
+	// holyMatrimonyGuestCount: both(4) + holy_matrimony(2) + holy_matrimony nil(1) = 7
+	if stats["holyMatrimonyGuestCount"] != float64(7) {
+		t.Fatalf("expected holyMatrimonyGuestCount=7, got %v", stats["holyMatrimonyGuestCount"])
+	}
+	// receptionGuestCount: both(4) + reception(3) = 7
+	if stats["receptionGuestCount"] != float64(7) {
+		t.Fatalf("expected receptionGuestCount=7, got %v", stats["receptionGuestCount"])
+	}
+}
