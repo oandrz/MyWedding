@@ -559,7 +559,8 @@ func TestContract_RsvpUpdate(t *testing.T) {
 // Contract: { "rsvps": [...], "stats": { "total": <int>, "attending": <int>,
 //
 //	"notAttending": <int>, "guestCount": <int>,
-//	"holyMatrimonyCount": <int>, "receptionCount": <int> } }
+//	"holyMatrimonyCount": <int>, "receptionCount": <int>,
+//	"holyMatrimonyGuestCount": <int>, "receptionGuestCount": <int> } }
 //
 // ---------------------------------------------------------------------------
 func TestContract_RsvpList(t *testing.T) {
@@ -595,12 +596,17 @@ func TestContract_RsvpList(t *testing.T) {
 	assertKeyType(t, stats, "guestCount", "float64")
 	assertKeyType(t, stats, "holyMatrimonyCount", "float64")
 	assertKeyType(t, stats, "receptionCount", "float64")
+	assertKeyType(t, stats, "holyMatrimonyGuestCount", "float64")
+	assertKeyType(t, stats, "receptionGuestCount", "float64")
 
 	assertFloat64Value(t, stats, "total", 3)
 	assertFloat64Value(t, stats, "attending", 2)
 	assertFloat64Value(t, stats, "notAttending", 1)
 	// Alice=2, Bob=1 (default) = 3
 	assertFloat64Value(t, stats, "guestCount", 3)
+	// Both Alice and Bob chose "both", so both events get 2+1 = 3
+	assertFloat64Value(t, stats, "holyMatrimonyGuestCount", 3)
+	assertFloat64Value(t, stats, "receptionGuestCount", 3)
 }
 
 // ---------------------------------------------------------------------------
