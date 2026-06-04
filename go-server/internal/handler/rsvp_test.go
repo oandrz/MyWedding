@@ -396,16 +396,16 @@ func TestRsvp_ListStats_IncludesEventGuestCounts(t *testing.T) {
 	env := newTestEnv()
 
 	// name, phone, attendanceType, guestCount (nil pointer = omit field)
-	four, two, three := 4, 2, 3
+	four, two, five := 4, 2, 5
 	for _, tc := range []struct {
 		name, phone, attendanceType string
 		guestCount                  *int
 	}{
-		{"Alice", "+6281234567890", "both", &four},         // HM +4, Rec +4
-		{"Bob", "+6281234567891", "holy_matrimony", &two},  // HM +2
-		{"Charlie", "+6281234567892", "reception", &three}, // Rec +3
-		{"Dave", "+6281234567893", "holy_matrimony", nil},  // HM +1 (fallback)
-		{"Diana", "+6281234567894", "decline", nil},        // excluded
+		{"Alice", "+6281234567890", "both", &four},        // HM +4, Rec +4
+		{"Bob", "+6281234567891", "holy_matrimony", &two}, // HM +2
+		{"Charlie", "+6281234567892", "reception", &five}, // Rec +5
+		{"Dave", "+6281234567893", "holy_matrimony", nil}, // HM +1 (fallback)
+		{"Diana", "+6281234567894", "decline", nil},       // excluded
 	} {
 		payload := map[string]interface{}{
 			"name": tc.name, "phone": tc.phone, "attendanceType": tc.attendanceType,
@@ -426,8 +426,12 @@ func TestRsvp_ListStats_IncludesEventGuestCounts(t *testing.T) {
 	if stats["holyMatrimonyGuestCount"] != float64(7) {
 		t.Fatalf("expected holyMatrimonyGuestCount=7, got %v", stats["holyMatrimonyGuestCount"])
 	}
-	// receptionGuestCount: both(4) + reception(3) = 7
-	if stats["receptionGuestCount"] != float64(7) {
-		t.Fatalf("expected receptionGuestCount=7, got %v", stats["receptionGuestCount"])
+	// receptionGuestCount: both(4) + reception(5) = 9
+	if stats["receptionGuestCount"] != float64(9) {
+		t.Fatalf("expected receptionGuestCount=9, got %v", stats["receptionGuestCount"])
+	}
+	// guestCount: attending only — both(4) + hm(2) + reception(5) + hm-nil(1) = 12 (decline excluded)
+	if stats["guestCount"] != float64(12) {
+		t.Fatalf("expected guestCount=12, got %v", stats["guestCount"])
 	}
 }
