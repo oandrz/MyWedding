@@ -128,6 +128,20 @@ func (h *ConfigImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	body.ImageKey = imageKey
 
+	// Preserve generated image URLs the edit form doesn't submit: a metadata-only
+	// edit (title/description/active) omits thumbnailUrl/displayUrl, which would
+	// otherwise be overwritten to NULL and revert the image to its full-size original.
+	if body.ThumbnailURL == nil || body.DisplayURL == nil {
+		if existing, err := h.Repo.GetConfigImage(r.Context(), imageKey); err == nil && existing != nil {
+			if body.ThumbnailURL == nil {
+				body.ThumbnailURL = existing.ThumbnailURL
+			}
+			if body.DisplayURL == nil {
+				body.DisplayURL = existing.DisplayURL
+			}
+		}
+	}
+
 	image, err := h.Repo.UpdateConfigImage(r.Context(), imageKey, body)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "Failed to update config image")
