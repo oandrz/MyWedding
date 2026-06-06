@@ -22,6 +22,8 @@ interface RsvpResponse {
     guestCount: number;
     holyMatrimonyCount: number;
     receptionCount: number;
+    holyMatrimonyGuestCount: number;
+    receptionGuestCount: number;
   };
 }
 
@@ -102,13 +104,22 @@ export default function RsvpPage() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card className="bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-lg" data-testid="stat-holy-matrimony">
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl font-bold text-white">
               {data?.stats.holyMatrimonyCount ?? 0}
             </CardTitle>
             <CardDescription className="text-rose-100">Holy Matrimony RSVPs</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg" data-testid="stat-holy-matrimony-guests">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-white">
+              {data?.stats.holyMatrimonyGuestCount ?? 0}
+            </CardTitle>
+            <CardDescription className="text-rose-100">Matrimony Guests</CardDescription>
           </CardHeader>
         </Card>
 
@@ -121,21 +132,21 @@ export default function RsvpPage() {
           </CardHeader>
         </Card>
 
+        <Card className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg" data-testid="stat-reception-guests">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold text-white">
+              {data?.stats.receptionGuestCount ?? 0}
+            </CardTitle>
+            <CardDescription className="text-purple-100">Reception Guests</CardDescription>
+          </CardHeader>
+        </Card>
+
         <Card className="bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg" data-testid="stat-declined">
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl font-bold text-white">
               {data?.stats.notAttending ?? 0}
             </CardTitle>
             <CardDescription className="text-gray-200">Declined</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-pink-400 to-rose-500 text-white shadow-lg" data-testid="stat-total-guests">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl font-bold text-white">
-              {data?.stats.guestCount ?? 0}
-            </CardTitle>
-            <CardDescription className="text-pink-100">Total Expected Guests</CardDescription>
           </CardHeader>
         </Card>
       </div>

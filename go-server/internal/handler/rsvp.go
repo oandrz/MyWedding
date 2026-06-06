@@ -204,36 +204,43 @@ func (h *RsvpHandler) List(w http.ResponseWriter, r *http.Request) {
 	guestCount := 0
 	holyMatrimonyCount := 0
 	receptionCount := 0
+	holyMatrimonyGuestCount := 0
+	receptionGuestCount := 0
 
 	for _, rsvp := range rsvps {
+		g := 1
+		if rsvp.GuestCount != nil {
+			g = *rsvp.GuestCount
+		}
+
 		if rsvp.IsAttending() {
 			attending++
-			if rsvp.GuestCount != nil {
-				guestCount += *rsvp.GuestCount
-			} else {
-				guestCount += 1
-			}
+			guestCount += g
 		} else {
 			notAttending++
 		}
 
 		if rsvp.AttendanceType == "both" || rsvp.AttendanceType == "holy_matrimony" {
 			holyMatrimonyCount++
+			holyMatrimonyGuestCount += g
 		}
 		if rsvp.AttendanceType == "both" || rsvp.AttendanceType == "reception" {
 			receptionCount++
+			receptionGuestCount += g
 		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"rsvps": rsvps,
 		"stats": map[string]int{
-			"total":              total,
-			"attending":          attending,
-			"notAttending":       notAttending,
-			"guestCount":         guestCount,
-			"holyMatrimonyCount": holyMatrimonyCount,
-			"receptionCount":     receptionCount,
+			"total":                   total,
+			"attending":               attending,
+			"notAttending":            notAttending,
+			"guestCount":              guestCount,
+			"holyMatrimonyCount":      holyMatrimonyCount,
+			"receptionCount":          receptionCount,
+			"holyMatrimonyGuestCount": holyMatrimonyGuestCount,
+			"receptionGuestCount":     receptionGuestCount,
 		},
 	})
 }
