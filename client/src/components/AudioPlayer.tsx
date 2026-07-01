@@ -16,6 +16,7 @@ const AudioPlayer = forwardRef<AudioPlayerHandle, Record<never, never>>((_, ref)
   const [location] = useLocation();
 
   const isAdminPage = location.includes('/admin');
+  const isGalleryPage = location === '/gallery';
 
   const { data: musicData } = useQuery<{ musicUrl: string }>({
     queryKey: ['/api/settings/music'],
@@ -64,7 +65,7 @@ const AudioPlayer = forwardRef<AudioPlayerHandle, Record<never, never>>((_, ref)
     }
   };
 
-  if (isAdminPage || !isMusicEnabled) {
+  if (isAdminPage || isGalleryPage || !isMusicEnabled) {
     return null;
   }
 
