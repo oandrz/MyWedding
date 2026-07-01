@@ -160,7 +160,7 @@ const Gallery = () => {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Share photos on Google Drive"
-        className="fixed bottom-28 right-6 z-20 w-14 h-14 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-3xl shadow-lg flex items-center justify-center transition-colors"
+        className="fixed bottom-8 right-8 z-20 w-14 h-14 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-3xl shadow-lg flex items-center justify-center transition-colors"
         data-testid="fab-upload"
       >
         +
