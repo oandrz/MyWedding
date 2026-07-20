@@ -1157,6 +1157,20 @@ Open `client/src/App.tsx`. Confirm `<LanguageProvider>` is rendered INSIDE `<Que
 </QueryClientProvider>
 ```
 
+- [ ] **Step 6b: Guard existing tests against the new QueryClient dependency**
+
+`LanguageProvider` now calls `useQuery`, which throws "No QueryClient set" if
+mounted without a `QueryClientProvider` ancestor. Find every test that renders
+`LanguageProvider` (directly or via a component tree) and confirm each wraps in a
+QueryClient:
+
+Run: `grep -rln "LanguageProvider\|useLanguage" client/src --include=*.test.tsx --include=*.test.ts`
+For each hit, ensure the render wraps the tree in
+`<QueryClientProvider client={new QueryClient(...)}>`. If the repo has a shared
+test render helper, update it once there instead. `useContentOverrides` returns
+an empty map when the query has no data, so no fetch mock is required for these
+tests to pass — only the provider must exist.
+
 - [ ] **Step 7: Typecheck + full frontend tests**
 
 Run: `npm run check && npx vitest run`
@@ -1660,21 +1674,24 @@ export default function ContentPage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      // Send EVERY field's current value. Empty string = revert (tombstone):
+      // buildOverrideMap skips empty values so the read path falls back to the
+      // compiled/constant default. Rows equal to the default are harmless (the
+      // read path returns the same text). Do NOT diff against default — a
+      // datetime-local value never string-equals the ISO default, and typing a
+      // default string back must still clear a stale row. ~140 rows < 500 cap.
       const overrides: OverrideRow[] = [];
       for (const field of CONTENT_REGISTRY) {
         for (const loc of localesFor(field)) {
           const fid = `${field.key}|${loc}`;
-          const value = form[fid] ?? "";
-          // Only send values that differ from the compiled/constant default.
-          if (value !== defaultFor(field, loc)) {
-            overrides.push({ key: field.key, locale: loc, value });
+          let value = form[fid] ?? "";
+          // Convert datetime-local -> RFC3339 for the wedding date (see Step 3b).
+          if (field.key === "wedding.date" && value) {
+            const d = new Date(value);
+            if (!Number.isNaN(d.getTime())) value = d.toISOString();
           }
+          overrides.push({ key: field.key, locale: loc, value });
         }
-      }
-      if (overrides.length === 0) {
-        // Nothing changed — send a no-op-safe single default to avoid empty-array 400,
-        // or short-circuit. Short-circuit is cleaner:
-        return;
       }
       await apiRequest("PATCH", "/api/admin/content-overrides/bulk", { overrides });
     },
@@ -1757,20 +1774,11 @@ export default function ContentPage() {
 
 > Note on the `datetime-local` field: the browser input yields `YYYY-MM-DDTHH:mm` (no timezone), but the server requires RFC3339. In Step 3b below, convert on save. For the first pass, if a simpler contract is acceptable, change the `wedding.date` server validation to also accept `2006-01-02T15:04` — but RFC3339 is the spec. Implement the conversion.
 
-- [ ] **Step 3b: Convert datetime-local to RFC3339 on save**
+- [ ] **Step 3b: Seed the datetime-local field from an ISO override**
 
-In the `mutationFn`, before pushing a `wedding.date` override, convert the local input to RFC3339:
-
-```ts
-let outValue = value;
-if (field.key === "wedding.date" && value) {
-  const d = new Date(value); // interprets datetime-local as local time
-  if (!Number.isNaN(d.getTime())) outValue = d.toISOString();
-}
-overrides.push({ key: field.key, locale: loc, value: outValue });
-```
-
-And seed the field from an ISO override back into `datetime-local` shape in the `useEffect` (slice to `YYYY-MM-DDTHH:mm`):
+Save-side conversion (datetime-local → RFC3339) already lives in the `mutationFn`
+above. For the read direction, seed the field from an ISO override back into
+`datetime-local` shape in the `useEffect` (slice to `YYYY-MM-DDTHH:mm`):
 
 ```ts
 if (field.key === "wedding.date" && next[fid]) {
@@ -1828,7 +1836,7 @@ Run: build + start per CLAUDE.md (`npm run dev` + Go server, or the single-proce
 2. Log into `/admin`, open **Content**, change `hero.saveTheDate` (EN), a story paragraph, the groom name, `wedding.date`, and a venue time. Save.
 3. Reload invitation → confirm the edited strings/date/time now show; unedited strings unchanged.
 4. Switch `?lang=id` → confirm ID overrides apply and untouched ID strings fall back to compiled `id.ts`.
-5. Clear an override (set field back to default, save) → confirm the site reverts to the built-in default.
+5. Revert an override by **clearing the field to empty** and saving (empty = tombstone) → confirm the site reverts to the built-in default. (Do NOT rely on retyping the default string; reverts are done by clearing.)
 
 Expected: all pass.
 
