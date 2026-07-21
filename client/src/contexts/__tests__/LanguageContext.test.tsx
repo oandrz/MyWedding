@@ -70,4 +70,19 @@ describe("LanguageContext", () => {
     expect(window.location.search).toContain("code=abc");
     expect(window.location.search).toContain("lang=id");
   });
+
+  it("t() returns a seeded content override instead of the compiled default", () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(["/api/content-overrides"], {
+      overrides: [{ key: "welcome.openInvitation", locale: "en", value: "Open It!" }],
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <LanguageProvider>
+          <LangDisplay />
+        </LanguageProvider>
+      </QueryClientProvider>
+    );
+    expect(screen.getByTestId("t-open").textContent).toBe("Open It!");
+  });
 });
