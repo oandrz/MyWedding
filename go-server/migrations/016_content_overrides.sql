@@ -1,4 +1,4 @@
--- 011_content_overrides.sql
+-- 016_content_overrides.sql
 -- Runtime overrides for build-time invitation text. Empty table => compiled defaults win.
 CREATE TABLE IF NOT EXISTS content_overrides (
     key        TEXT        NOT NULL,
