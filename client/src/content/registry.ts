@@ -55,12 +55,12 @@ export const CONTENT_REGISTRY: ContentField[] = [
   { section: "Couple", key: "couple.story3", label: "Story paragraph 3", type: "textarea", bilingual: true, localeKey: "ourStoryParagraph3" },
   { section: "Couple", key: "couple.storyQuote", label: "Story quote", type: "text", bilingual: true, localeKey: "ourStoryQuote" },
   // Couple — migrated literals (localeKey added in Task 11)
-  { section: "Couple", key: "couple.groomName", label: "Groom display name", type: "text", bilingual: true },
-  { section: "Couple", key: "couple.brideName", label: "Bride display name", type: "text", bilingual: true },
-  { section: "Couple", key: "couple.groomFather", label: "Groom's father", type: "text", bilingual: true },
-  { section: "Couple", key: "couple.groomMother", label: "Groom's mother", type: "text", bilingual: true },
-  { section: "Couple", key: "couple.brideFather", label: "Bride's father", type: "text", bilingual: true },
-  { section: "Couple", key: "couple.brideMother", label: "Bride's mother", type: "text", bilingual: true },
+  { section: "Couple", key: "couple.groomName", label: "Groom display name", type: "text", bilingual: true, localeKey: "groomName" },
+  { section: "Couple", key: "couple.brideName", label: "Bride display name", type: "text", bilingual: true, localeKey: "brideName" },
+  { section: "Couple", key: "couple.groomFather", label: "Groom's father", type: "text", bilingual: true, localeKey: "groomFather" },
+  { section: "Couple", key: "couple.groomMother", label: "Groom's mother", type: "text", bilingual: true, localeKey: "groomMother" },
+  { section: "Couple", key: "couple.brideFather", label: "Bride's father", type: "text", bilingual: true, localeKey: "brideFather" },
+  { section: "Couple", key: "couple.brideMother", label: "Bride's mother", type: "text", bilingual: true, localeKey: "brideMother" },
 
   // Dress code
   { section: "Dress Code", key: "dress.dressCode", label: "Section title", type: "text", bilingual: true, localeKey: "dressCode" },
@@ -106,14 +106,14 @@ export const CONTENT_REGISTRY: ContentField[] = [
 
   // Footer
   { section: "Footer", key: "footer.madeWithLove", label: "Footer text", type: "text", bilingual: true, localeKey: "madeWithLove" },
-  { section: "Footer", key: "footer.monogram", label: "Monogram (e.g. A&C)", type: "text", bilingual: true },
+  { section: "Footer", key: "footer.monogram", label: "Monogram (e.g. A&C)", type: "text", bilingual: true, localeKey: "footerMonogram" },
 
   // Nav (migrated literals; localeKey added in Task 11)
-  { section: "Navigation", key: "nav.home", label: "Home", type: "text", bilingual: true },
-  { section: "Navigation", key: "nav.ourStory", label: "Our Story", type: "text", bilingual: true },
-  { section: "Navigation", key: "nav.weddingDetails", label: "Wedding Details", type: "text", bilingual: true },
-  { section: "Navigation", key: "nav.wishes", label: "Wishes", type: "text", bilingual: true },
-  { section: "Navigation", key: "nav.monogram", label: "Nav monogram", type: "text", bilingual: true },
+  { section: "Navigation", key: "nav.home", label: "Home", type: "text", bilingual: true, localeKey: "navHome" },
+  { section: "Navigation", key: "nav.ourStory", label: "Our Story", type: "text", bilingual: true, localeKey: "navOurStory" },
+  { section: "Navigation", key: "nav.weddingDetails", label: "Wedding Details", type: "text", bilingual: true, localeKey: "navWeddingDetails" },
+  { section: "Navigation", key: "nav.wishes", label: "Wishes", type: "text", bilingual: true, localeKey: "navWishes" },
+  { section: "Navigation", key: "nav.monogram", label: "Nav monogram", type: "text", bilingual: true, localeKey: "navMonogram" },
 
   // Venue text (migrated literals)
   { section: "Venue", key: "venue.matrimony.title", label: "Matrimony event title", type: "text", bilingual: true },
