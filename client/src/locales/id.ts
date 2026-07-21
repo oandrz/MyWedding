@@ -88,4 +88,18 @@ export const id: Record<TranslationKey, string> = {
 
   // Footer
   madeWithLove: "Dibuat dengan penuh cinta untuk hari istimewa kami",
+
+  // Migrated literals — Couple names/parents
+  groomName: "Andreas",
+  brideName: "Christine Natasya Serena",
+  groomFather: "( † ) Bapak Buyung Oentoro",
+  groomMother: "Ibu Tjhin Miauw Fun",
+  brideFather: "Bapak Chai Ko Kiun",
+  brideMother: "Ibu Bong Lie Fong",
+  footerMonogram: "A&C",
+  navMonogram: "A&C",
+  navHome: "Beranda",
+  navOurStory: "Kisah Kami",
+  navWeddingDetails: "Detail Pernikahan",
+  navWishes: "Ucapan",
 };

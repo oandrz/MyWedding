@@ -22,11 +22,19 @@ vi.mock("@/lib/constants", () => ({
   GROOM_NAME: "Test Groom",
 }));
 
+const NAV_LABELS: Record<string, string> = {
+  navHome: "Home",
+  navOurStory: "Our Story",
+  navWeddingDetails: "Wedding Details",
+  navWishes: "Wishes",
+  navMonogram: "A&C",
+};
+
 vi.mock("@/contexts/LanguageContext", () => ({
   useLanguage: () => ({
     lang: "en",
     setLang: vi.fn(),
-    t: (key: string) => key,
+    t: (key: string) => NAV_LABELS[key] ?? key,
     dateLocale: "en-US",
   }),
 }));

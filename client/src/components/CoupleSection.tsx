@@ -78,12 +78,12 @@ const CoupleSection = () => {
                 alt={GROOM_NAME} 
               />
             </motion.div>
-            <h3 className="text-3xl font-cormorant text-primary mb-2">{GROOM_NAME}</h3>
+            <h3 className="text-3xl font-cormorant text-primary mb-2">{t("groomName")}</h3>
             <p className="text-foreground font-montserrat mb-4">{t("theGroom")}</p>
             <p className="font-montserrat text-sm italic mb-1 text-[#dba9a9] font-normal">{t("secondSonOf")}</p>
-            <p className="text-foreground font-montserrat text-sm"><span className="font-bold">( † )</span> Mr. Buyung Oentoro</p>
+            <p className="text-foreground font-montserrat text-sm">{t("groomFather")}</p>
             <p className="text-muted-foreground font-montserrat text-sm">&</p>
-            <p className="text-foreground font-montserrat text-sm">Mrs. Tjhin Miauw Fun</p>
+            <p className="text-foreground font-montserrat text-sm">{t("groomMother")}</p>
           </motion.div>
           
           <motion.div 
@@ -104,12 +104,12 @@ const CoupleSection = () => {
                 alt={BRIDE_NAME} 
               />
             </motion.div>
-            <h3 className="text-3xl font-cormorant text-primary mb-2">{BRIDE_NAME}</h3>
+            <h3 className="text-3xl font-cormorant text-primary mb-2">{t("brideName")}</h3>
             <p className="text-foreground font-montserrat mb-4">{t("theBride")}</p>
             <p className="font-montserrat text-sm italic mb-1 text-[#dba9a9]">{t("secondDaughterOf")}</p>
-            <p className="text-foreground font-montserrat text-sm">Mr. Chai Ko Kiun</p>
+            <p className="text-foreground font-montserrat text-sm">{t("brideFather")}</p>
             <p className="text-muted-foreground font-montserrat text-sm">&</p>
-            <p className="text-foreground font-montserrat text-sm">Mrs. Bong Lie Fong</p>
+            <p className="text-foreground font-montserrat text-sm">{t("brideMother")}</p>
           </motion.div>
         </div>
         

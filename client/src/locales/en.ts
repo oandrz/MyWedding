@@ -86,6 +86,21 @@ export const en = {
 
   // Footer
   madeWithLove: "Made with love for our special day",
+
+  // Migrated literals — Couple names/parents
+  groomName: "Andreas",
+  brideName: "Christine Natasya Serena",
+  groomFather: "( † ) Mr. Buyung Oentoro",
+  groomMother: "Mrs. Tjhin Miauw Fun",
+  brideFather: "Mr. Chai Ko Kiun",
+  brideMother: "Mrs. Bong Lie Fong",
+  // Footer / Nav monograms + labels
+  footerMonogram: "A&C",
+  navMonogram: "A&C",
+  navHome: "Home",
+  navOurStory: "Our Story",
+  navWeddingDetails: "Wedding Details",
+  navWishes: "Wishes",
 } as const;
 
 export type TranslationKey = keyof typeof en;

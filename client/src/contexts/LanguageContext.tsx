@@ -1,10 +1,18 @@
 import { createContext, useContext, useState, useMemo } from "react";
 import { en, type TranslationKey, interpolate } from "@/locales/en";
 import { id } from "@/locales/id";
+import { CONTENT_REGISTRY } from "@/content/registry";
+import { useContentOverrides } from "@/content/useContentOverrides";
 
 type Lang = "en" | "id";
 
 const translations: Record<Lang, Record<TranslationKey, string>> = { en, id };
+
+// Reverse map: flat locale key -> dotted DB key (only bilingual fields with a localeKey).
+const LOCALE_KEY_TO_DB_KEY: Partial<Record<TranslationKey, string>> = {};
+for (const f of CONTENT_REGISTRY) {
+  if (f.bilingual && f.localeKey) LOCALE_KEY_TO_DB_KEY[f.localeKey] = f.key;
+}
 
 interface LanguageContextValue {
   lang: Lang;
@@ -23,6 +31,7 @@ function readLangFromURL(): Lang {
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(readLangFromURL);
+  const { map } = useContentOverrides();
 
   const setLang = (next: Lang) => {
     setLangState(next);
@@ -35,9 +44,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useMemo(
     () =>
-      (key: TranslationKey): string =>
-        translations[lang][key] ?? translations.en[key],
-    [lang]
+      (key: TranslationKey): string => {
+        const dbKey = LOCALE_KEY_TO_DB_KEY[key];
+        if (dbKey) {
+          const override = map[lang]?.[dbKey] ?? map.en?.[dbKey];
+          if (override) return override;
+        }
+        return translations[lang][key] ?? translations.en[key];
+      },
+    [lang, map]
   );
 
   const dateLocale = lang === "id" ? "id-ID" : "en-GB";

@@ -1,7 +1,17 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LanguageProvider, useLanguage } from "../LanguageContext";
+
+function renderWithProviders(children: React.ReactNode) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <LanguageProvider>{children}</LanguageProvider>
+    </QueryClientProvider>
+  );
+}
 
 function LangDisplay() {
   const { lang, t, dateLocale } = useLanguage();
@@ -27,34 +37,26 @@ beforeEach(() => {
 
 describe("LanguageContext", () => {
   it("defaults to en when no ?lang param", () => {
-    render(
-      <LanguageProvider>
-        <LangDisplay />
-      </LanguageProvider>
-    );
+    renderWithProviders(<LangDisplay />);
     expect(screen.getByTestId("lang").textContent).toBe("en");
     expect(screen.getByTestId("t-open").textContent).toBe("Open Invitation");
-    expect(screen.getByTestId("date-locale").textContent).toBe("en-US");
+    expect(screen.getByTestId("date-locale").textContent).toBe("en-GB");
   });
 
   it("initialises to id when ?lang=id is in URL", () => {
     window.history.replaceState({}, "", "/?lang=id");
-    render(
-      <LanguageProvider>
-        <LangDisplay />
-      </LanguageProvider>
-    );
+    renderWithProviders(<LangDisplay />);
     expect(screen.getByTestId("lang").textContent).toBe("id");
     expect(screen.getByTestId("t-open").textContent).toBe("Buka Undangan");
     expect(screen.getByTestId("date-locale").textContent).toBe("id-ID");
   });
 
   it("setLang switches language and updates URL param", () => {
-    render(
-      <LanguageProvider>
+    renderWithProviders(
+      <>
         <LangDisplay />
         <LangToggle />
-      </LanguageProvider>
+      </>
     );
     fireEvent.click(screen.getByText("toggle"));
     expect(screen.getByTestId("lang").textContent).toBe("id");
@@ -63,13 +65,24 @@ describe("LanguageContext", () => {
 
   it("setLang preserves existing URL params", () => {
     window.history.replaceState({}, "", "/?code=abc");
-    render(
-      <LanguageProvider>
-        <LangToggle />
-      </LanguageProvider>
-    );
+    renderWithProviders(<LangToggle />);
     fireEvent.click(screen.getByText("toggle"));
     expect(window.location.search).toContain("code=abc");
     expect(window.location.search).toContain("lang=id");
+  });
+
+  it("t() returns a seeded content override instead of the compiled default", () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(["/api/content-overrides"], {
+      overrides: [{ key: "welcome.openInvitation", locale: "en", value: "Open It!" }],
+    });
+    render(
+      <QueryClientProvider client={qc}>
+        <LanguageProvider>
+          <LangDisplay />
+        </LanguageProvider>
+      </QueryClientProvider>
+    );
+    expect(screen.getByTestId("t-open").textContent).toBe("Open It!");
   });
 });

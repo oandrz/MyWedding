@@ -636,6 +636,60 @@ func (r *PostgresRepository) GetAllAppSettings(ctx context.Context) ([]models.Ap
 }
 
 // ---------------------------------------------------------------------------
+// Content Overrides
+// ---------------------------------------------------------------------------
+
+func (r *PostgresRepository) UpsertContentOverrides(ctx context.Context, items []models.InsertContentOverride) (int, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	count := 0
+	for _, it := range items {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO content_overrides (key, locale, value)
+			 VALUES ($1, $2, $3)
+			 ON CONFLICT (key, locale) DO UPDATE SET
+			   value = EXCLUDED.value,
+			   updated_at = NOW()`,
+			it.Key, it.Locale, it.Value,
+		)
+		if err != nil {
+			return 0, err
+		}
+		count++
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *PostgresRepository) GetAllContentOverrides(ctx context.Context) ([]models.ContentOverride, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT key, locale, value, updated_at FROM content_overrides`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]models.ContentOverride, 0)
+	for rows.Next() {
+		var o models.ContentOverride
+		var updatedAt time.Time
+		if err := rows.Scan(&o.Key, &o.Locale, &o.Value, &updatedAt); err != nil {
+			return nil, err
+		}
+		o.UpdatedAt = updatedAt.Format(time.RFC3339)
+		result = append(result, o)
+	}
+	return result, rows.Err()
+}
+
+// ---------------------------------------------------------------------------
 // Welcome Screen
 // ---------------------------------------------------------------------------
 

@@ -2,9 +2,9 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Car, ParkingSquare } from "lucide-react";
-import { VENUES, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWeddingConfig } from "@/content/useWeddingConfig";
 
 interface ScheduleEvent {
   id: number;
@@ -24,6 +24,7 @@ const DetailsSection = () => {
   const scheduleEvents = scheduleData?.scheduleEvents ?? [];
 
   const { t, dateLocale, lang } = useLanguage();
+  const { weddingDate, venues } = useWeddingConfig();
 
   const sectionRef = useRef(null);
   const titleRef = useRef(null);
@@ -45,7 +46,7 @@ const DetailsSection = () => {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
-  }).format(WEDDING_DATE);
+  }).format(weddingDate);
 
   return (
     <section id="details" className="py-20 bg-gradient-to-b from-white via-amber-50/20 to-white paper-texture" ref={sectionRef}>
@@ -129,15 +130,15 @@ const DetailsSection = () => {
                 {t("location")}
               </div>
               <div className="text-3xl md:text-4xl font-cormorant font-bold text-primary mb-3">
-                {VENUES[0].location}
+                {venues[0].location}
               </div>
               <div className="font-montserrat text-sm text-muted-foreground mb-4">
-                {VENUES[0].address}
+                {venues[0].address}
               </div>
-              
-              <motion.a 
-                href="https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__" 
-                target="_blank" 
+
+              <motion.a
+                href={venues[0].mapUrl}
+                target="_blank"
                 rel="noreferrer"
                 className="inline-block px-8 py-4 bg-primary text-white font-montserrat uppercase tracking-wider text-sm rounded-lg shadow-lg hover:bg-opacity-90 transition-all duration-300"
                 whileHover={{ scale: 1.05, y: -2 }}

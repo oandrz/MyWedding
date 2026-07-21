@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
+import { BRIDE_NAME, GROOM_NAME } from "@/lib/constants";
 import { fadeIn, floatAnimation, pulseAnimation } from "@/lib/animations";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfigImage } from "@shared/schema";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWeddingConfig } from "@/content/useWeddingConfig";
 
 type TimeLeft = {
   days: number;
@@ -63,6 +64,7 @@ const HeroSection = () => {
   const parallaxOffset = useParallax(0.5); // Parallax speed factor
 
   const { t, dateLocale } = useLanguage();
+  const { weddingDate } = useWeddingConfig();
 
   // Countdown state
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
@@ -77,14 +79,14 @@ const HeroSection = () => {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
-  }).format(WEDDING_DATE);
-  
+  }).format(weddingDate);
+
   // Calculate and update the countdown
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      const difference = WEDDING_DATE.getTime() - now;
-      
+      const difference = weddingDate.getTime() - now;
+
       if (difference > 0) {
         setTimeLeft({
           days: Math.floor(difference / (1000 * 60 * 60 * 24)),
@@ -96,12 +98,12 @@ const HeroSection = () => {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
     };
-    
+
     calculateTimeLeft();
     const timer = setInterval(calculateTimeLeft, 1000);
-    
+
     return () => clearInterval(timer);
-  }, []);
+  }, [weddingDate.getTime()]);
   
   // Format time with leading zeros
   const formatTime = (time: number): string => {

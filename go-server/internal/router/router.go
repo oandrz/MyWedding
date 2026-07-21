@@ -49,6 +49,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	featureFlag := &handler.FeatureFlagHandler{Repo: repo, Cache: cache}
 	appSetting := &handler.AppSettingHandler{Repo: repo}
 	welcomeScreen := &handler.WelcomeScreenHandler{Repo: repo, Sanitizer: sanitizer}
+	contentOverride := &handler.ContentOverrideHandler{Repo: repo}
 	invite := &handler.InviteHandler{Repo: repo, Sanitizer: sanitizer}
 	schedule := &handler.ScheduleHandler{Repo: repo}
 
@@ -98,6 +99,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 	r.Get("/api/settings/{settingKey}", appSetting.Get)
 
 	r.Get("/api/welcome-screen", welcomeScreen.Get)
+	r.Get("/api/content-overrides", contentOverride.List)
 	r.Get("/api/schedule", schedule.List)
 
 	r.Get("/api/invites/{code}", invite.GetByCode)
@@ -164,6 +166,7 @@ func New(cfg *config.Config, repo repository.Repository, sessions middleware.Ses
 			r.Patch("/app-settings/{settingKey}", appSetting.Update)
 
 			r.Patch("/welcome-screen", welcomeScreen.Update)
+			r.Patch("/content-overrides/bulk", contentOverride.BulkUpdate)
 
 			r.Post("/schedule", schedule.Create)
 			r.Put("/schedule/{id}", schedule.Update)

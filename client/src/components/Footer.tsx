@@ -1,16 +1,17 @@
 import { motion } from "framer-motion";
-import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWeddingConfig } from "@/content/useWeddingConfig";
 
 const Footer = () => {
   const { t, dateLocale } = useLanguage();
+  const { weddingDate } = useWeddingConfig();
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat(dateLocale, {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
-  }).format(WEDDING_DATE);
+  }).format(weddingDate);
   
   return (
     <footer className="py-10 bg-[#4A4A4A] text-[#F9F5F0]">
@@ -25,7 +26,7 @@ const Footer = () => {
             className="text-3xl font-cormorant mb-4"
             variants={fadeIn}
           >
-            {GROOM_NAME} & {BRIDE_NAME}
+            {t("groomName")} & {t("brideName")}
           </motion.h2>
           
           <motion.p 
@@ -39,7 +40,7 @@ const Footer = () => {
             className="mb-8"
             variants={fadeIn}
           >
-            <span className="font-cormorant text-5xl italic text-white text-opacity-90 tracking-widest">A&C</span>
+            <span className="font-cormorant text-5xl italic text-white text-opacity-90 tracking-widest">{t("footerMonogram")}</span>
           </motion.div>
           
           <motion.p 
