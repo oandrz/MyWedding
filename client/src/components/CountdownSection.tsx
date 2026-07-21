@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { WEDDING_DATE } from "@/lib/constants";
+import { useWeddingConfig } from "@/content/useWeddingConfig";
 import { fadeIn, staggerContainer, slideUp } from "@/lib/animations";
 
 type TimeLeft = {
@@ -12,22 +12,23 @@ type TimeLeft = {
 };
 
 const CountdownSection = () => {
+  const { weddingDate } = useWeddingConfig();
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0
   });
-  
+
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.2 });
-  
+
   // Calculate and update the countdown
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      const difference = WEDDING_DATE.getTime() - now;
-      
+      const difference = weddingDate.getTime() - now;
+
       if (difference > 0) {
         setTimeLeft({
           days: Math.floor(difference / (1000 * 60 * 60 * 24)),
@@ -39,12 +40,12 @@ const CountdownSection = () => {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
     };
-    
+
     calculateTimeLeft();
     const timer = setInterval(calculateTimeLeft, 1000);
-    
+
     return () => clearInterval(timer);
-  }, []);
+  }, [weddingDate.getTime()]);
   
   // Format time with leading zeros
   const formatTime = (time: number): string => {

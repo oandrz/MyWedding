@@ -1,16 +1,17 @@
 import { motion } from "framer-motion";
-import { WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWeddingConfig } from "@/content/useWeddingConfig";
 
 const Footer = () => {
   const { t, dateLocale } = useLanguage();
+  const { weddingDate } = useWeddingConfig();
   // Format the wedding date
   const formattedDate = new Intl.DateTimeFormat(dateLocale, {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
-  }).format(WEDDING_DATE);
+  }).format(weddingDate);
   
   return (
     <footer className="py-10 bg-[#4A4A4A] text-[#F9F5F0]">
