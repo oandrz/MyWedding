@@ -52,11 +52,11 @@ function renderRsvpSection() {
     featureFlags: [{ id: 1, featureKey: "rsvp", featureName: "RSVP", description: "", enabled: true, updatedAt: "" }],
   });
   return render(
-    <LanguageProvider>
-      <QueryClientProvider client={qc}>
+    <QueryClientProvider client={qc}>
+      <LanguageProvider>
         <RsvpSection />
-      </QueryClientProvider>
-    </LanguageProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -74,11 +74,11 @@ function renderWithDeadline(pastDeadline: boolean) {
   });
 
   return render(
-    <LanguageProvider>
-      <QueryClientProvider client={qc}>
+    <QueryClientProvider client={qc}>
+      <LanguageProvider>
         <RsvpSection />
-      </QueryClientProvider>
-    </LanguageProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -94,11 +94,11 @@ function renderWithMaxGuests(maxGuests: number) {
     ],
   });
   return render(
-    <LanguageProvider>
-      <QueryClientProvider client={qc}>
+    <QueryClientProvider client={qc}>
+      <LanguageProvider>
         <RsvpSection />
-      </QueryClientProvider>
-    </LanguageProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
   );
 }
 
