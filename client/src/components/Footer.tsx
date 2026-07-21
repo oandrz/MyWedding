@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { BRIDE_NAME, GROOM_NAME, WEDDING_DATE } from "@/lib/constants";
+import { WEDDING_DATE } from "@/lib/constants";
 import { fadeIn, staggerContainer } from "@/lib/animations";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -25,7 +25,7 @@ const Footer = () => {
             className="text-3xl font-cormorant mb-4"
             variants={fadeIn}
           >
-            {GROOM_NAME} & {BRIDE_NAME}
+            {t("groomName")} & {t("brideName")}
           </motion.h2>
           
           <motion.p 
@@ -39,7 +39,7 @@ const Footer = () => {
             className="mb-8"
             variants={fadeIn}
           >
-            <span className="font-cormorant text-5xl italic text-white text-opacity-90 tracking-widest">A&C</span>
+            <span className="font-cormorant text-5xl italic text-white text-opacity-90 tracking-widest">{t("footerMonogram")}</span>
           </motion.div>
           
           <motion.p 

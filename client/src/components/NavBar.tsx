@@ -20,7 +20,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
     typeof window !== 'undefined' ? sessionStorage.getItem('inviteCode') ?? '' : ''
   );
   const homeHref = inviteCode ? `/?code=${encodeURIComponent(inviteCode)}` : '/';
-  const { lang, setLang } = useLanguage();
+  const { lang, setLang, t } = useLanguage();
 
   // Toggle mobile menu
   const toggleMenu = () => {
@@ -93,7 +93,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
     <nav className={`fixed top-0 left-0 right-0 z-50 bg-background bg-opacity-95 transition-all duration-300 ${isScrolled ? 'shadow-md' : ''}`}>
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link href={homeHref} className="text-3xl font-cormorant italic text-primary tracking-widest">
-          A&C
+          {t("navMonogram")}
         </Link>
 
         {/* Right side: language toggle + desktop nav + hamburger */}
@@ -125,7 +125,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
               href={homeHref}
               className={`nav-link relative hover:text-primary transition duration-300 ${location === '/' && !activeSection ? 'text-primary' : ''}`}
             >
-              Home
+              {t("navHome")}
               {location === '/' && !activeSection && (
                 <motion.span
                   className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
@@ -148,7 +148,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                     setActiveSection('couple');
                   }}
                 >
-                  Our Story
+                  {t("navOurStory")}
                   {activeSection === 'couple' && (
                     <motion.span
                       className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
@@ -169,7 +169,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                     setActiveSection('details');
                   }}
                 >
-                  Wedding Details
+                  {t("navWeddingDetails")}
                   {activeSection === 'details' && (
                     <motion.span
                       className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
@@ -239,7 +239,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                   setActiveSection('messages');
                 }}
               >
-                Wishes
+                {t("navWishes")}
                 {activeSection === 'messages' && (
                   <motion.span
                     className="absolute bottom-[-4px] left-0 right-0 h-0.5 bg-primary"
@@ -294,7 +294,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                   });
                 }}
               >
-                Home
+                {t("navHome")}
               </Link>
               {location === '/' && (
                 <>
@@ -306,7 +306,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                       scrollToSection('couple');
                     }}
                   >
-                    Our Story
+                    {t("navOurStory")}
                   </a>
                   <a
                     href="#details"
@@ -316,7 +316,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                       scrollToSection('details');
                     }}
                   >
-                    Wedding Details
+                    {t("navWeddingDetails")}
                   </a>
                   <a
                     href="#gallery"
@@ -348,7 +348,7 @@ const NavBar = ({ minimal = false }: NavBarProps) => {
                   scrollToSection('messages');
                 }}
               >
-                Wishes
+                {t("navWishes")}
               </a>
               {isFeatureEnabled('memories') && (
                 <Link
