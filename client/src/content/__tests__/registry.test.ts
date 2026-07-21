@@ -21,4 +21,18 @@ describe("content registry", () => {
       if (!f.bilingual) expect(f.localeKey).toBeUndefined();
     }
   });
+
+  it("registry keys match the checked-in Go dump", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const dump = fs
+      .readFileSync(path.resolve(__dirname, "../../../../go-server/testdata/content_keys.txt"), "utf8")
+      .trim()
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .sort();
+    const keys = CONTENT_REGISTRY.map((f) => f.key).sort();
+    expect(keys).toEqual(dump);
+  });
 });
