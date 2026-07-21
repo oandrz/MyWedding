@@ -10,7 +10,8 @@ const mockLocation = "/rsvps";
 vi.mock("wouter", () => ({
   useLocation: () => [mockLocation, mockNavigate],
   Switch: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Route: ({ children, component: Component }: any) => {
+  Route: ({ path, children, component: Component }: any) => {
+    if (path !== undefined && path !== mockLocation) return null;
     if (Component) return <Component />;
     return <>{children}</>;
   },
