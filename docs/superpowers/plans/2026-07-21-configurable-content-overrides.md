@@ -415,6 +415,18 @@ func TestContentOverrideBulkUpdateRejectsBadDate(t *testing.T) {
 	}
 }
 
+func TestContentOverrideBulkUpdateRejectsMissingToken(t *testing.T) {
+	h := newContentHandler()
+	// rsvp.rsvpThankYou must keep "{name}".
+	payload := `{"overrides":[{"key":"rsvp.rsvpThankYou","locale":"en","value":"Thanks!"}]}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/content-overrides/bulk", bytes.NewBufferString(payload))
+	rec := httptest.NewRecorder()
+	h.BulkUpdate(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 for missing {name}, got %d", rec.Code)
+	}
+}
+
 func TestContentOverrideBulkUpdateAccepts(t *testing.T) {
 	h := newContentHandler()
 	payload := `{"overrides":[{"key":"hero.saveTheDate","locale":"en","value":"Save the Date"},{"key":"wedding.date","locale":"*","value":"2026-07-05T14:00:00+07:00"}]}`
@@ -449,11 +461,21 @@ var StructuralContentKeys = map[string]string{
 	"venue.reception.time":   "text",
 }
 
+// InterpolatedContentKeys maps keys whose value MUST retain interpolation
+// tokens (a non-empty override missing a required token is rejected).
+var InterpolatedContentKeys = map[string][]string{
+	"rsvp.rsvpThankYou":    {"{name}"},
+	"messages.seeAllWishes": {"{count}"},
+}
+
 // proseContentKeys are bilingual (en/id) text keys — the union of locale keys
 // plus migrated literals. Must match client/src/shared registry keys.
 var proseContentKeys = []string{
 	// HeroSection
 	"hero.gettingMarried", "hero.saveTheDate", "hero.rsvpNow",
+	"hero.days", "hero.hours", "hero.minutes", "hero.seconds",
+	// WelcomeOverlay
+	"welcome.openInvitation", "welcome.selectLanguage",
 	// DetailsSection
 	"details.theDetails", "details.detailsSubtitle", "details.date", "details.schedule",
 	"details.location", "details.viewOnMaps", "details.gettingThere",
@@ -479,11 +501,14 @@ var proseContentKeys = []string{
 	"rsvp.rsvp", "rsvp.rsvpSubtitle", "rsvp.willYouAttend", "rsvp.attendBoth",
 	"rsvp.attendHolyMatrimony", "rsvp.attendReception", "rsvp.attendDecline",
 	"rsvp.numberOfGuests", "rsvp.submitRsvp", "rsvp.updateRsvp",
+	"rsvp.rsvpThankYou", "rsvp.rsvpConfirmAttending", "rsvp.rsvpConfirmDecline",
 	// MessagesSection
 	"messages.wishesTitle", "messages.wishesSubtitle", "messages.yourName",
 	"messages.yourMessage", "messages.sendWish", "messages.noMessages",
+	"messages.seeAllWishes", "messages.thankYouMessage",
 	// EGiftSection
 	"egift.eGiftTitle", "egift.eGiftSubtitle", "egift.groom", "egift.bride",
+	"egift.copyAccountNumber", "egift.copied",
 	// Footer
 	"footer.madeWithLove", "footer.monogram",
 	// NavBar
@@ -573,6 +598,15 @@ func (h *ContentOverrideHandler) BulkUpdate(w http.ResponseWriter, r *http.Reque
 		if len(o.Value) > 5000 {
 			writeError(w, r, http.StatusBadRequest, "Value too long for key "+o.Key)
 			return
+		}
+		// Interpolation tokens must survive edits (e.g. "{name}", "{count}").
+		if tokens, ok := InterpolatedContentKeys[o.Key]; ok && o.Value != "" {
+			for _, tok := range tokens {
+				if !strings.Contains(o.Value, tok) {
+					writeError(w, r, http.StatusBadRequest, "Value for "+o.Key+" must contain "+tok)
+					return
+				}
+			}
 		}
 		// Structural type validation.
 		if typ, ok := StructuralContentKeys[o.Key]; ok && o.Value != "" {
@@ -747,6 +781,14 @@ export const CONTENT_REGISTRY: ContentField[] = [
   { section: "Hero", key: "hero.gettingMarried", label: "“We're Getting Married”", type: "text", bilingual: true, localeKey: "gettingMarried" },
   { section: "Hero", key: "hero.saveTheDate", label: "Save the Date button", type: "text", bilingual: true, localeKey: "saveTheDate" },
   { section: "Hero", key: "hero.rsvpNow", label: "RSVP Now button", type: "text", bilingual: true, localeKey: "rsvpNow" },
+  { section: "Hero", key: "hero.days", label: "Countdown “Days”", type: "text", bilingual: true, localeKey: "days" },
+  { section: "Hero", key: "hero.hours", label: "Countdown “Hours”", type: "text", bilingual: true, localeKey: "hours" },
+  { section: "Hero", key: "hero.minutes", label: "Countdown “Minutes”", type: "text", bilingual: true, localeKey: "minutes" },
+  { section: "Hero", key: "hero.seconds", label: "Countdown “Seconds”", type: "text", bilingual: true, localeKey: "seconds" },
+
+  // Welcome overlay
+  { section: "Welcome", key: "welcome.openInvitation", label: "Open Invitation button", type: "text", bilingual: true, localeKey: "openInvitation" },
+  { section: "Welcome", key: "welcome.selectLanguage", label: "“Select your language”", type: "text", bilingual: true, localeKey: "selectLanguage" },
 
   // Details
   { section: "Details", key: "details.theDetails", label: "Section title", type: "text", bilingual: true, localeKey: "theDetails" },
@@ -805,6 +847,9 @@ export const CONTENT_REGISTRY: ContentField[] = [
   { section: "RSVP", key: "rsvp.numberOfGuests", label: "“Number of Guests”", type: "text", bilingual: true, localeKey: "numberOfGuests" },
   { section: "RSVP", key: "rsvp.submitRsvp", label: "Submit button", type: "text", bilingual: true, localeKey: "submitRsvp" },
   { section: "RSVP", key: "rsvp.updateRsvp", label: "Update button", type: "text", bilingual: true, localeKey: "updateRsvp" },
+  { section: "RSVP", key: "rsvp.rsvpThankYou", label: "Thank-you (keep {name})", type: "text", bilingual: true, localeKey: "rsvpThankYou" },
+  { section: "RSVP", key: "rsvp.rsvpConfirmAttending", label: "Attending confirmation", type: "textarea", bilingual: true, localeKey: "rsvpConfirmAttending" },
+  { section: "RSVP", key: "rsvp.rsvpConfirmDecline", label: "Decline confirmation", type: "textarea", bilingual: true, localeKey: "rsvpConfirmDecline" },
 
   // Messages
   { section: "Messages", key: "messages.wishesTitle", label: "Section title", type: "text", bilingual: true, localeKey: "wishesTitle" },
@@ -813,12 +858,16 @@ export const CONTENT_REGISTRY: ContentField[] = [
   { section: "Messages", key: "messages.yourMessage", label: "“Your Message”", type: "text", bilingual: true, localeKey: "yourMessage" },
   { section: "Messages", key: "messages.sendWish", label: "Send button", type: "text", bilingual: true, localeKey: "sendWish" },
   { section: "Messages", key: "messages.noMessages", label: "Empty state", type: "text", bilingual: true, localeKey: "noMessages" },
+  { section: "Messages", key: "messages.seeAllWishes", label: "See-all (keep {count})", type: "text", bilingual: true, localeKey: "seeAllWishes" },
+  { section: "Messages", key: "messages.thankYouMessage", label: "Message thank-you", type: "text", bilingual: true, localeKey: "thankYouMessage" },
 
   // E-Gift
   { section: "E-Gift", key: "egift.eGiftTitle", label: "Section title", type: "text", bilingual: true, localeKey: "eGiftTitle" },
   { section: "E-Gift", key: "egift.eGiftSubtitle", label: "Subtitle", type: "textarea", bilingual: true, localeKey: "eGiftSubtitle" },
   { section: "E-Gift", key: "egift.groom", label: "“Groom” label", type: "text", bilingual: true, localeKey: "groom" },
   { section: "E-Gift", key: "egift.bride", label: "“Bride” label", type: "text", bilingual: true, localeKey: "bride" },
+  { section: "E-Gift", key: "egift.copyAccountNumber", label: "Copy-account button", type: "text", bilingual: true, localeKey: "copyAccountNumber" },
+  { section: "E-Gift", key: "egift.copied", label: "“Copied!” toast", type: "text", bilingual: true, localeKey: "copied" },
 
   // Footer
   { section: "Footer", key: "footer.madeWithLove", label: "Footer text", type: "text", bilingual: true, localeKey: "madeWithLove" },
@@ -1865,3 +1914,4 @@ git commit -m "docs: content overrides E2E issue notes"
 - **Known risk carried from spec:** Go allowlist ↔ TS registry drift — guarded by T8's committed dump + two parity tests. Regenerate the dump whenever keys change.
 - **Provider ordering (T9 Step 6):** verify `App.tsx` puts `QueryClientProvider` outside `LanguageProvider`; this is the one non-mechanical wiring risk.
 - **Default map URLs (T10):** must be copied verbatim from `DetailsSection.tsx` so empty overrides reproduce the current map exactly.
+- **Full scope:** registry now covers ALL build-time prose — including countdown labels, welcome-overlay buttons, e-gift copy toasts, and the interpolated strings (`rsvpThankYou`, `seeAllWishes`, `rsvpConfirm*`, `thankYouMessage`). Interpolated overrides are guarded server-side: a non-empty value missing its required `{name}`/`{count}` token is rejected (400). The read path is unchanged — `t()` returns the override and the existing `interpolate()` caller fills tokens.
