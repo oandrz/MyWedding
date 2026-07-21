@@ -77,11 +77,6 @@ rsvp.willYouAttend
 venue.address
 venue.location
 venue.matrimony.mapUrl
-venue.matrimony.time
-venue.matrimony.title
-venue.reception.mapUrl
-venue.reception.time
-venue.reception.title
 wedding.date
 welcome.openInvitation
 welcome.selectLanguage

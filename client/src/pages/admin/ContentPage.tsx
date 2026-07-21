@@ -24,14 +24,8 @@ function defaultFor(field: ContentField, locale: "en" | "id" | "*"): string {
   switch (field.key) {
     case "wedding.date":
       return WEDDING_DATE.toISOString();
-    case "venue.matrimony.time":
-      return VENUES[0].time;
-    case "venue.reception.time":
-      return VENUES[1].time;
-    case "venue.matrimony.title":
-      return VENUES[0].title;
-    case "venue.reception.title":
-      return VENUES[1].title;
+    case "venue.matrimony.mapUrl":
+      return "https://www.google.com/maps/place/Casakhasa/@-6.2594469,106.8204341,17z/data=!3m1!4b1!4m9!3m8!1s0x2e69f22adf2c9a27:0x118d6eaa20e4454b!5m2!4m1!1i2!8m2!3d-6.2594469!4d106.8204341!16s%2Fg%2F11bccm83__";
     case "venue.location":
       return VENUES[0].location;
     case "venue.address":

@@ -4,9 +4,6 @@ package handler
 var StructuralContentKeys = map[string]string{
 	"wedding.date":           "date", // RFC3339
 	"venue.matrimony.mapUrl": "url",
-	"venue.reception.mapUrl": "url",
-	"venue.matrimony.time":   "text",
-	"venue.reception.time":   "text",
 }
 
 // InterpolatedContentKeys maps keys whose value MUST retain interpolation
@@ -29,8 +26,7 @@ var proseContentKeys = []string{
 	"details.location", "details.viewOnMaps", "details.gettingThere",
 	"details.rideHailingTitle", "details.rideHailingBody", "details.valetTitle",
 	"details.valetBody", "details.weddingDaySchedule",
-	// Venue text (bilingual titles/location/address)
-	"venue.matrimony.title", "venue.reception.title",
+	// Venue text (bilingual location/address)
 	"venue.location", "venue.address",
 	// BibleVerseSection
 	"bible.verse", "bible.verseRef",

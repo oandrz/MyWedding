@@ -116,17 +116,12 @@ export const CONTENT_REGISTRY: ContentField[] = [
   { section: "Navigation", key: "nav.monogram", label: "Nav monogram", type: "text", bilingual: true, localeKey: "navMonogram" },
 
   // Venue text (migrated literals)
-  { section: "Venue", key: "venue.matrimony.title", label: "Matrimony event title", type: "text", bilingual: true },
-  { section: "Venue", key: "venue.reception.title", label: "Reception event title", type: "text", bilingual: true },
   { section: "Venue", key: "venue.location", label: "Venue name", type: "text", bilingual: true },
   { section: "Venue", key: "venue.address", label: "Venue address", type: "textarea", bilingual: true },
 
   // Structural (non-translated)
   { section: "Wedding Data", key: "wedding.date", label: "Wedding date & time", type: "date", bilingual: false },
-  { section: "Wedding Data", key: "venue.matrimony.time", label: "Matrimony time range", type: "text", bilingual: false },
-  { section: "Wedding Data", key: "venue.reception.time", label: "Reception time range", type: "text", bilingual: false },
   { section: "Wedding Data", key: "venue.matrimony.mapUrl", label: "Matrimony map URL", type: "url", bilingual: false },
-  { section: "Wedding Data", key: "venue.reception.mapUrl", label: "Reception map URL", type: "url", bilingual: false },
 ];
 
 export const CONTENT_SECTIONS: string[] = Array.from(
