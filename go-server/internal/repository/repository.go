@@ -54,6 +54,10 @@ type Repository interface {
 	GetAppSetting(ctx context.Context, settingKey string) (*models.AppSetting, error)
 	GetAllAppSettings(ctx context.Context) ([]models.AppSetting, error)
 
+	// Content Overrides
+	GetAllContentOverrides(ctx context.Context) ([]models.ContentOverride, error)
+	UpsertContentOverrides(ctx context.Context, items []models.InsertContentOverride) (int, error)
+
 	// Welcome Screen
 	GetWelcomeScreen(ctx context.Context) (*models.WelcomeScreen, error)
 	UpdateWelcomeScreen(ctx context.Context, data models.InsertWelcomeScreen) (*models.WelcomeScreen, error)

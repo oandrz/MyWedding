@@ -15,25 +15,26 @@ import (
 type MemoryRepository struct {
 	mu sync.Mutex
 
-	users         map[int]models.User
-	userIDSeq     int
-	rsvps         map[int]models.Rsvp
-	rsvpIDSeq     int
-	media         map[int]models.Media
-	mediaIDSeq    int
-	configImages  map[int]models.ConfigImage
-	configIDSeq   int
-	featureFlags  map[int]models.FeatureFlag
-	flagIDSeq     int
-	appSettings   map[int]models.AppSetting
-	settingIDSeq  int
-	welcomeScreen *models.WelcomeScreen
-	messages      map[int]models.Message
-	messageIDSeq  int
-	invites        map[int]models.Invite
-	inviteIDSeq    int
-	scheduleEvents map[int]models.ScheduleEvent
-	scheduleIDSeq  int
+	users            map[int]models.User
+	userIDSeq        int
+	rsvps            map[int]models.Rsvp
+	rsvpIDSeq        int
+	media            map[int]models.Media
+	mediaIDSeq       int
+	configImages     map[int]models.ConfigImage
+	configIDSeq      int
+	featureFlags     map[int]models.FeatureFlag
+	flagIDSeq        int
+	appSettings      map[int]models.AppSetting
+	settingIDSeq     int
+	contentOverrides map[string]models.ContentOverride // key = key + "|" + locale
+	welcomeScreen    *models.WelcomeScreen
+	messages         map[int]models.Message
+	messageIDSeq     int
+	invites          map[int]models.Invite
+	inviteIDSeq      int
+	scheduleEvents   map[int]models.ScheduleEvent
+	scheduleIDSeq    int
 }
 
 // NewMemoryRepository creates a new in-memory repository with seeded defaults.
@@ -54,10 +55,11 @@ func NewMemoryRepository() *MemoryRepository {
 				UpdatedAt:   now(),
 			},
 		},
-		appSettings:    make(map[int]models.AppSetting),
-		messages:       make(map[int]models.Message),
-		invites:        make(map[int]models.Invite),
-		scheduleEvents: make(map[int]models.ScheduleEvent),
+		appSettings:      make(map[int]models.AppSetting),
+		contentOverrides: make(map[string]models.ContentOverride),
+		messages:         make(map[int]models.Message),
+		invites:          make(map[int]models.Invite),
+		scheduleEvents:   make(map[int]models.ScheduleEvent),
 	}
 }
 
@@ -1027,4 +1029,34 @@ func (r *MemoryRepository) QueryLogs(_ context.Context, q models.LogQuery) ([]mo
 
 func (r *MemoryRepository) DeleteLogsOlderThan(_ context.Context, cutoff time.Time) (int64, error) {
 	return 0, nil
+}
+
+// ---------------------------------------------------------------------------
+// Content Overrides
+// ---------------------------------------------------------------------------
+
+func (m *MemoryRepository) UpsertContentOverrides(_ context.Context, items []models.InsertContentOverride) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	count := 0
+	for _, it := range items {
+		m.contentOverrides[it.Key+"|"+it.Locale] = models.ContentOverride{
+			Key:       it.Key,
+			Locale:    it.Locale,
+			Value:     it.Value,
+			UpdatedAt: "",
+		}
+		count++
+	}
+	return count, nil
+}
+
+func (m *MemoryRepository) GetAllContentOverrides(_ context.Context) ([]models.ContentOverride, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]models.ContentOverride, 0, len(m.contentOverrides))
+	for _, o := range m.contentOverrides {
+		result = append(result, o)
+	}
+	return result, nil
 }

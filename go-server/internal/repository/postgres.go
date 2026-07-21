@@ -636,6 +636,22 @@ func (r *PostgresRepository) GetAllAppSettings(ctx context.Context) ([]models.Ap
 }
 
 // ---------------------------------------------------------------------------
+// Content Overrides
+// ---------------------------------------------------------------------------
+//
+// TODO(task-4): replace these stubs with real SQL implementations. They exist
+// only to keep PostgresRepository satisfying the Repository interface after
+// Task 3 added the two methods below.
+
+func (r *PostgresRepository) GetAllContentOverrides(_ context.Context) ([]models.ContentOverride, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (r *PostgresRepository) UpsertContentOverrides(_ context.Context, _ []models.InsertContentOverride) (int, error) {
+	return 0, errors.New("not implemented")
+}
+
+// ---------------------------------------------------------------------------
 // Welcome Screen
 // ---------------------------------------------------------------------------
 
